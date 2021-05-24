@@ -9,4 +9,4 @@
 
 ## Especificación del Lenguaje:
 
-Puedes encontrar la especificación del lenguaje en español [aquí](docs/lang_spec.md).
+Puedes encontrar la especificación del lenguaje en español [aquí](docs/lang_specs.md).
