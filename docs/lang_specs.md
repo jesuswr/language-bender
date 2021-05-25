@@ -127,20 +127,28 @@ Esta expresión retorna el tipo unitario.
 
 #### If
 Como en lenguajes tradicionales: 
-```if (expresión booleana) expresión else expresión```
+```
+if (expresión booleana) expresión else expresión
+```
 La instrucción también se puede evaluar, y la evaluación de la expresión principal debe tener el mismo tipo que la expresión secundaria del caso por defecto. En caso de no tener expresión secundaria, el tipo de retorno sera el tipo unitario.
 
 #### For
 Como en lenguajes tradicionales: 
-```for ( posible declaración e inicialización; condición booleana; expresión de incremento ) expresión```
+```
+for ( posible declaración e inicialización; condición booleana; expresión de incremento ) expresión
+```
 
 #### ForEach
 Repetición determinada: 
-```for(variable_para_iterar : iterable) expresión```
+```
+for(variable_para_iterar : iterable) expresión
+```
 
 #### While
 Como en lenguajes tradicionales: 
-```while (condición booleana) expresión```
+```
+while (condición booleana) expresión
+```
 
 #### Control de Flujo para Ciclos
 Se tienen instrucciones ```break``` y ```continue``` que permiten terminar un ciclo o una iteración prematuramente y respectivamente. Ambas instrucciones pueden recibir un parámetro adicional para retornar valores, al mismo estilo del return:
