@@ -207,7 +207,7 @@ Se tienen instrucciones ```break``` y ```continue``` que permiten terminar un ci
 ```
 while (X) { 
     if (Y)
-        break 10
+        break 10;
     i = i + 1
 }
 ```
