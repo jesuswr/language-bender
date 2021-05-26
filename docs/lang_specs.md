@@ -8,19 +8,30 @@
 - Jesús Wahrman 15-11540
 
 ### Inferencia de tipos
-Si no se especifica el tipo de alguna función o variable, el compilador intentará inferirlo. Para inferir el tipo de una función se ve el cuerpo de esta, no el lugar en el que se usa.
+Si no se especifica el tipo de alguna función o variable, el compilador intentará inferirlo. Para inferir el tipo de una función se inspecciona su cuerpo, no sus llamadas.
 
 ### Basado en expresiones
 El lenguaje esta basado en expresiones. Esto es, todas las instruccions producen un valor. Para esto, Doe se basa en las siguientes reglas:
 1) Los distintos caminos de ejecución de un bloque de instrucciones retornan el mismo tipo de dato. El caso contrario es un error de compilación.
-2) Un bloque de instrucciones (delimitado por '{' y '}') retorna lo que retorne la última sub expresión, o el último ```break``` / ```continue``` en caso del control de flujo de los ciclos.
+2) Un bloque de instrucciones (delimitado por '{' y '}') retorna lo que retorne la última sub expresión, o el último ```break``` / ```continue``` en caso del control de flujo de los ciclos, o `return` en el caso de las funciones.
 3) Existe un símbolo especial que hace que una expresión retorne ```()``` (el tipo unitario). Por ahora el “.” al final de una expresión, la forzara a retornar el tipo unitario.
 4) Las expresiones que tienen caminos no definidos, retornan ```()``` por defecto (Ejemplo: un ```if``` sin un ```else```).
 5) Adicionalmente, el tipo unitario ```()``` no es utilizable como un valor válido para una variable o función ni como anotación de tipo.
 
-
+  **Nota:** Las instrucciones `break` y `continue` evaluan a `()`. Sin embargo, cuando un camino de ejecución contiene una instrucción de este tipo, no se le considera para inferir el tipo de la expresión, sino el tipo de retorno del ciclo que lo contiene. Así, permitimos patrones bastante útiles como:
+```
+while(true) {
+  let x = if (error()) 
+             break
+          else 
+           f();
+           
+  // do something with x
+} 
+```
+  
 ### Identificadores
-Es toda palabra que comienza con una letra minúscula, está formada posteriormente por letras, números y guiones bajos (```_```) y no es una palabra reservada por el lenguaje.
+Es toda palabra que comienza con una letra, está formada posteriormente por caracteres alfanuméricos y guiones bajos (```_```) y no es una palabra reservada por el lenguaje.
 
 ### Declaraciones
 Para declarar variables tenemos:
@@ -28,7 +39,14 @@ Para declarar variables tenemos:
 2. Para declarar una variable sin inicializar y con tipo concreto: ```let x: Tipo```
 3. Para declarar una variable inicializada y con tipo concreto: ```let x: Tipo = Valor```
 
-Para declarar constantes se precede la declaración por ```const```.
+Para declarar constantes se precede la declaración por ```const```. Por ejemplo:
+```
+const x = Valor
+const x : Tipo = Valor
+```
+  **Nota**: Definir variables constantes sin inicialización, o sin tipo ni inicialización no tiene sentido, puesto que nunca se le podría asignar un valor, y por lo tanto tampoco inferir su tipo. 
+  
+Las variables declaradas constantes son inmutables. Eso incluye los campos de tipos compuestos.    
 Cualquier declaración devuelve el tipo unitario.
 
 ### Asignación 
@@ -41,7 +59,7 @@ El lenguaje tiene modelo por valor. Es decir, la asignacion asocia una variable 
     let x = 1;
     let y = &x; // Referencia a x
 ```
-En este ejemplo, ```y``` se usa como cualquier otra variable, pero sus cambios se hacen efectivos en ```x``` también. Además, no se puede declarar una variable de referencia sin inicializarla a no ser que sea una función:
+En este ejemplo, ```y``` se usa como cualquier otra variable, pero sus cambios se hacen efectivos en ```x``` también. Además, no se puede declarar una variable de referencia sin inicializarla a no ser que sea en el argumento de una función:
 ```
     let z : & int; // Error de compilación
 ```
@@ -68,15 +86,48 @@ Tipo booleano con dos posibles valores: ```true``` o ```false``` (```bool```). C
 Alias para un arreglo de caracteres (```string```).
 
 #### Arreglo
-Hay dos tipos para denominar arreglos:
-a) T[Size] = arreglo de objetos de tipo T alojado en el stack con tamaño Size
-b) T[] = arreglo de objetos de tipo T alojado en el heap, posiblemente sin inicializar.
-
+Los arreglos tienen tamaño constante de elaboración y se declaran como:
+```
+let a : T[Size];
+let a = {a0,a1,a2};
+```
 #### Struct
 tipo producto o record: ```struct <struct_name> {x0 : T0, ..., xk : Tk}``` donde ```xi``` de tipo ```Ti``` es un atributo del struct.
+Para acceder a un atributo `x0` de un struct `s`, usamos el clásico operador punto: `s.x0`
+
+Para crear un struct, usamos la sintaxis: `<struct_name>{expr0, ... , exprk}`. Por ejemplo:
+```
+struct S {a: int, b: float}
+...
+let s = S{1, 2.0};
+```
 
 #### Union
-tipo suma o variante: ```union <union_name> = <tag_0> T0 | ... | <tag_k> Tk``` donde ```|``` separan los distintos tipos que puede tomar la union. 
+tipo suma o variante: ```union <union_name> = <tag_0> T0 | ... | <tag_k> Tk``` donde ```|``` separan los distintos tipos que puede tomar la union. Por ejemplo:
+```
+union U = MyFloat float | MyInt int
+```
+Para crear una instancia de una union usamos la sintaxis `<union_typename>::<union_tag_name>{expr0, ... , exprk}`. Por ejemplo:  
+```
+let u = U::MyFloat{2.0}
+```
+
+El tipo de una instancia de la union es la unión en sí misma, para acceder a un posible valor, se usa el nombre de esa etiqueta. Por ejemplo:
+
+```
+let f : float = u.MyFloat
+```
+Es un error de ejecución que se le solicite un valor de un tipo distinto al tipo actualmente almacenado para la unión.  
+
+Para consultar por el tipo de una union usamos la sintaxis `<instance_name>.<tag_name>?`. Por ejemplo:   
+```
+if (u.MyFloat?)
+   logn(u.MyFloat).
+else // if not float, it's int
+   u.MyInt % 2.
+```
+
+
 
 #### Aritmetica
 Sólo entre flotantes, entre enteros y entre ambos (en este último caso se retorna flotante). Usando los operadores: 
@@ -84,6 +135,7 @@ Sólo entre flotantes, entre enteros y entre ambos (en este último caso se reto
 - ``` - ``` para la resta.
 - ``` * ``` para la multiplicación.
 - ``` / ``` para la división.
+- `%` módulo, solo para enteros
 
 #### Comparaciones
 Para tipos enteros, flotantes y booleanos:
