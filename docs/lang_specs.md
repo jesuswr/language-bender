@@ -119,7 +119,7 @@ let s = S{1, 2.0};
 #### Union
 tipo suma o variante: ```union <union_name> = <tag_0> T0 | ... | <tag_k> Tk``` donde ```|``` separan los distintos tipos que puede tomar la union. Por ejemplo:
 ```
-union U = MyFloat float | MyInt int
+union U { MyFloat: float, MyInt: int }
 ```
 Para crear una instancia de una union usamos la sintaxis `<union_typename>::<union_tag_name>{expr0, ... , exprk}`. Por ejemplo:  
 ```
@@ -140,8 +140,6 @@ if (u.MyFloat?)
 else // if not float, it's int
    u.MyInt % 2.
 ```
-
-
 
 #### Aritmetica
 Sólo entre flotantes, entre enteros y entre ambos (en este último caso se retorna flotante). Usando los operadores: 
