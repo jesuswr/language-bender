@@ -246,24 +246,13 @@ fn f(x : int)-> int {
 ```
 
 #### Procedimientos
-Son funciones que no retornan nada, en otras palabras, retorna el tipo unit () y por lo tanto no puede ser utilizado como una subexpresión (a excepción de los bloques de instrucciones). Es imposible anotarles tipo de retorno como a las funciones, puesto que nunca retornan algo más que ().
+Son funciones que siempre retornan (), en otras palabras, retorna el tipo unit () y por lo tanto no puede ser utilizado como una subexpresión (a excepción de los bloques de instrucciones). Es imposible anotarles tipo de retorno como a las funciones, puesto que nunca retornan algo más que ().
 ```        
 proc f(x) {
     print(x + 2)
 }
 ```
 Sus tipos de argumento también son anotables.
-
-#### I/O
-Se provee una función especial `to_str(a)` tal que puede convertir cualquier objeto reducible a tipos básicos en un string
-Las operaciones de IO básicas son:
-* `open(filename: str, mode: str) -> File` - Apertura de archivos. Abre el archivo de nombre `filename` con el modo definido según el string `mode`. El formato del string `mode` se provee más adelante.
-* `readf(file: File) -> str` - lectura de un archivo, lee todo cuando sea posible y lo retorna en un string.
-* `printf(file: File, content: str)` - función especial que recibe un archivo `file`, un string `content` y escribe el string en el archivo según se especificó en su modo de apertura.
-
-El objeto `File` es un tipo de dato especial usado para representar archivos, contiene información importante internamente como el string de modo y el file descriptor del archivo abierto.
-
-También existen las funciones especiales `read` y `print` que son equivalentes a `printf` y `readf` con el archivo sustituido por `stdout` y `stdin` respectivamente.
 
 #### Orden de Ejecución
 Existe un procedimiento especial ```proc main()``` que es el punto de partida del programa. Toda variable que esté declarada fuera de la función main debe ser constante en tiempo de compilación. 
@@ -293,4 +282,13 @@ f(x : int, y : int = 4, z : int = -1)
 ```
 Los argumentos con valores por defecto tienen que ser los últimos (más a la derecha) en la firma.
 
+#### I/O
+Se provee una función especial `to_str(a)` tal que puede convertir cualquier objeto reducible a tipos básicos en un string
+Las operaciones de IO básicas son:
+* `open(filename: str, mode: str) -> File` - Apertura de archivos. Abre el archivo de nombre `filename` con el modo definido según el string `mode`. El formato del string `mode` se provee más adelante.
+* `readf(file: File) -> str` - lectura de un archivo, lee todo cuando sea posible y lo retorna en un string.
+* `printf(file: File, content: str)` - función especial que recibe un archivo `file`, un string `content` y escribe el string en el archivo según se especificó en su modo de apertura.
 
+El objeto `File` es un tipo de dato especial usado para representar archivos, contiene información importante internamente como el string de modo y el file descriptor del archivo abierto.
+
+También existen las funciones especiales `read` y `print` que son equivalentes a `printf` y `readf` con el archivo sustituido por `stdout` y `stdin` respectivamente.
