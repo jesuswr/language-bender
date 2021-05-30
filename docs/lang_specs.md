@@ -228,19 +228,13 @@ Así, la expresión de iteración puede retornar valores mediante su control de 
 ### Sub-Rutinas
 
 #### Funciones 
-Todas las funciones retornan algo, y tienen los tipos de su firma inferidos de su cuerpo:
+Todas las funciones retornan algo, y pueden tener los tipos de retorno inferidos de su cuerpo:
 ```
-fn f(x) {
+fn f(x: int) {
     2*x
 }
 ```
-Esa función es de tipo ```(int) -> int```
-
-También es posible anotar sus tipos para forzarlos:
-```
-    2*x
-}
-```
+Esa función es de tipo ```(int) -> int```. El tipo de los valores de entrada debe ser anotado.
 
 #### Procedimientos
 Son funciones que siempre retornan (), en otras palabras, retorna el tipo unit () y por lo tanto no puede ser utilizado como una subexpresión (a excepción de los bloques de instrucciones). Es imposible anotarles tipo de retorno como a las funciones, puesto que nunca retornan algo más que ().
