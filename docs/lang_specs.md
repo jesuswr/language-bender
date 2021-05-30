@@ -18,34 +18,37 @@ El lenguaje esta basado en expresiones. Esto es, todas las instruccions producen
 4) Las expresiones que tienen caminos no definidos, retornan ```()``` por defecto (Ejemplo: un ```if``` sin un ```else```).
 5) Adicionalmente, el tipo unitario ```()``` no es utilizable como un valor válido para una variable o función ni como anotación de tipo.
 
-  **Nota:** Las instrucciones `break` y `continue` evaluan a `()`. Sin embargo, cuando un camino de ejecución contiene una instrucción de este tipo, no se le considera para inferir el tipo de la expresión, sino el tipo de retorno del ciclo que lo contiene. Así, permitimos patrones bastante útiles como:
+  **Nota:** Las instrucciones `break` y `continue` son instrucciones especiales que no evalúan a un tipo concreto, en su lugar cambian el control del flujo de los ciclos. Cuando un camino de ejecución contiene una instrucción de este tipo, no se le considera para inferir el tipo de la expresión, sino el tipo de retorno del ciclo que lo contiene. Esto ocurre porque no tiene sentido evaluar una expresión cuyo valor es imposible de utilizar, como ocurre en estos casos. Así, permitimos patrones bastante útiles como:
 ```
 while(true) {
   let x = if (error()) 
              break
           else 
-           f();
+             f();
            
   // do something with x
 } 
 ```
+En este ejemplo, x tiene el tipo de retorno de f, mientras que el ciclo while tiene tipo de retorno (). 
   
 ### Identificadores
 Es toda palabra que comienza con una letra, está formada posteriormente por caracteres alfanuméricos y guiones bajos (```_```) y no es una palabra reservada por el lenguaje.
 
 ### Declaraciones
 Para declarar variables tenemos:
-1. Para declarar una variable sin inicializar y con tipo inferido: ```let x```
-2. Para declarar una variable sin inicializar y con tipo concreto: ```let x: Tipo```
-3. Para declarar una variable inicializada y con tipo concreto: ```let x: Tipo = Valor```
+1. Para declarar una variable sin inicializar y con tipo concreto: ```let x: Tipo```
+2. Para declarar una variable inicializada y con tipo concreto: ```let x: Tipo = Valor```
+3. Para declarar una variable inicializada y con tipo inferido: ```let x = <expresion>```
 
 Para declarar constantes se precede la declaración por ```const```. Por ejemplo:
 ```
 const x = Valor
 const x : Tipo = Valor
+``` 
+Las variables declaradas constantes deben ser siempre inicializadas. Para asignar condicionalmente distintos posibles valores a una constante podemos usar el siguiente patrón:
 ```
-  **Nota**: Definir variables constantes sin inicialización, o sin tipo ni inicialización no tiene sentido, puesto que nunca se le podría asignar un valor, y por lo tanto tampoco inferir su tipo. 
-  
+const x = if (X) f() else g();
+```
 Las variables declaradas constantes son inmutables. Eso incluye los campos de tipos compuestos.    
 Cualquier declaración devuelve el tipo unitario.
 
@@ -71,10 +74,10 @@ Solo hay apuntadores al heap, los cuales se denotan como ``` Type * ```. El valo
 ### Tipos de Datos
 
 #### Entero
-Números enteros del tamaño del registro (```int```).
+Números enteros del tamaño del registro (```int```). Almacenados en complemento 2.
 
 #### Flotante
-Números flotantes de 32 y 64 bits (```float``` y ```double```).
+Números flotantes de 32 y 64 bits (```float``` y ```double```). Siguen el estándar [IEEE 754](https://en.wikipedia.org/wiki/IEEE_754#:~:text=The%20IEEE%20Standard%20for%20Floating,and%20Electronics%20Engineers%20(IEEE).&text=Many%20hardware%20floating-point%20units%20use%20the%20IEEE%20754%20standard.)
 
 #### Booleano
 Tipo booleano con dos posibles valores: ```true``` o ```false``` (```bool```). Cuentan con sus propios operadores:
