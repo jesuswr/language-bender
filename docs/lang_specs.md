@@ -273,7 +273,7 @@ f(x : int, y : int = 4, z : int = -1)
 ```
 Los argumentos con valores por defecto tienen que ser los últimos (más a la derecha) en la firma.
 
-#### I/O
+### I/O
 Se provee una función especial `to_str(a)` tal que puede convertir cualquier objeto reducible a tipos básicos en un string
 Las operaciones de IO básicas son:
 * `open(filename: str, mode: str) -> File` - Apertura de archivos. Abre el archivo de nombre `filename` con el modo definido según el string `mode`. El formato del string `mode` se provee más adelante.
