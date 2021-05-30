@@ -231,7 +231,6 @@ Así, la expresión de iteración puede retornar valores mediante su control de 
 Todas las funciones retornan algo, y tienen los tipos de su firma inferidos de su cuerpo:
 ```
 fn f(x) {
-    let x = 2;
     2*x
 }
 ```
@@ -239,8 +238,6 @@ Esa función es de tipo ```(int) -> int```
 
 También es posible anotar sus tipos para forzarlos:
 ```
-fn f(x : int)-> int {
-    let x = 2;
     2*x
 }
 ```
