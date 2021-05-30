@@ -85,6 +85,10 @@ Tipo booleano con dos posibles valores: ```true``` o ```false``` (```bool```). C
 - ``` or ```: Retorna ```true``` si alguno de los argumentos vale ```true```. De otra forma retorna ```false```.
 - ``` not ```: Retorna ```true``` si ambos argumentos tienen el mismo valor. De otra forma retorna ```false```.
 
+
+#### Char
+Tipo de dato que representa un caracter. Codificados en formato ascii.
+
 #### String
 Alias para un arreglo de caracteres (```string```).
 
@@ -94,6 +98,13 @@ Los arreglos tienen tamaño constante de elaboración y se declaran como:
 let a : T[Size];
 let a = {a0,a1,a2};
 ```
+Los arreglos soportan indexación, es la única operación que soportan:
+```
+let x : T[Size] = ...;
+x[i] // evalua al elemento i del arreglo x. 
+```
+Para acceder al elemento `i` del arreglo `x` es necesario que `i` esté en el rango `[0,Size)`. De lo contrario, es un error de ejecución
+
 #### Struct
 tipo producto o record: ```struct <struct_name> {x0 : T0, ..., xk : Tk}``` donde ```xi``` de tipo ```Ti``` es un atributo del struct.
 Para acceder a un atributo `x0` de un struct `s`, usamos el clásico operador punto: `s.x0`
