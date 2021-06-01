@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      Frontend.CommandLine
       Lib
   other-modules:
       Paths_doe_lang
@@ -34,7 +35,7 @@ library
       base >=4.7 && <5
   default-language: Haskell2010
 
-executable doe-lang-exe
+executable langBender
   main-is: Main.hs
   other-modules:
       Paths_doe_lang
