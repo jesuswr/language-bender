@@ -4,7 +4,7 @@ module Lib
 
 
 import           System.Environment
-import           Frontend.CommandLine
+import           FrontEnd.CommandLine
 
 
 langBender :: IO ()
