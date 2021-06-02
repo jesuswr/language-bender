@@ -1,4 +1,4 @@
-module Frontend.CommandLine where
+module FrontEnd.CommandLine where
 
 data Opts = Opts {
         fileName :: String,
@@ -8,16 +8,17 @@ data Opts = Opts {
         objFile  :: String
     }
     deriving(Show)
-    
 
 
 processArgs :: [String] -> Either (Opts, [String]) String
-processArgs args = do
-    if null args then
+processArgs args 
+    | null args =
         Right "ERROR: No arguments given"
-    else do
+    | not $ validFileName (head args) =
+        Right "ERROR: The given file name its not valid"
+    | otherwise = do
         let opts = Opts {
-                fileName = head args,
+                fileName = take (length name - 5) name,
                 help     = False,
                 printLex = False,
                 printPar = False,
@@ -28,6 +29,8 @@ processArgs args = do
             Left $ (newOpts{objFile = fileName opts}, warnings)
         else
             Left (newOpts, warnings)
+        where
+            name = head args
 
 
 
@@ -43,7 +46,7 @@ processFlags ("-par":xs) opts warnings =
 processFlags ("-o":xs) opts warnings 
     | null xs =
         processFlags xs opts (noObjFileName:warnings)
-    | not $ validObjFile name =
+    | not $ validObjFileName name =
         processFlags (tail xs) opts (unvalidFileName name:warnings)
     | otherwise =
         processFlags (tail xs) (opts{objFile = name}) warnings
@@ -57,5 +60,10 @@ processFlags (x:xs) opts warnings =
         unknownArg s = "WARNING: Unknown argument: " ++ s
 
 
-validObjFile :: String -> Bool
-validObjFile name = True
+validObjFileName :: String -> Bool
+validObjFileName name = not $ null name || head name == '-'
+
+
+validFileName :: String -> Bool
+validFileName ('-':_) = False
+validFileName s = (take 5 $ reverse s) == "dneb." && length s > 5

@@ -25,7 +25,9 @@ source-repository head
 
 library
   exposed-modules:
-      Frontend.CommandLine
+      FrontEnd.CommandLine
+      FrontEnd.Errors
+      FrontEnd.Tokens
       Lib
   other-modules:
       Paths_doe_lang
