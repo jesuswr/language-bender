@@ -94,12 +94,12 @@ tokens :-
                 -- union
 <0>     energy                          { pushTK TKenergy }
 <0>     allows                          { pushTK TKallows }
-<0>     technique\ of                   { pushTK TKtecgniqueOf }
+<0>     technique\ of                   { pushTK TKtechniqueOf }
 <0>     bending                         { pushTK TKbending }
-<0>     techniques\ from                { pushTK TKtecgniquesFrom }
+<0>     techniques\ from                { pushTK TKtechniquesFrom }
 <0>     using                           { pushTK TKusing }
 <0>     \'s                             { pushTK TKquotmark_s }
-<0>     technique                       { pushTK TKtecgnique }
+<0>     technique                       { pushTK TKtechnique }
 <0>     trying                          { pushTK TKtrying }
 
                 -- functions and proc
@@ -207,8 +207,8 @@ getTokensSt :: Alex [Token]
 getTokensSt = getAtr lexerTokens
 
 setTokensSt :: [Token] -> Alex ()
-setTokensSt tks = 
-    Right (s{ alex_ust = (alex_ust s){lexerTokens = tks} }, ())
+setTokensSt tks = Alex $ \s@AlexState{alex_ust=ust}
+    -> Right (s{ alex_ust = (alex_ust s){lexerTokens = tks} }, ())
 
 addToken :: Token -> Alex ()
 addToken tk = do
@@ -223,7 +223,7 @@ pushTK tok ( (AlexPn _ l c ) , _ , _ , _ ) len = do
 
 pushInt :: AlexAction AlexUserState
 pushInt ( (AlexPn _ l c ) , _ , _ , str ) len = do 
-    addToken ( TKInt (l, c) ( read $ take len str :: Int) )
+    addToken ( TKint (l, c) ( read $ take len str :: Int) )
     alexMonadScan
 
 pushFloat :: AlexAction AlexUserState
@@ -233,7 +233,7 @@ pushFloat ( (AlexPn _ l c ) , _ , _ , str ) len = do
 
 pushId :: AlexAction AlexUserState
 pushId ( (AlexPn _ l c ) , _ , _ , str ) len = do
-    addToken ( TKId (l, c) ( take len str ) )
+    addToken ( TKid (l, c) ( take len str ) )
     alexMonadScan
 
 pushChar :: AlexAction AlexUserState
@@ -260,8 +260,8 @@ getLitStr :: Alex String
 getLitStr = getAtr literalString
 
 setLitStr :: String -> Alex ()
-setLitStr s = 
-    Right (s{ alex_ust = (alex_ust s){literalString = s} }, ())
+setLitStr str = Alex $ \s@AlexState{alex_ust=ust}
+    -> Right (s{ alex_ust = (alex_ust s){literalString = str} }, ())
 
 -- manage error in the state
 
@@ -269,8 +269,8 @@ getErrorsSt :: Alex [Error]
 getErrorsSt = getAtr lexerErrors
 
 setErrorsSt :: [Error] -> Alex ()
-setErrorsSt tks =
-     Right (s{ alex_ust = (alex_ust s){lexerErrors = tks} }, ())
+setErrorsSt tks = Alex $ \s@AlexState{alex_ust=ust}
+    -> Right (s{ alex_ust = (alex_ust s){lexerErrors = tks} }, ())
 
 addError :: Error -> Alex ()
 addError err = do

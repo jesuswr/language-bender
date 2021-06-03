@@ -36,11 +36,11 @@ data Token =
     TKdisciple        {pos :: Position}                    |
     
     TKelement         {pos :: Position}                    |
-    TKmasteredby      {pos :: Position}                    |
+    TKmasteredBy      {pos :: Position}                    |
     TKlearning        {pos :: Position}                    |
     TKcontrol         {pos :: Position}                    |
 
-    TKenery           {pos :: Position}                    |
+    TKenergy          {pos :: Position}                    |
     TKallows          {pos :: Position}                    |
     TKtechniqueOf     {pos :: Position}                    |
     TKbending         {pos :: Position}                    |
@@ -79,7 +79,8 @@ data Token =
     TKcloseParent     {pos :: Position}                    |
 
     TKchar            {pos :: Position, char  :: String}   |
-    TKstring          {pos :: Position, str :: String}   
+    TKstring          {pos :: Position, str :: String}     |
+    TKid              {pos :: Position, id  :: String}   
 
     deriving(Eq, Show)
 
