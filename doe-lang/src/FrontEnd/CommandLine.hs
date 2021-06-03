@@ -19,8 +19,8 @@ data Result = Result Opts [Warning]
 
 -- Process incoming arguments as strings and return result if everything ok, 
 -- or an error message otherwise
-processArgs :: [String] -> Either Result ErrorMsg
-processArgs args 
+processArgs :: [String] -> IO (Either Result ErrorMsg)
+processArgs args
     | null args =
         return $ Right "ERROR: No arguments given"
     | not $ validFileName (head args) =
@@ -39,24 +39,24 @@ processArgs args
                 }
             let (newOpts, warnings) = processFlags (tail args) opts []
             if null $ objFile newOpts then
-                return $ Left $ Result newOpts{objFile = fileName opts} warnings
+                return . Left $ Result newOpts{objFile = fileName opts} warnings
             else
-                return $ Left $ Result newOpts warnings
+                return . Left $ Result newOpts warnings
         where
             name = head args
 
 
 
 processFlags :: [String] -> Opts -> [String] -> (Opts, [String])
-processFlags [] opts warnings = 
+processFlags [] opts warnings =
     (opts, warnings)
-processFlags ("--help":xs) opts warnings = 
+processFlags ("--help":xs) opts warnings =
     processFlags xs (opts{help = True}) warnings
-processFlags ("-lex":xs) opts warnings = 
+processFlags ("-lex":xs) opts warnings =
     processFlags xs (opts{printLex = True}) warnings
 processFlags ("-par":xs) opts warnings =
     processFlags xs (opts{printPar = True}) warnings
-processFlags ("-o":xs) opts warnings 
+processFlags ("-o":xs) opts warnings
     | null xs =
         processFlags xs opts (noObjFileName:warnings)
     | not $ validObjFileName name =
@@ -79,4 +79,4 @@ validObjFileName name = not $ null name || head name == '-'
 
 validFileName :: String -> Bool
 validFileName ('-':_) = False
-validFileName s = (take 5 $ reverse s) == "dneb." && length s > 5
+validFileName s = take 5 (reverse s) == "dneb." && length s > 5

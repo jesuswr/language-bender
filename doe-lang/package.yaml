@@ -34,7 +34,7 @@ library:
     - hlint
 
 executables:
-  langBender:
+  lbend:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
