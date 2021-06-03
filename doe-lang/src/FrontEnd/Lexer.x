@@ -3,7 +3,7 @@ module FrontEnd.Lexer (
         scanTokens,
         ) where
 
---import Data.List.Extra          (replace)
+import Data.List.Extra          (replace)
 import FrontEnd.Errors
 import FrontEnd.Tokens
 import FrontEnd.Utils
@@ -15,7 +15,7 @@ import FrontEnd.Utils
 $digits = [0-9]
 $alpha = [a-zA-Z]
 $alphaNum = [a-zA-Z0-9]
-$scaped = [\n\t\\\"\0]
+$scaped = [n t \\ \" 0 ]
 $ascii_char = [\0-\127] # [\'\\]
 $ascii_str = [\0-\127] # [\"\\]
 
@@ -113,6 +113,7 @@ tokens :-
 <0>     but                             { pushTK TKbut }
 <0>     and\ thus                       { pushTK TKandThus }
 <0>     besides                         { pushTK TKbesides }
+<0>     left                            { pushTK TKleft }
 <0>     and                             { pushTK TKand }
 <0>     or                              { pushTK TKor }
 <0>     not                             { pushTK TKnot }
@@ -136,6 +137,29 @@ tokens :-
 <0>     \~                              { pushTK TKunit }
 <0>     \(                              { pushTK TKopenParent }   
 <0>     \)                              { pushTK TKcloseParent }
+
+                -- function calls
+<0>     in                              { pushTK TKin }
+<0>     book\ with                      { pushTK TKbookWith }
+
+                -- proc calls
+<0>     with                            { pushTK TKwith }
+
+                -- compare operators
+<0>     is\ less\ than                  { pushTK TKlessThan }
+<0>     is\ less\ or\ equal\ than       { pushTK TKlessEqThan }
+<0>     is\ greater\ than               { pushTK TKgreaterThan }
+<0>     is\ greater\ or\ equal\ than    { pushTK TKgreaterEqThan }
+<0>     is\ equal                       { pushTK TKequal }
+
+                -- while
+<0>     while                           { pushTK TKwhile }
+<0>     doing                           { pushTK TKdoing }
+
+                -- for
+<0>     opening                         { pushTK TKopening }
+<0>     chakras\ from                   { pushTK TKchakrasFrom }
+<0>     to                              { pushTK TKto }
 
                 -- strings literals
 <0>     \"                              { begin strSt }
@@ -238,10 +262,10 @@ pushId ( (AlexPn _ l c ) , _ , _ , str ) len = do
 
 pushChar :: AlexAction AlexUserState
 pushChar ( (AlexPn _ l c ) , _ , _ , str ) len = do
-    addToken ( TKchar (l, c) (str') )
+    addToken ( TKchar (l, c) str' )
     alexMonadScan
         where
-            str' = str
+            str' = take len str
 
 pushStr :: AlexAction AlexUserState
 pushStr ( (AlexPn _ l c ) , _ , _ , _ ) _ = do
@@ -297,10 +321,10 @@ invalidCharError ((AlexPn _ l c), _, _, str) len = do
 
 scanTokens :: String -> ([Error], [Token])
 scanTokens str = case runAlex str alexMonadScan of
-        Left e -> do
-                error $ "Alex error: " ++ show e
-        Right ust ->
-                let AlexUserState _ errors tokens = ust in (
+    Left e -> do
+        error $ "Alex error: " ++ show e
+    Right ust ->
+        let AlexUserState _ errors tokens = ust in (
                         reverse errors,
                         map postProcess $ reverse tokens)
 
@@ -309,27 +333,18 @@ removeBorder = init . tail
 
 postProcess :: Token -> Token
 postProcess (TKchar p s) = TKchar p (f s)
-        where
-                f s = if head a == '\\' then mapEscaped $ last a else a
-                a = removeBorder s
-                mapEscaped 'n' = "\n"
-                mapEscaped 't' = "\t"
-                mapEscaped '\\' = "\\"
-                mapEscaped '"' = "\""
-                mapEscaped '\'' = "\'"
-                mapEscaped '0' = "\0"
--- postProcess (TKstring p s) = TKstring p ss
---     where
---         pp = removeBorder s
---         ss = map f pp
---         f s = if head a == '\\' then mapEscaped $ last a else a
---         a = removeBorder s
---         mapEscaped 'n' = "\n"
---         mapEscaped 't' = "\t"
---         mapEscaped '\\' = "\\"
---         mapEscaped '"' = "\""
---         mapEscaped '\'' = "\'"
---         mapEscaped '0' = "\0"
+    where
+        f s = if head a == '\\' then mapEscaped $ last a else a
+        a = removeBorder s
+        mapEscaped 'n' = "\n"
+        mapEscaped 't' = "\t"
+        mapEscaped '\\' = "\\"
+        mapEscaped '"' = "\""
+        mapEscaped '\'' = "\'"
+        mapEscaped '0' = "\0"
+postProcess (TKstring p s) = TKstring p ss
+    where
+        ss = replace "\\@" "@" s
 postProcess a = a        
 
 }
