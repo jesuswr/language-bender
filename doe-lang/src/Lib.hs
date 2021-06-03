@@ -15,10 +15,10 @@ langBender = do
     case procArgs of
         Right strError -> do
             putStrLn strError
-        Left opts -> do
+        Left (opts, warnings) -> do
             -- seguir con el flujo
             --print opts
-            content <- readFile (head args)
+            content <- readFile (fileName opts)
             --print content
             let tokens = scanTokens content
             print tokens

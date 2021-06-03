@@ -24,7 +24,7 @@ processArgs args
             return $ Right "ERROR: The given file name doesnt exist"
         else do
             let opts = Opts {
-                    fileName = take (length name - 5) name,
+                    fileName = name,
                     help     = False,
                     printLex = False,
                     printPar = False,
