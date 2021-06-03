@@ -1,1 +1,1 @@
-"\n \t \0 \"" '\n'
+"salto de linea:\n tab:\t null:\0 comilla:\" comilla simple:' \\ " 

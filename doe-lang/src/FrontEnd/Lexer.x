@@ -3,7 +3,6 @@ module FrontEnd.Lexer (
         scanTokens,
         ) where
 
-import Data.List.Extra          (replace)
 import FrontEnd.Errors
 import FrontEnd.Tokens
 import FrontEnd.Utils
@@ -15,14 +14,14 @@ import FrontEnd.Utils
 $digits = [0-9]
 $alpha = [a-zA-Z]
 $alphaNum = [a-zA-Z0-9]
-$scaped = [n t \\ \" 0 ]
+$scaped = [n t \\ 0 ]
 $ascii_char = [\0-\127] # [\'\\]
 $ascii_str = [\0-\127] # [\"\\]
 
--- \n \t \\ \" \0
-@str_scapedchars = \\$scaped
--- @str_scapedchars or \' 
-@char_scapedchars = \\[$scaped\']
+-- \n \t \\ \0 \"
+@str_scapedchars = \\[$scaped \"]
+-- \n \t \\ \0 \' 
+@char_scapedchars = \\[$scaped \']
 @chars = \'(@char_scapedchars | [$ascii_char])\'
 @int = $digits+
 @ids = $alpha$alphaNum*
@@ -344,7 +343,15 @@ postProcess (TKchar p s) = TKchar p (f s)
         mapEscaped '0' = "\0"
 postProcess (TKstring p s) = TKstring p ss
     where
-        ss = replace "\\@" "@" s
+        ss = postProcess' s
 postProcess a = a        
 
+postProcess' [] = []
+postProcess' ('\\':'n':xs) = '\n':postProcess' xs
+postProcess' ('\\':'t':xs) = '\t':postProcess' xs
+postProcess' ('\\':'\\':xs) = '\\':postProcess' xs
+postProcess' ('\\':'"':xs) = '\"':postProcess' xs
+postProcess' ('\\':'0':xs) = '\0':postProcess' xs
+postProcess' ('\'':'0':xs) = '\'':postProcess' xs
+postProcess' (x:xs) = x:postProcess' xs
 }
