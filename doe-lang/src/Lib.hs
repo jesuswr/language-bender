@@ -15,7 +15,7 @@ langBender = do
     case procArgs of
         Right strError -> do
             putStrLn strError
-        Left (opts, warnings) -> do
+        Left (Result opts warnings) -> do
             -- seguir con el flujo
             --print opts
             content <- readFile (fileName opts)

@@ -24,11 +24,12 @@ $ascii_str = [\0-\127] # [\"\\]
 @char_scapedchars = \\[$scaped \']
 @chars = \'(@char_scapedchars | [$ascii_char])\'
 @int = $digits+
-@ids = $alpha$alphaNum*
+@ids = [$alpha\_][$alphaNum\_]*
 @float = $digits+\.$digits+
 @comments = \-\-.*
 @linebreaks = \n+\r?\r+\n?
 @avatarIntro = Water\.\ Earth\.\ Fire\.\ Air\.\ Long\ ago\,\ the\ four\ nations\ lived\ together\ in\ harmony\.\ Then\,\ everything\ changed\ when\ the\ Fire\ Nation\ attacked\.\ Only\ the\ Avatar\,\ master\ of\ all\ four\ elements\,\ could\ stop\ them
+@w = \ +
 
 tokens :-
 
@@ -79,23 +80,23 @@ tokens :-
 <0>     metal                           { pushTK TKmetal }
 
                 -- array 
-<0>     nation\ since                   { pushTK TKnation }
+<0>     nation @w since                 { pushTK TKnation }
 <0>     years                           { pushTK TKyear }
-<0>     master\ of                      { pushTK TKmasterOf }
+<0>     master @w of                    { pushTK TKmasterOf }
 <0>     disciple                        { pushTK TKdisciple }
 
                 -- struct
 <0>     element                         { pushTK TKelement }
-<0>     is\ mastered\ by                { pushTK TKmasteredBy }
+<0>     is @w mastered @w by            { pushTK TKmasteredBy }
 <0>     learning                        { pushTK TKlearning }
-<0>     control\ from                   { pushTK TKcontrol }
+<0>     control @w from                 { pushTK TKcontrol }
 
                 -- union
 <0>     energy                          { pushTK TKenergy }
 <0>     allows                          { pushTK TKallows }
-<0>     technique\ of                   { pushTK TKtechniqueOf }
+<0>     technique @w of                 { pushTK TKtechniqueOf }
 <0>     bending                         { pushTK TKbending }
-<0>     techniques\ from                { pushTK TKtechniquesFrom }
+<0>     techniques @w from              { pushTK TKtechniquesFrom }
 <0>     using                           { pushTK TKusing }
 <0>     \'s                             { pushTK TKquotmark_s }
 <0>     technique                       { pushTK TKtechnique }
@@ -105,12 +106,12 @@ tokens :-
 <0>     book                            { pushTK TKbook }
 <0>     about                           { pushTK TKabout }
 <0>     travel                          { pushTK TKtravel }
-<0>     made\ by                        { pushTK TKmadeBy }
+<0>     made @w by                      { pushTK TKmadeBy }
 
                 -- operators
-<0>     and\ then                       { pushTK TKandThen }
+<0>     and @w then                     { pushTK TKandThen }
 <0>     but                             { pushTK TKbut }
-<0>     and\ thus                       { pushTK TKandThus }
+<0>     and @w thus                     { pushTK TKandThus }
 <0>     besides                         { pushTK TKbesides }
 <0>     left                            { pushTK TKleft }
 <0>     and                             { pushTK TKand }
