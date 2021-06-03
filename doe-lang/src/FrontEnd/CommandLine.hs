@@ -11,8 +11,15 @@ data Opts = Opts {
     }
     deriving(Show)
 
+type ErrorMsg = String
 
-processArgs :: [String] -> IO(Either (Opts, [String]) String)
+type Warning  = String
+
+data Result = Result Opts [Warning]
+
+-- Process incoming arguments as strings and return result if everything ok, 
+-- or an error message otherwise
+processArgs :: [String] -> Either Result ErrorMsg
 processArgs args 
     | null args =
         return $ Right "ERROR: No arguments given"
@@ -32,9 +39,9 @@ processArgs args
                 }
             let (newOpts, warnings) = processFlags (tail args) opts []
             if null $ objFile newOpts then
-                return $ Left $ (newOpts{objFile = fileName opts}, warnings)
+                return $ Left $ Result newOpts{objFile = fileName opts} warnings
             else
-                return $ Left (newOpts, warnings)
+                return $ Left $ Result newOpts warnings
         where
             name = head args
 

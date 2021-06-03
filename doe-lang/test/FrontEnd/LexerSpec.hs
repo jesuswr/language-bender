@@ -9,3 +9,5 @@ spec = do
     describe "scanTokens" $ do
         it "tokenize string and parse errors if finds some" $ do
             L.scanTokens "-- asdaa" `shouldBe` ([], []) 
+
+ 
