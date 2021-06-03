@@ -1,13 +1,15 @@
 
 module FrontEnd.Tokens (
-	Token(..),
-	) where
+    Token(..),
+    TokenConstruct(..),
+    ) where
 
 import FrontEnd.Utils -- Position
 
+
 data Token = 
-	TKbender          {pos :: Position}                    |
-	TKof              {pos :: Position}                    |
+    TKbender          {pos :: Position}                    |
+    TKof              {pos :: Position}                    |
     TKeternal         {pos :: Position}                    |
 
     TKis              {pos :: Position}                    |
@@ -64,8 +66,8 @@ data Token =
     TKif              {pos :: Position}                    |
     TKotherwise       {pos :: Position}                    |
 
-    TKint             {pos :: Position, value :: Int}      |
-    TKfloat           {pos :: Position, value :: Float}    |
+    TKint             {pos :: Position, numI :: Int}       |
+    TKfloat           {pos :: Position, numF :: Float}     |
 
     TKcomma           {pos :: Position}                    |
     TKcolon           {pos :: Position}                    |
@@ -76,10 +78,10 @@ data Token =
     TKopenParent      {pos :: Position}                    |
     TKcloseParent     {pos :: Position}                    |
 
-    TKchar            {pos :: Position, value :: String}     |
-    TKstring          {pos :: Position, value :: String}   
+    TKchar            {pos :: Position, char  :: String}   |
+    TKstring          {pos :: Position, str :: String}   
 
-   	deriving(Eq, Show)
+    deriving(Eq, Show)
 
 
-type TokenConstuct = (Int, Int) -> Token
+type TokenConstruct = Position -> Token
