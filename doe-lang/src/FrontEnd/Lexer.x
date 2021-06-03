@@ -3,7 +3,7 @@ module FrontEnd.Lexer (
         scanTokens,
         ) where
 
---import Data.List.Extra          (replace)
+import Data.List.Extra          (replace)
 import FrontEnd.Errors
 import FrontEnd.Tokens
 import FrontEnd.Utils
@@ -15,7 +15,7 @@ import FrontEnd.Utils
 $digits = [0-9]
 $alpha = [a-zA-Z]
 $alphaNum = [a-zA-Z0-9]
-$scaped = [n t \\ \" 0 \']
+$scaped = [n t \\ \" 0 ]
 $ascii_char = [\0-\127] # [\'\\]
 $ascii_str = [\0-\127] # [\"\\]
 
@@ -321,10 +321,10 @@ invalidCharError ((AlexPn _ l c), _, _, str) len = do
 
 scanTokens :: String -> ([Error], [Token])
 scanTokens str = case runAlex str alexMonadScan of
-        Left e -> do
-                error $ "Alex error: " ++ show e
-        Right ust ->
-                let AlexUserState _ errors tokens = ust in (
+    Left e -> do
+        error $ "Alex error: " ++ show e
+    Right ust ->
+        let AlexUserState _ errors tokens = ust in (
                         reverse errors,
                         map postProcess $ reverse tokens)
 
@@ -333,27 +333,18 @@ removeBorder = init . tail
 
 postProcess :: Token -> Token
 postProcess (TKchar p s) = TKchar p (f s)
-        where
-                f s = if head a == '\\' then mapEscaped $ last a else a
-                a = removeBorder s
-                mapEscaped 'n' = "\n"
-                mapEscaped 't' = "\t"
-                mapEscaped '\\' = "\\"
-                mapEscaped '"' = "\""
-                mapEscaped '\'' = "\'"
-                mapEscaped '0' = "\0"
--- postProcess (TKstring p s) = TKstring p ss
---     where
---         pp = removeBorder s
---         ss = map f pp
---         f s = if head a == '\\' then mapEscaped $ last a else a
---         a = removeBorder s
---         mapEscaped 'n' = "\n"
---         mapEscaped 't' = "\t"
---         mapEscaped '\\' = "\\"
---         mapEscaped '"' = "\""
---         mapEscaped '\'' = "\'"
---         mapEscaped '0' = "\0"
+    where
+        f s = if head a == '\\' then mapEscaped $ last a else a
+        a = removeBorder s
+        mapEscaped 'n' = "\n"
+        mapEscaped 't' = "\t"
+        mapEscaped '\\' = "\\"
+        mapEscaped '"' = "\""
+        mapEscaped '\'' = "\'"
+        mapEscaped '0' = "\0"
+postProcess (TKstring p s) = TKstring p ss
+    where
+        ss = replace "\\@" "@" s
 postProcess a = a        
 
 }
