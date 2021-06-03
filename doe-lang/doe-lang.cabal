@@ -44,6 +44,7 @@ library
       array
     , base >=4.7 && <5
     , directory
+    , extra
     , hspec
   default-language: Haskell2010
 
@@ -59,6 +60,7 @@ executable langBender
     , base >=4.7 && <5
     , directory
     , doe-lang
+    , extra
     , hspec
   default-language: Haskell2010
 
@@ -76,5 +78,6 @@ test-suite lang-bender-test
     , base >=4.7 && <5
     , directory
     , doe-lang
+    , extra
     , hspec
   default-language: Haskell2010
