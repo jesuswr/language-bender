@@ -99,7 +99,14 @@ data Token =
 
     TKchar            {pos :: Position, char  :: String}   |
     TKstring          {pos :: Position, str :: String}     |
-    TKid              {pos :: Position, id  :: String}   
+    TKid              {pos :: Position, id  :: String}     |
+
+    TKavatarSays      {pos :: Position}                    |      
+    TKavatarRead      {pos :: Position}                    |
+    TKelipsis         {pos :: Position}                    |
+    TKtoBeContinued   {pos :: Position}                    |
+    TKburst           {pos :: Position}                    |
+    TKreturn          {pos :: Position}
 
     deriving(Eq, Show)
 
