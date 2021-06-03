@@ -21,7 +21,8 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-
+- array
+- hspec
 library:
   source-dirs: src
   build-tools:
@@ -41,7 +42,7 @@ executables:
     - doe-lang
 
 tests:
-  doe-lang-test:
+  lang-bender-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:

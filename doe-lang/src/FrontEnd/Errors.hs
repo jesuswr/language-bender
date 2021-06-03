@@ -7,4 +7,4 @@ import FrontEnd.Utils -- Position
 
 data Error = 
 	LexerError { pos :: Position, errorMessage :: String }
-	deriving(Show)
+	deriving(Show, Eq)
