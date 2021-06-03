@@ -1,5 +1,7 @@
 module FrontEnd.CommandLine where
 
+import System.Directory
+
 data Opts = Opts {
         fileName :: String,
         help     :: Bool,
@@ -10,25 +12,29 @@ data Opts = Opts {
     deriving(Show)
 
 
-processArgs :: [String] -> Either (Opts, [String]) String
+processArgs :: [String] -> IO(Either (Opts, [String]) String)
 processArgs args 
     | null args =
-        Right "ERROR: No arguments given"
+        return $ Right "ERROR: No arguments given"
     | not $ validFileName (head args) =
-        Right "ERROR: The given file name its not valid"
+        return $ Right "ERROR: The given file name its not valid"
     | otherwise = do
-        let opts = Opts {
-                fileName = take (length name - 5) name,
-                help     = False,
-                printLex = False,
-                printPar = False,
-                objFile  = ""
-            }
-        let (newOpts, warnings) = processFlags (tail args) opts []
-        if null $ objFile newOpts then
-            Left $ (newOpts{objFile = fileName opts}, warnings)
-        else
-            Left (newOpts, warnings)
+        fileExist <- doesFileExist name
+        if not fileExist then
+            return $ Right "ERROR: The given file name doesnt exist"
+        else do
+            let opts = Opts {
+                    fileName = take (length name - 5) name,
+                    help     = False,
+                    printLex = False,
+                    printPar = False,
+                    objFile  = ""
+                }
+            let (newOpts, warnings) = processFlags (tail args) opts []
+            if null $ objFile newOpts then
+                return $ Left $ (newOpts{objFile = fileName opts}, warnings)
+            else
+                return $ Left (newOpts, warnings)
         where
             name = head args
 
