@@ -15,7 +15,7 @@ import FrontEnd.Utils
 $digits = [0-9]
 $alpha = [a-zA-Z]
 $alphaNum = [a-zA-Z0-9]
-$scaped = [\n\t\\\"\0]
+$scaped = [n t \\ \" 0 \']
 $ascii_char = [\0-\127] # [\'\\]
 $ascii_str = [\0-\127] # [\"\\]
 
@@ -262,10 +262,10 @@ pushId ( (AlexPn _ l c ) , _ , _ , str ) len = do
 
 pushChar :: AlexAction AlexUserState
 pushChar ( (AlexPn _ l c ) , _ , _ , str ) len = do
-    addToken ( TKchar (l, c) (str') )
+    addToken ( TKchar (l, c) str' )
     alexMonadScan
         where
-            str' = str
+            str' = take len str
 
 pushStr :: AlexAction AlexUserState
 pushStr ( (AlexPn _ l c ) , _ , _ , _ ) _ = do
