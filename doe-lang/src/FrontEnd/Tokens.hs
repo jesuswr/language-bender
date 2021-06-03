@@ -59,6 +59,7 @@ data Token =
     TKbut             {pos :: Position}                    |
     TKandThus         {pos :: Position}                    |
     TKbesides         {pos :: Position}                    |
+    TKleft            {pos :: Position}                    |
     TKand             {pos :: Position}                    |
     TKor              {pos :: Position}                    |
     TKnot             {pos :: Position}                    |
@@ -77,6 +78,24 @@ data Token =
     TKunit            {pos :: Position}                    |
     TKopenParent      {pos :: Position}                    |
     TKcloseParent     {pos :: Position}                    |
+
+    TKin              {pos :: Position}                    |
+    TKbookWith        {pos :: Position}                    |
+
+    TKwith            {pos :: Position}                    |
+
+    TKlessThan        {pos :: Position}                    |
+    TKlessEqThan      {pos :: Position}                    |
+    TKgreaterThan     {pos :: Position}                    |
+    TKgreaterEqThan   {pos :: Position}                    |
+    TKequal           {pos :: Position}                    |
+
+    TKwhile           {pos :: Position}                    |
+    TKdoing           {pos :: Position}                    |
+
+    TKopening         {pos :: Position}                    |
+    TKchakrasFrom     {pos :: Position}                    |
+    TKto              {pos :: Position}                    |
 
     TKchar            {pos :: Position, char  :: String}   |
     TKstring          {pos :: Position, str :: String}     |
