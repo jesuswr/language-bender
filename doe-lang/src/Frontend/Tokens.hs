@@ -3,11 +3,7 @@ module FrontEnd.Tokens (
 	Token(..),
 	) where
 
-data Position = Position{
-        row :: Int,
-        col :: Int   
-    }
-    deriving(Show, Eq)
+import FrontEnd.Utils -- Position
 
 data Token = 
 	TKbender          {pos :: Position}                    |
@@ -78,5 +74,12 @@ data Token =
     TKdot             {pos :: Position}                    |
     TKunit            {pos :: Position}                    |
     TKopenParent      {pos :: Position}                    |
-    TKcloseParent     {pos :: Position}
+    TKcloseParent     {pos :: Position}                    |
+
+    TKchar            {pos :: Position, value :: String}     |
+    TKstring          {pos :: Position, value :: String}   
+
    	deriving(Eq, Show)
+
+
+type TokenConstuct = (Int, Int) -> Token
