@@ -113,6 +113,7 @@ tokens :-
 <0>     but                             { pushTK TKbut }
 <0>     and\ thus                       { pushTK TKandThus }
 <0>     besides                         { pushTK TKbesides }
+<0>     left                            { pushTK TKleft }
 <0>     and                             { pushTK TKand }
 <0>     or                              { pushTK TKor }
 <0>     not                             { pushTK TKnot }
@@ -136,6 +137,29 @@ tokens :-
 <0>     \~                              { pushTK TKunit }
 <0>     \(                              { pushTK TKopenParent }   
 <0>     \)                              { pushTK TKcloseParent }
+
+                -- function calls
+<0>     in                              { pushTK TKin }
+<0>     book\ with                      { pushTK TKbookWith }
+
+                -- proc calls
+<0>     with                            { pushTK TKwith }
+
+                -- compare operators
+<0>     is\ less\ than                  { pushTK TKlessThan }
+<0>     is\ less\ or\ equal\ than       { pushTK TKlessEqThan }
+<0>     is\ greater\ than               { pushTK TKgreaterThan }
+<0>     is\ greater\ or\ equal\ than    { pushTK TKgreaterEqThan }
+<0>     is\ equal                       { pushTK TKequal }
+
+                -- while
+<0>     while                           { pushTK TKwhile }
+<0>     doing                           { pushTK TKdoing }
+
+                -- for
+<0>     opening                         { pushTK TKopening }
+<0>     chakras\ from                   { pushTK TKchakrasFrom }
+<0>     to                              { pushTK TKto }
 
                 -- strings literals
 <0>     \"                              { begin strSt }
