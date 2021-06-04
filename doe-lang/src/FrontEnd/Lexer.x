@@ -174,7 +174,7 @@ tokens :-
 <strSt> \"                                         { pushStr `andBegin` 0 }
 <strSt> @str_scapedchars                           { saveToStr }
 <strSt> @linebreaks                                { skip }
-<strSt> [\n\r]                                     { skip }
+<strSt> [\n\r\t]                                   { skip }
 <strSt> $ascii_str                                 { saveToStr }
 <strSt> .                                          { invalidCharError }
 
