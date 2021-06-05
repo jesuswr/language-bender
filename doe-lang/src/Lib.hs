@@ -1,21 +1,21 @@
 module Lib
-    ( langBender
+    (   langBender,
     ) where
 
 
-import           System.Environment
-import           FrontEnd.CommandLine
-import           FrontEnd.Lexer
-
+import              System.Environment
+import              FrontEnd.CommandLine
+import              FrontEnd.Lexer
+import qualified    Utils.Constants
 
 langBender :: IO ()
 langBender = do
     args <- getArgs
     procArgs <- processArgs args
     case procArgs of
-        Right strError -> do
+        Left strError -> do
             putStrLn strError
-        Left (Result opts warnings) -> do
+        Right (Result opts warnings) -> do
             -- seguir con el flujo
             --print opts
             content <- readFile (fileName opts)

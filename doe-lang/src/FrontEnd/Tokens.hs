@@ -1,112 +1,119 @@
+{-
+    File defining token data type
+-}
 
 module FrontEnd.Tokens (
     Token(..),
     TokenConstruct(..),
+    TokenType(..)
     ) where
 
 import FrontEnd.Utils -- Position
 
+-- Token Data
+data Token = Token {pos :: Position, tktype :: TokenType} deriving(Eq, Show)
 
-data Token = 
-    TKbender          {pos :: Position}                    |
-    TKof              {pos :: Position}                    |
-    TKeternal         {pos :: Position}                    |
+-- Token Type Information
+data TokenType = 
+    TKbender                             |
+    TKof                                 |
+    TKeternal                            |
 
-    TKis              {pos :: Position}                    |
+    TKis                                 |
 
-    TKreincarnation   {pos :: Position}                    |
+    TKreincarnation                      |
 
-    TKart             {pos :: Position}                    |
-    TKapprentice      {pos :: Position}                    |
-    TKborn            {pos :: Position}                    |
-    TKmember          {pos :: Position}                    |
-    TKdied            {pos :: Position}                    |
+    TKart                                |
+    TKapprentice                         |
+    TKborn                               |
+    TKmember                             |
+    TKdied                               |
 
-    TKair             {pos :: Position}                    |
-    TKwater           {pos :: Position}                    |
-    TKfire            {pos :: Position}                    |
-    TKlightning       {pos :: Position}                    |
-    TKfireMaster      {pos :: Position}                    |
-    TKearth           {pos :: Position}                    |
-    TKmetal           {pos :: Position}                    |
+    TKair                                |
+    TKwater                              |
+    TKfire                               |
+    TKlightning                          |
+    TKfireMaster                         |
+    TKearth                              |
+    TKmetal                              |
 
-    TKnation          {pos :: Position}                    |
-    TKyear            {pos :: Position}                    |
-    TKmasterOf        {pos :: Position}                    |
-    TKdisciple        {pos :: Position}                    |
+    TKnation                             |
+    TKyear                               |
+    TKmasterOf                           |
+    TKdisciple                           |
     
-    TKelement         {pos :: Position}                    |
-    TKmasteredBy      {pos :: Position}                    |
-    TKlearning        {pos :: Position}                    |
-    TKcontrol         {pos :: Position}                    |
+    TKelement                            |
+    TKmasteredBy                         |
+    TKlearning                           |
+    TKcontrol                            |
 
-    TKenergy          {pos :: Position}                    |
-    TKallows          {pos :: Position}                    |
-    TKtechniqueOf     {pos :: Position}                    |
-    TKbending         {pos :: Position}                    |
-    TKtechniquesFrom  {pos :: Position}                    |
-    TKusing           {pos :: Position}                    |
-    TKquotmark_s      {pos :: Position}                    |
-    TKtechnique       {pos :: Position}                    |
-    TKtrying          {pos :: Position}                    |
+    TKenergy                             |
+    TKallows                             |
+    TKtechniqueOf                        |
+    TKbending                            |
+    TKtechniquesFrom                     |
+    TKusing                              |
+    TKquotmark_s                         |
+    TKtechnique                          |
+    TKtrying                             |
 
-    TKbook            {pos :: Position}                    |
-    TKabout           {pos :: Position}                    |
-    TKtravel          {pos :: Position}                    |
-    TKmadeBy          {pos :: Position}                    |
+    TKbook                               |
+    TKabout                              |
+    TKtravel                             |
+    TKmadeBy                             |
 
-    TKandThen         {pos :: Position}                    |
-    TKbut             {pos :: Position}                    |
-    TKandThus         {pos :: Position}                    |
-    TKbesides         {pos :: Position}                    |
-    TKleft            {pos :: Position}                    |
-    TKand             {pos :: Position}                    |
-    TKor              {pos :: Position}                    |
-    TKnot             {pos :: Position}                    |
+    TKandThen                            |
+    TKbut                                |
+    TKandThus                            |
+    TKbesides                            |
+    TKleft                               |
+    TKand                                |
+    TKor                                 |
+    TKnot                                |
 
-    TKif              {pos :: Position}                    |
-    TKotherwise       {pos :: Position}                    |
+    TKif                                 |
+    TKotherwise                          |
 
-    TKint             {pos :: Position, numI :: Int}       |
-    TKfloat           {pos :: Position, numF :: Float}     |
+    TKint             {numI :: Int}       |
+    TKfloat           {numF :: Float}     |
 
-    TKcomma           {pos :: Position}                    |
-    TKcolon           {pos :: Position}                    |
-    TKbeginBlock      {pos :: Position}                    |
-    TKendBlock        {pos :: Position}                    |
-    TKdot             {pos :: Position}                    |
-    TKunit            {pos :: Position}                    |
-    TKopenParent      {pos :: Position}                    |
-    TKcloseParent     {pos :: Position}                    |
+    TKcomma                              |
+    TKcolon                              |
+    TKbeginBlock                         |
+    TKendBlock                           |
+    TKdot                                |
+    TKunit                               |
+    TKopenParent                         |
+    TKcloseParent                        |
 
-    TKin              {pos :: Position}                    |
-    TKbookWith        {pos :: Position}                    |
+    TKin                                 |
+    TKbookWith                           |
 
-    TKwith            {pos :: Position}                    |
+    TKwith                               |
 
-    TKlessThan        {pos :: Position}                    |
-    TKlessEqThan      {pos :: Position}                    |
-    TKgreaterThan     {pos :: Position}                    |
-    TKgreaterEqThan   {pos :: Position}                    |
-    TKequal           {pos :: Position}                    |
+    TKlessThan                           |
+    TKlessEqThan                         |
+    TKgreaterThan                        |
+    TKgreaterEqThan                      |
+    TKequal                              |
 
-    TKwhile           {pos :: Position}                    |
-    TKdoing           {pos :: Position}                    |
+    TKwhile                              |
+    TKdoing                              |
 
-    TKopening         {pos :: Position}                    |
-    TKchakrasFrom     {pos :: Position}                    |
-    TKto              {pos :: Position}                    |
+    TKopening                            |
+    TKchakrasFrom                        |
+    TKto                                 |
 
-    TKchar            {pos :: Position, char  :: String}   |
-    TKstring          {pos :: Position, str :: String}     |
-    TKid              {pos :: Position, id  :: String}     |
+    TKchar            {char  :: String}   |
+    TKstring          {str :: String}     |
+    TKid              {id  :: String}     |
 
-    TKavatarSays      {pos :: Position}                    |      
-    TKavatarRead      {pos :: Position}                    |
-    TKelipsis         {pos :: Position}                    |
-    TKtoBeContinued   {pos :: Position}                    |
-    TKburst           {pos :: Position}                    |
-    TKreturn          {pos :: Position}
+    TKavatarSays                         |      
+    TKavatarRead                         |
+    TKelipsis                            |
+    TKtoBeContinued                      |
+    TKburst                              |
+    TKreturn         
 
     deriving(Eq, Show)
 

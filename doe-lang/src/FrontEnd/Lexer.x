@@ -3,7 +3,7 @@ module FrontEnd.Lexer (
         scanTokens,
         ) where
 
-import FrontEnd.Errors
+import qualified FrontEnd.Errors as E
 import FrontEnd.Tokens
 import FrontEnd.Utils
 }
@@ -205,7 +205,7 @@ getUSt = do
     case startCode of
         0 -> getUSt'
         _ -> do
-            addError (LexerError (-1, -1) ("Unfinished literal string after EOF."))
+            addError $ E.LexerError (Position (-1) (-1)) E.UnexpectedEOF
             getUSt'  
     
 getUSt' :: Alex AlexUserState
@@ -216,14 +216,14 @@ data AlexUserState = AlexUserState
                                         {
                                                 strPosition :: Position,
                                                 literalString :: String,
-                                                lexerErrors :: [Error],
+                                                lexerErrors :: [E.Error],
                                                 lexerTokens :: [Token]
                                         }
 
 alexInitUserState :: AlexUserState
 alexInitUserState = AlexUserState
                                         {
-                                                strPosition = (0, 0),
+                                                strPosition = Position 0 0,
                                                 literalString = "" ,
                                                 lexerErrors = [] ,
                                                 lexerTokens = []
@@ -251,29 +251,29 @@ addToken tk = do
     setTokensSt (tk:tks)
 
 -- push Token functions
-pushTK :: TokenConstruct ->  AlexAction AlexUserState
+pushTK :: TokenType ->  AlexAction AlexUserState
 pushTK tok ( (AlexPn _ l c ) , _ , _ , _ ) len = do
-    addToken (tok (l, c))
+    addToken (Token (Position l c) tok)
     alexMonadScan
 
 pushInt :: AlexAction AlexUserState
 pushInt ( (AlexPn _ l c ) , _ , _ , str ) len = do 
-    addToken ( TKint (l, c) ( read $ take len str :: Int) )
+    addToken ( Token (Position l c) $ TKint ( read $ take len str :: Int) )
     alexMonadScan
 
 pushFloat :: AlexAction AlexUserState
 pushFloat ( (AlexPn _ l c ) , _ , _ , str ) len = do
-    addToken ( TKfloat (l, c) ( read $ take len str :: Float) )
+    addToken ( Token (Position l c) $ TKfloat ( read $ take len str :: Float) )
     alexMonadScan
 
 pushId :: AlexAction AlexUserState
 pushId ( (AlexPn _ l c ) , _ , _ , str ) len = do
-    addToken ( TKid (l, c) ( take len str ) )
+    addToken ( Token (Position l c) . TKid $ take len str  )
     alexMonadScan
 
 pushChar :: AlexAction AlexUserState
 pushChar ( (AlexPn _ l c ) , _ , _ , str ) len = do
-    addToken ( TKchar (l, c) str' )
+    addToken ( Token (Position l c) $ TKchar str' )
     alexMonadScan
         where
             str' = take len str
@@ -282,14 +282,14 @@ pushStr :: AlexAction AlexUserState
 pushStr ( _ , _ , _ , _ ) _ = do
     str <- getLitStr
     setLitStr ""
-    (l, c) <- getAtr strPosition
-    addToken ( TKstring (l, c) str )
+    (Position l c) <- getAtr strPosition
+    addToken ( Token (Position l c) . TKstring $ str )
     alexMonadScan
 
 startStr :: AlexAction AlexUserState
 startStr ( (AlexPn _ l c ) , _ , _ , _ ) _ = do
     Alex $ \s@AlexState{alex_ust=ust}
-        -> Right (s{ alex_ust = (alex_ust s){strPosition = (l, c)} }, ())
+        -> Right (s{ alex_ust = (alex_ust s){strPosition = (Position l c)} }, ())
     alexMonadScan
 
 saveToStr :: AlexAction AlexUserState
@@ -307,32 +307,32 @@ setLitStr str = Alex $ \s@AlexState{alex_ust=ust}
 
 -- manage error in the state
 
-getErrorsSt :: Alex [Error]
+getErrorsSt :: Alex [E.Error]
 getErrorsSt = getAtr lexerErrors
 
-setErrorsSt :: [Error] -> Alex ()
+setErrorsSt :: [E.Error] -> Alex ()
 setErrorsSt tks = Alex $ \s@AlexState{alex_ust=ust}
     -> Right (s{ alex_ust = (alex_ust s){lexerErrors = tks} }, ())
 
-addError :: Error -> Alex ()
+addError :: E.Error -> Alex ()
 addError err = do
     errs <- getErrorsSt
     setErrorsSt (err:errs)
 
 lexError :: AlexAction AlexUserState
 lexError ((AlexPn _ l c), _, _, str) len = do
-    addError (LexerError (l, c) ("Unexpected element: "++(take len str)))
+    addError (E.LexerError (Position l c) (E.InvalidToken $ take len str))
     alexMonadScan
 
 invalidCharError :: AlexAction AlexUserState
 invalidCharError ((AlexPn _ l c), _, _, str) len = do
-    addError (LexerError (l, c) ("Invalid character in string."))
+    addError (E.LexerError (Position l c) E.InvalidStrChar)
     alexMonadScan
 
 
 -- Scanner (Tokenizer)
 
-scanTokens :: String -> ([Error], [Token])
+scanTokens :: String -> ([E.Error], [Token])
 scanTokens str = case runAlex str alexMonadScan of
     Left e -> do
         error $ "Alex error: " ++ show e
@@ -345,7 +345,7 @@ removeBorder :: [a] -> [a]
 removeBorder = init . tail
 
 postProcess :: Token -> Token
-postProcess (TKchar p s) = TKchar p (f s)
+postProcess (Token p (TKchar s) )= Token p . TKchar $ f s
     where
         f s = if head a == '\\' then mapEscaped $ last a else a
         a = removeBorder s
@@ -354,7 +354,7 @@ postProcess (TKchar p s) = TKchar p (f s)
         mapEscaped '\\' = "\\"
         mapEscaped '\'' = "\'"
         mapEscaped '0' = "\0"
-postProcess (TKstring p s) = TKstring p ss
+postProcess (Token p (TKstring s)) = Token p $ TKstring ss
     where
         ss = postProcess' s
 postProcess a = a        

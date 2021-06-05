@@ -19,16 +19,16 @@ data Result = Result Opts [Warning]
 
 -- Process incoming arguments as strings and return result if everything ok, 
 -- or an error message otherwise
-processArgs :: [String] -> IO (Either Result ErrorMsg)
+processArgs :: [String] -> IO (Either ErrorMsg Result)
 processArgs args
     | null args =
-        return $ Right "ERROR: No arguments given"
+        return $ Left "ERROR: No arguments given"
     | not $ validFileName (head args) =
-        return $ Right "ERROR: The given file name its not valid"
+        return $ Left "ERROR: The given file name its not valid"
     | otherwise = do
         fileExist <- doesFileExist name
         if not fileExist then
-            return $ Right "ERROR: The given file name doesnt exist"
+            return $ Left "ERROR: The given file name doesnt exist"
         else do
             let opts = Opts {
                     fileName = name,
@@ -39,9 +39,9 @@ processArgs args
                 }
             let (newOpts, warnings) = processFlags (tail args) opts []
             if null $ objFile newOpts then
-                return . Left $ Result newOpts{objFile = fileName opts} warnings
+                return . Right $ Result newOpts{objFile = fileName opts} warnings
             else
-                return . Left $ Result newOpts warnings
+                return . Right $ Result newOpts warnings
         where
             name = head args
 

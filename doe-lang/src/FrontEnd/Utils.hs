@@ -1,3 +1,5 @@
+-- Utility data types and functions 
+
 module FrontEnd.Utils where
 
-type Position = (Int,Int)
+data Position = Position {row :: Int, rol :: Int} deriving (Eq, Show)

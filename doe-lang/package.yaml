@@ -1,6 +1,6 @@
-name:                doe-lang
+name:                language-bender
 version:             0.1.0.0
-github:              "githubuser/doe-lang"
+github:              "githubuser/language-bender"
 license:             BSD3
 author:              "Author name here"
 maintainer:          "example@example.com"
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/doe-lang#readme>
+description:         Please see the README on GitHub at <https://github.com/githubuser/language-bender#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -42,7 +42,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - doe-lang
+    - language-bender
 
 tests:
   lang-bender-test:
@@ -53,4 +53,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - doe-lang
+    - language-bender
