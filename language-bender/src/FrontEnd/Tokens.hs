@@ -1,0 +1,104 @@
+{-
+    File defining token data type
+-}
+
+module FrontEnd.Tokens (
+    Token(..),
+    TokenConstruct(..),
+    TokenType(..)
+    ) where
+
+import FrontEnd.Utils -- Position
+
+-- Token Data
+data Token = Token {pos :: Position, tktype :: TokenType} deriving(Eq, Show)
+
+-- Token Type Information
+data TokenType = 
+    TKbender                             |
+    TKof                                 |
+    TKeternal                            |
+    TKis                                 |
+    TKreincarnation                      |
+    TKart                                |
+    TKapprentice                         |
+    TKborn                               |
+    TKmember                             |
+    TKdied                               |
+    TKair                                |
+    TKwater                              |
+    TKfire                               |
+    TKlightning                          |
+    TKfireMaster                         |
+    TKearth                              |
+    TKmetal                              |
+    TKnation                             |
+    TKyear                               |
+    TKmasterOf                           |
+    TKdisciple                           |
+    TKelement                            |
+    TKmasteredBy                         |
+    TKlearning                           |
+    TKcontrol                            |
+    TKenergy                             |
+    TKallows                             |
+    TKtechniqueOf                        |
+    TKbending                            |
+    TKtechniquesFrom                     |
+    TKusing                              |
+    TKquotmark_s                         |
+    TKtechnique                          |
+    TKtrying                             |
+    TKbook                               |
+    TKabout                              |
+    TKtravel                             |
+    TKmadeBy                             |
+    TKandThen                            |
+    TKbut                                |
+    TKandThus                            |
+    TKbesides                            |
+    TKleft                               |
+    TKand                                |
+    TKor                                 |
+    TKnot                                |
+    TKif                                 |
+    TKotherwise                          |
+    TKint             {numI :: Int}      |
+    TKfloat           {numF :: Float}    |
+    TKcomma                              |
+    TKcolon                              |
+    TKbeginBlock                         |
+    TKendBlock                           |
+    TKdot                                |
+    TKunit                               |
+    TKopenParent                         |
+    TKcloseParent                        |
+    TKin                                 |
+    TKbookWith                           |
+    TKwith                               |
+    TKlessThan                           |
+    TKlessEqThan                         |
+    TKgreaterThan                        |
+    TKgreaterEqThan                      |
+    TKequal                              |
+    TKwhile                              |
+    TKdoing                              |
+    TKopening                            |
+    TKchakrasFrom                        |
+    TKto                                 |
+
+    TKchar            {char  :: String}   |
+    TKstring          {str :: String}     |
+    TKid              {id  :: String}     |
+
+    TKavatarSays                         |      
+    TKavatarRead                         |
+    TKelipsis                            |
+    TKtoBeContinued                      |
+    TKburst                              |
+    TKreturn         
+
+    deriving(Eq, Show)
+
+
+type TokenConstruct = Position -> Token
