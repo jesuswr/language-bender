@@ -86,11 +86,9 @@ data TokenType =
     TKopening                            |
     TKchakrasFrom                        |
     TKto                                 |
-
-    TKchar            {char  :: String}   |
-    TKstring          {str :: String}     |
-    TKid              {id  :: String}     |
-
+    TKchar            {char  :: String}  |
+    TKstring          {str :: String}    |
+    TKid              {id  :: String}    |
     TKavatarSays                         |      
     TKavatarRead                         |
     TKelipsis                            |

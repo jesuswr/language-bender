@@ -1,4 +1,4 @@
--- File describing possible error and they're corresponding error message
+-- File describing possible error and their corresponding error message
 module FrontEnd.Errors where
 
 import FrontEnd.Utils -- Position
