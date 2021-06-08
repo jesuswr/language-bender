@@ -74,7 +74,7 @@ tokens :-
                 -- boolean
 <0>     fire                                       { pushTK TKfire } 
 <0>     lightning @w master                        { pushTK TKlightning }
-<0>     fire master                                { pushTK TKfireMaster }
+<0>     fire @w master                             { pushTK TKfireMaster }
                 -- char
 <0>     earth                                      { pushTK TKearth }
                 -- string
