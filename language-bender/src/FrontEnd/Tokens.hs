@@ -89,8 +89,6 @@ data TokenType =
     TKchar            {char  :: String}  |
     TKstring          {str :: String}    |
     TKid              {id  :: String}    |
-    TKavatarSays                         |      
-    TKavatarRead                         |
     TKelipsis                            |
     TKtoBeContinued                      |
     TKburst                              |

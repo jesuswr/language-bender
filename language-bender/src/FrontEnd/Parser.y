@@ -88,8 +88,6 @@ import qualified FrontEnd.Errors  as E
     char                { TK.Token _ (TK.TKchar _) }
     string              { TK.Token _ (TK.TKstring _) }
     id                  { TK.Token _ (TK.TKid _) }
-    avatarSays          { TK.Token _ TK.TKavatarSays }
-    avatarRead          { TK.Token _ TK.TKavatarRead }
     elipsis             { TK.Token _ TK.TKelipsis }
     toBeContinued       { TK.Token _ TK.TKtoBeContinued }
     burst               { TK.Token _ TK.TKburst }
