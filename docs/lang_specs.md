@@ -112,14 +112,14 @@ Para acceder al elemento `i` del arreglo `toph` es necesario que `i` esté en el
 
 #### Struct
 tipo producto o record:
- ```element <id> is compound by <tag0> arf of <T0>, ...``` 
+ ```element <id> is compound by <tag0> skill of <T0>, ...``` 
  donde ```tagi``` de tipo ```Ti``` es un atributo del struct.
 Para acceder a un atributo `x0` de un struct `s`, usamos:
-```using <id>'s <tag> art```
+```using <id>'s <tag> skill```
 
 Para crear un struct, usamos la sintaxis: 
 ```
-element lava is compound by super_fire art of fire, bedrock art of earth.
+element lava is compound by super_fire skill of fire, bedrock skill of earth.
 ...
 bender aang is learning lava control using <exp0>, <exp1>,...
 ```
