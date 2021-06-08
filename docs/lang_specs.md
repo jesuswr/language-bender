@@ -14,12 +14,12 @@ Si no se especifica el tipo de alguna función o variable, el compilador intenta
 ### Basado en expresiones
 El lenguaje esta basado en expresiones. Esto es, todas las instruccions producen un valor. Para esto, Doe se basa en las siguientes reglas:
 1) Los distintos caminos de ejecución de un bloque de instrucciones retornan el mismo tipo de dato. El caso contrario es un error de compilación.
-2) Un bloque de instrucciones (delimitado por '{' y '}') retorna lo que retorne la última sub expresión, o el último ```break``` / ```continue``` en caso del control de flujo de los ciclos, o `return` en el caso de las funciones.
-3) Existe un símbolo especial que hace que una expresión retorne ```()``` (el tipo unitario). Por ahora el “.” al final de una expresión, la forzara a retornar el tipo unitario.
-4) Las expresiones que tienen caminos no definidos, retornan ```()``` por defecto (Ejemplo: un ```if``` sin un ```else```).
+2) Un bloque de instrucciones (delimitado por '.-' y '-.') retorna lo que retorne la última sub expresión, o el último ```burst``` / ```to be continued``` en caso del control de flujo de los ciclos, o `this story comes to an end` en el caso de las funciones.
+3) Existe un símbolo especial que hace que una expresión retorne ```()``` (el tipo unitario). Por ahora el “~” al final de una expresión, la forzara a retornar el tipo unitario.
+4) Las expresiones que tienen caminos no definidos, retornan ```()``` por defecto (Ejemplo: un ```if``` sin un ```otherwise```).
 5) Adicionalmente, el tipo unitario ```()``` no es utilizable como un valor válido para una variable o función ni como anotación de tipo.
 
-  **Nota:** Las instrucciones `break` y `continue` son instrucciones especiales que no evalúan a un tipo concreto, en su lugar cambian el control del flujo de los ciclos. Cuando un camino de ejecución contiene una instrucción de este tipo, no se le considera para inferir el tipo de la expresión, sino el tipo de retorno del ciclo que lo contiene. Esto ocurre porque no tiene sentido evaluar una expresión cuyo valor es imposible de utilizar, como ocurre en estos casos. Así, permitimos patrones bastante útiles como:
+  **Nota:** Las instrucciones `burst` y `to be continued` son instrucciones especiales que no evalúan a un tipo concreto, en su lugar cambian el control del flujo de los ciclos. Cuando un camino de ejecución contiene una instrucción de este tipo, no se le considera para inferir el tipo de la expresión, sino el tipo de retorno del ciclo que lo contiene. Esto ocurre porque no tiene sentido evaluar una expresión cuyo valor es imposible de utilizar, como ocurre en estos casos. Así, permitimos patrones bastante útiles como:
 ```
 while(lightning master) .-
   bender x is if (error()) 
@@ -219,7 +219,7 @@ while <bool_exp> doing <exp>
 ```
 
 #### Control de Flujo para Ciclos
-Se tienen instrucciones ```burst``` y ```to be continued``` que permiten terminar un ciclo o una iteración prematuramente y respectivamente. Ambas instrucciones pueden recibir un parámetro adicional para retornar valores, al mismo estilo del return:
+Se tienen instrucciones ```burst``` y ```to be continued``` que permiten terminar un ciclo o una iteración prematuramente y respectivamente. Ambas instrucciones pueden recibir un parámetro adicional para retornar valores, al mismo estilo del ```this story comes to an end```:
 ```
 while (X) { 
     if (Y)
