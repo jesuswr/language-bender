@@ -21,7 +21,7 @@ El lenguaje esta basado en expresiones. Esto es, todas las instruccions producen
 
   **Nota:** Las instrucciones `burst` y `to be continued` son instrucciones especiales que no evalúan a un tipo concreto, en su lugar cambian el control del flujo de los ciclos. Cuando un camino de ejecución contiene una instrucción de este tipo, no se le considera para inferir el tipo de la expresión, sino el tipo de retorno del ciclo que lo contiene. Esto ocurre porque no tiene sentido evaluar una expresión cuyo valor es imposible de utilizar, como ocurre en estos casos. Así, permitimos patrones bastante útiles como:
 ```
-while(lightning master) .-
+while lightning master doing .-
   bender x is if (error()) 
              break
           otherwise 
@@ -146,7 +146,7 @@ Por ejemplo:
 ```
 if (tryng u MyFloat technique)
    logn(using u's MyFloat technique).
-else -- if not float, it's int
+otherwise -- if not float, it's int
    using u's MyInt technique % 2.
 ```
 
@@ -172,12 +172,12 @@ Para tipos enteros, flotantes y booleanos:
 Los comentarios omiten una linea del codigo a partir del comentario. Para esto se usa ``` -- ```.
 ```
 -- Esto es un comentario
-let x = 1; -- A partir de aqui es un comentario
--- 'let x = 1' de arriba si es codigo
+bender x is 1. -- A partir de aqui es un comentario
+-- Otro comentario. Pero 'bender x is 1.' de arriba si es codigo
 ```
 
 #### Secuenciación y bloque de instrucciones
-El bloque de instrucciones es posiblemente vacío y retorna el valor de la última instrucción. La secuenciación se expresa con el símbolo . entre cada expresión. Si se desea descartar el tipo de retorno de la última expresión y reemplazarlo por el tipo unitario, se utiliza el símbolo “~”:
+El bloque de instrucciones es posiblemente vacío y retorna el valor de la última instrucción. La secuenciación se expresa con el símbolo ```.``` entre cada expresión. Si se desea descartar el tipo de retorno de la última expresión y reemplazarlo por el tipo unitario, se utiliza el símbolo “\~”:
 ```
 .-
     x besides 2.
@@ -186,7 +186,7 @@ El bloque de instrucciones es posiblemente vacío y retorna el valor de la últi
 -.
 ```
 Esta expresión retorna el valor de x. Por otro lado: 
-```        
+```
 .-
     x besides 2.
     y and then 4.
@@ -221,11 +221,12 @@ while <bool_exp> doing <exp>
 #### Control de Flujo para Ciclos
 Se tienen instrucciones ```burst``` y ```to be continued``` que permiten terminar un ciclo o una iteración prematuramente y respectivamente. Ambas instrucciones pueden recibir un parámetro adicional para retornar valores, al mismo estilo del ```this story comes to an end```:
 ```
-while (X) { 
+while X doing 
+.-
     if (Y)
         burst 10.
     i is i and then 1
-}
+-.
 ```
 Así, la expresión de iteración puede retornar valores mediante su control de flujo.
 
