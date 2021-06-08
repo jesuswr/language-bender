@@ -88,7 +88,8 @@ tokens :-
 
                 -- struct
 <0>     element                                    { pushTK TKelement }
-<0>     is @w mastered @w by                       { pushTK TKmasteredBy }
+<0>     is @w compound @w by                       { pushTK TKcompoundBy }
+<0>     skill @w of                                { pushTK TKskillOf }
 <0>     learning                                   { pushTK TKlearning }
 <0>     control @w from                            { pushTK TKcontrol }
 

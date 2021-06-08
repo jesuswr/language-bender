@@ -6,6 +6,7 @@ module Lib
 import              System.Environment
 import              FrontEnd.CommandLine
 import              FrontEnd.Lexer
+import              FrontEnd.Parser
 import qualified    Utils.Constants
 
 langBender :: IO ()
@@ -21,5 +22,6 @@ langBender = do
             content <- readFile (fileName opts)
             --print content
             let tokens = scanTokens content
-            print tokens
+            --print tokens
+            print . parseTokens . snd $ tokens
 

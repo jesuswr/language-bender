@@ -36,7 +36,8 @@ import qualified FrontEnd.Errors  as E
     masterOf            { TK.Token _ TK.TKmasterOf }
     disciple            { TK.Token _ TK.TKdisciple }
     element             { TK.Token _ TK.TKelement }
-    masteredBy          { TK.Token _ TK.TKmasteredBy }
+    compoundBy          { TK.Token _ TK.TKcompoundBy }
+    skillOf             { TK.Token _ TK.TKskillOf }
     learning            { TK.Token _ TK.TKlearning }
     control             { TK.Token _ TK.TKcontrol }
     energy              { TK.Token _ TK.TKenergy }
@@ -62,8 +63,8 @@ import qualified FrontEnd.Errors  as E
     not                 { TK.Token _ TK.TKnot }
     if                  { TK.Token _ TK.TKif }
     otherwise           { TK.Token _ TK.TKotherwise }
-    int                 { TK.Token _ (TK.TKint _) }
-    float               { TK.Token _ (TK.TKfloat _) }
+    int                 { TK.Token _ (TK.TKint $$) }
+    float               { TK.Token _ (TK.TKfloat $$) }
     comma               { TK.Token _ TK.TKcomma }
     colon               { TK.Token _ TK.TKcolon }
     beginBlock          { TK.Token _ TK.TKbeginBlock }
@@ -85,9 +86,9 @@ import qualified FrontEnd.Errors  as E
     opening             { TK.Token _ TK.TKopening }
     chakrasFrom         { TK.Token _ TK.TKchakrasFrom }
     to                  { TK.Token _ TK.TKto }
-    char                { TK.Token _ (TK.TKchar _) }
-    string              { TK.Token _ (TK.TKstring _) }
-    id                  { TK.Token _ (TK.TKid _) }
+    char                { TK.Token _ (TK.TKchar $$) }
+    string              { TK.Token _ (TK.TKstring $$) }
+    id                  { TK.Token _ (TK.TKid $$ ) }
     elipsis             { TK.Token _ TK.TKelipsis }
     toBeContinued       { TK.Token _ TK.TKtoBeContinued }
     burst               { TK.Token _ TK.TKburst }
@@ -96,8 +97,31 @@ import qualified FrontEnd.Errors  as E
 
 %%
 -- Grammar
-BINOP :: { AST.Expr }
-BINOP : int { AST.ConstInt 3 }
+
+-- Source Symbol
+Program :: { AST.Program }
+Program : Declarations { AST.Program (reverse $1) }
+
+-- Program as declaration list
+Declarations    :: { [AST.Declaration] }
+Declarations    : Declaration { [$1] }
+                | Declarations Declaration { $2:$1 }
+
+Declaration :: { AST.Declaration }
+Declaration : element id compoundBy StructIdDecls               { AST.Struct $2 (reverse $4) }
+            
+StructIdDecls   :: { [(String, AST.Type)] }
+                :  id skillOf Type                              {[($1, $3)]}
+                |  StructIdDecls comma id skillOf Type          { ($3, $5):$1 }
+
+Type        :: { AST.Type }
+Type        :  water                    { AST.TFloat }
+            |  air                      { AST.TInt }
+            |  earth                    { AST.TChar }
+            |  string                   { AST.TString }   
+            |  fire                     { AST.TBool }
+            |  id                       { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
+            |  Type art                 { AST.TPtr $1}
 
 
 
@@ -106,6 +130,6 @@ BINOP : int { AST.ConstInt 3 }
 {
 
 parseError :: [TK.Token] -> a
-parseError _ = undefined
+parseError ls = error $ "por " ++ show ls
 
 }

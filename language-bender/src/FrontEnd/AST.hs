@@ -14,12 +14,13 @@ data Type = TFloat
           | TChar 
           | TString
           | TBool
-          | TArray { arrType :: Type, size :: Maybe Int }
+          | TArray { arrType :: Type, size :: Expr }
+          | TPtr   { ptrType :: Type }
           | CustomType { tName :: Name }
           deriving(Eq, Show)
 
 -- Declaration of new things
-data Declaration    = Variable  { decName :: Name, varType ::  Maybe Type, initVal :: Maybe Expr }
+data Declaration    = Variable  { decName :: Name, varType ::  Maybe Type, initVal :: Maybe Expr, isConst :: Bool }
                     | Union     { decName :: Name, fields :: [(Name, Type)] }
                     | Struct    { decName :: Name, fields :: [(Name, Type)] }
                     | Func      { decName :: Name, args :: [(Name, Type)], retType :: Type , body :: Expr }
@@ -64,4 +65,4 @@ data Expr   = ConstInt        { iVal :: Int}
             deriving(Eq, Show)
 
 -- Program data type     
-newtype Program = Program{ decls :: [Declaration] }
+newtype Program = Program{ decls :: [Declaration] }deriving(Show, Eq)

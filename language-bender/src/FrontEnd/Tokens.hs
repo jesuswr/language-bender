@@ -37,7 +37,8 @@ data TokenType =
     TKmasterOf                           |
     TKdisciple                           |
     TKelement                            |
-    TKmasteredBy                         |
+    TKcompoundBy                         |
+    TKskillOf                            |
     TKlearning                           |
     TKcontrol                            |
     TKenergy                             |
