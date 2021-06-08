@@ -4,14 +4,13 @@
 
 module FrontEnd.Tokens (
     Token(..),
-    TokenConstruct(..),
     TokenType(..)
     ) where
 
 import FrontEnd.Utils -- Position
 
 -- Token Data
-data Token = Token {pos :: Position, tktype :: TokenType} deriving(Eq, Show)
+data Token = Token {pos :: Position, tktype :: TokenType} deriving(Eq)
 
 -- Token Type Information
 data TokenType = 
@@ -97,3 +96,5 @@ data TokenType =
 
     deriving(Eq, Show)
 
+instance Show Token where
+    show = "oli"
