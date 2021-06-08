@@ -15,7 +15,8 @@
 --bender aang is burst 3
 --bender aang is this story comes to an end 3
 
-bender aang is to be continued bender zuko is 4
-bender aang is burst
-bender aang is this story comes to an end
+--bender aang is to be continued bender zuko is 4
+--bender aang is burst
+--bender aang is this story comes to an end
 
+book book1 of air about air bender aang, water bender katara: 3

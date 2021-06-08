@@ -4,7 +4,6 @@
 
 module FrontEnd.Tokens (
     Token(..),
-    TokenConstruct(..),
     TokenType(..)
     ) where
 

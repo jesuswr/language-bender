@@ -328,7 +328,7 @@ lexError ((AlexPn _ l c), _, _, str) len = do
 
 invalidCharError :: AlexAction AlexUserState
 invalidCharError ((AlexPn _ l c), _, _, str) len = do
-    addError (E.LexerError (Position l c) E.InvalidStrChar $ head str)
+    addError (E.LexerError (Position l c) (E.InvalidStrChar $ head (str:[])))
     alexMonadScan
 
 

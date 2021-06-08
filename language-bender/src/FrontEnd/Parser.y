@@ -99,64 +99,70 @@ import qualified FrontEnd.Errors  as E
 -- Grammar
 
 -- Source Symbol
-Program :: { AST.Program }
-Program : Declarations { AST.Program (reverse $1) }
+Program         :: { AST.Program }
+    : Declarations                                  { AST.Program (reverse $1) }
 
 -- Program as declaration list
 Declarations    :: { [AST.Declaration] }
-Declarations    : Declaration { [$1] }
-                | Declarations Declaration { $2:$1 }
+    : Declaration                                       { [$1] }
+    | Declarations Declaration                          { $2:$1 }
 
-Declaration :: { AST.Declaration }
-Declaration : element id compoundBy StructIdDecls                   { AST.Struct $2 (reverse $4) }
-            | energy id allows UnionIdDecls                         { AST.Union  $2 (reverse $4) }
-            | VarDecl                                               { $1 }
+Declaration     :: { AST.Declaration }
+    : element id compoundBy StructIdDecls               { AST.Struct $2 (reverse $4) }
+    | energy id allows UnionIdDecls                     { AST.Union  $2 (reverse $4) }
+    | VarDecl                                           { $1 }
+    | FuncDecl                                          { $1 }
 
+FuncDecl        :: { AST.Declaration }
+    : book id of Type about FuncArgDecl colon Exprs     { AST.Func $2 (reverse $6) $4 $8 }
+ 
+FuncArgDecl     :: { [(String, AST.Type)] }
+    : Type bender id                                    { [($3, $1)] }
+    | FuncArgDecl comma Type bender id                  { ($5, $3):$1 } -- @todo xD no recuerdo como es la sintaxis para def args
 
 StructIdDecls   :: { [(String, AST.Type)] }
-                :  id skillOf Type                                  {[($1, $3)]}
-                |  StructIdDecls comma id skillOf Type              { ($3, $5):$1 }
+    :  id skillOf Type                                  { [($1, $3)] }
+    |  StructIdDecls comma id skillOf Type              { ($3, $5):$1 }
 
-UnionIdDecls   :: { [(String, AST.Type)] }
-                :  id techniqueOf Type bending                      { [($1, $3)] }
-                |  UnionIdDecls comma id techniqueOf Type bending   { ($3, $5):$1 }
+UnionIdDecls    :: { [(String, AST.Type)] }
+    :  id techniqueOf Type bending                      { [($1, $3)] }
+    |  UnionIdDecls comma id techniqueOf Type bending   { ($3, $5):$1 }
 
-VarDecl        :: { AST.Declaration }
-VarDecl         : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
-                | bender id of Type is Expr                         { AST.Variable $2 (Just $4) (Just $6) False}
-                | bender id is Expr                                 { AST.Variable $2 Nothing (Just $4) False}
-                | eternal bender id of Type is Expr                 { AST.Variable $3 (Just $5) (Just $7) True}
-                | eternal bender id is Expr                         { AST.Variable $3 Nothing (Just $5) True}
+VarDecl         :: { AST.Declaration }
+    : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
+    | bender id of Type is Expr                         { AST.Variable $2 (Just $4) (Just $6) False }
+    | bender id is Expr                                 { AST.Variable $2 Nothing (Just $4) False }
+    | eternal bender id of Type is Expr                 { AST.Variable $3 (Just $5) (Just $7) True }
+    | eternal bender id is Expr                         { AST.Variable $3 Nothing (Just $5) True }
 
-                
-Expr        :: {AST.Expr} 
-Expr        :  int                                                  { AST.ConstInt $1 }
-            |  float                                                { AST.ConstFloat $1 }
-            |  char                                                 { AST.ConstChar $1 }
-            |  string                                               { AST.ConstString $1 }
-            |  lightning                                            { AST.ConstBool True }
-            |  fireMaster                                           { AST.ConstBool False }
-            |  id                                                   { AST.Id $1 }
-            |  toBeContinued Expr                                   { AST.Continue  (Just $2) }
-            |  burst Expr                                           { AST.Break     (Just $2) }
-            |  return Expr                                          { AST.Return    (Just $2) }
-            |  toBeContinued                                        { AST.Continue  Nothing }
-            |  burst                                                { AST.Break     Nothing }
-            |  return                                               { AST.Return    Nothing }
+Expr            :: { AST.Expr } 
+    :  int                                              { AST.ConstInt $1 }
+    |  float                                            { AST.ConstFloat $1 }
+    |  char                                             { AST.ConstChar $1 }
+    |  string                                           { AST.ConstString $1 }
+    |  lightning                                        { AST.ConstBool True }
+    |  fireMaster                                       { AST.ConstBool False }
+    |  id                                               { AST.Id $1 }
+    |  toBeContinued Expr                               { AST.Continue  (Just $2) }
+    |  burst Expr                                       { AST.Break     (Just $2) }
+    |  return Expr                                      { AST.Return    (Just $2) }
+    |  toBeContinued                                    { AST.Continue  Nothing }
+    |  burst                                            { AST.Break     Nothing }
+    |  return                                           { AST.Return    Nothing }
 
-Exprs       ::  { [AST.Expr] }
-            :   Expr                                                { [$1] }
-            |   Declaration                                         { [AST.Declaration $1] } 
+Exprs           ::  { AST.Expr }
+    :   Expr                                            { $1 }
+    |   Declaration                                     { AST.Declaration $1 } 
             
 
-Type        :: { AST.Type }
-Type        :  water                    { AST.TFloat }
-            |  air                      { AST.TInt }
-            |  earth                    { AST.TChar }
-            |  string                   { AST.TString }   
-            |  fire                     { AST.TBool }
-            |  id                       { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
-            |  Type art                 { AST.TPtr $1}
+Type            :: { AST.Type }
+    :  water                                            { AST.TFloat }
+    |  air                                              { AST.TInt }
+    |  earth                                            { AST.TChar }
+    |  string                                           { AST.TString }   
+    |  fire                                             { AST.TBool }
+    |  id                                               { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
+    |  Type art                                         { AST.TPtr $1 }
 
 
 {
