@@ -4,8 +4,8 @@ module FrontEnd.Errors where
 import FrontEnd.Utils -- Position
 
 -- Lexical error
-data LexerError = InvalidToken{ token :: String }
-                | InvalidStrChar
+data LexerError = InvalidToken   { token :: String }
+                | InvalidStrChar { char :: String }
                 | UnexpectedEOF deriving(Eq)
 
 -- Coming soon
@@ -24,3 +24,7 @@ instance Show Error where
 
 instance Show LexerError where
     show InvalidToken{token=tk} = "Invalid token: " ++ tk
+
+    show InvalidStrChar{char=c} = "Invalid character '" ++ c ++ "' found in string."
+
+    show UnexpectedEOF = "Unexpected EOF: string is not closed."

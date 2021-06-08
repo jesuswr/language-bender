@@ -206,7 +206,8 @@ getUSt = do
     case startCode of
         0 -> getUSt'
         _ -> do
-            addError $ E.LexerError (Position (-1) (-1)) E.UnexpectedEOF
+            pos <- getAtr strPosition
+            addError $ E.LexerError pos E.UnexpectedEOF
             getUSt'  
     
 getUSt' :: Alex AlexUserState
@@ -327,7 +328,7 @@ lexError ((AlexPn _ l c), _, _, str) len = do
 
 invalidCharError :: AlexAction AlexUserState
 invalidCharError ((AlexPn _ l c), _, _, str) len = do
-    addError (E.LexerError (Position l c) E.InvalidStrChar)
+    addError (E.LexerError (Position l c) E.InvalidStrChar $ head str)
     alexMonadScan
 
 

@@ -97,5 +97,3 @@ data TokenType =
 
     deriving(Eq, Show)
 
-
-type TokenConstruct = Position -> Token
