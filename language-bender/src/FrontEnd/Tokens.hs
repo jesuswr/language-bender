@@ -97,4 +97,13 @@ data TokenType =
     deriving(Eq, Show)
 
 instance Show Token where
-    show = "oli"
+    show (Token pos TKint{numI = n} )    = "Literal Integer: '" ++ (show n) ++ (showPos pos)
+    show (Token pos TKfloat{numF = n} )  = "Literal Float: '" ++ (show n) ++ (showPos pos)
+    show (Token pos TKchar{char = c} )   = "Literal Char: '" ++ c ++ (showPos pos)
+    show (Token pos TKstring{str = s} )  = "Literal String: '" ++ s ++ (showPos pos)
+    show (Token pos TKid{id = id_} )     = "Identifier token: '" ++ id_ ++ (showPos pos)
+    show (Token pos token )              = "Token: '" ++ (show token) ++ (showPos pos)
+
+showPos :: Position -> String
+showPos pos = "' -- at position: " ++ (show pos)
+
