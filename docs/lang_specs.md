@@ -1,6 +1,7 @@
-# Doe-Lang
 
-**Doe-Lang** es un lenguaje de programación imperativo no orientado a objetos, cuya temática no ha sido definida aun, para la cadena de electivas de área Lenguajes de Programación II y III (CI-4721, CI-4722).  
+# Language Bender
+
+**Language Bender** es un lenguaje de programación imperativo no orientado a objetos, basado en Avatar The Last Airbender, para la cadena de electivas de área Lenguajes de Programación II y III (CI-4721, CI-4722).  
  
 ## Autores:
 - Luis Diaz 15-10420 
@@ -20,171 +21,178 @@ El lenguaje esta basado en expresiones. Esto es, todas las instruccions producen
 
   **Nota:** Las instrucciones `break` y `continue` son instrucciones especiales que no evalúan a un tipo concreto, en su lugar cambian el control del flujo de los ciclos. Cuando un camino de ejecución contiene una instrucción de este tipo, no se le considera para inferir el tipo de la expresión, sino el tipo de retorno del ciclo que lo contiene. Esto ocurre porque no tiene sentido evaluar una expresión cuyo valor es imposible de utilizar, como ocurre en estos casos. Así, permitimos patrones bastante útiles como:
 ```
-while(true) {
-  let x = if (error()) 
+while(lightning master) .-
+  bender x is if (error()) 
              break
-          else 
-             f();
+          otherwise 
+             f().
            
-  // do something with x
-} 
+  -- do something with x
+-.
 ```
 En este ejemplo, x tiene el tipo de retorno de f, mientras que el ciclo while tiene tipo de retorno (). 
   
 ### Identificadores
-Es toda palabra que comienza con una letra, está formada posteriormente por caracteres alfanuméricos y guiones bajos (```_```) y no es una palabra reservada por el lenguaje.
+Es toda palabra que comienza con una letra minuscula o un guion bajo (```_```), está formada posteriormente por caracteres alfanuméricos y guiones bajos (```_```) y no es una palabra reservada por el lenguaje.
 
 ### Declaraciones
 Para declarar variables tenemos:
-1. Para declarar una variable sin inicializar y con tipo concreto: ```let x: Tipo```
-2. Para declarar una variable inicializada y con tipo concreto: ```let x: Tipo = Valor```
-3. Para declarar una variable inicializada y con tipo inferido: ```let x = <expresion>```
+1. Para declarar una variable sin inicializar y con tipo concreto: ```bender <id> of <T>```
+2. Para declarar una variable inicializada y con tipo concreto: ```bender <id> of <T> is <expresion>```
+3. Para declarar una variable inicializada y con tipo inferido: ```bender <id> is <expresion>```
 
-Para declarar constantes se precede la declaración por ```const```. Por ejemplo:
+Para declarar constantes se precede la declaración por ```eternal```. Por ejemplo:
 ```
-const x = Valor
-const x : Tipo = Valor
+eternal bender <id> of <T> is <expresion>
+eternal bender <id> is <expresion>
 ``` 
 Las variables declaradas constantes deben ser siempre inicializadas. Para asignar condicionalmente distintos posibles valores a una constante podemos usar el siguiente patrón:
 ```
-const x = if (X) f() else g();
+eternal bender x is if (X) f() otherwise g();
 ```
 Las variables declaradas constantes son inmutables. Eso incluye los campos de tipos compuestos.    
 Cualquier declaración devuelve el tipo unitario.
 
 ### Asignación 
 Asocia un valor a una variable. Es una expresión, como todo en el lenguaje. La asignación debe respetar tipos compatibles y retorna el valor asignado al identificador izquierdo:
-```identificador  = expresión```
+```<id> is <expresion>```
 
 ### Modelo Por Valor y Referencias en el Lenguaje
 El lenguaje tiene modelo por valor. Es decir, la asignacion asocia una variable con un valor concreto copiandolo. Sin embargo se cuenta con la posibilidad de tener tipos de referencia a otras variables:
 ```
-    let x = 1;
-    let y = &x; // Referencia a x
+    bender x is 1.
+    bender y is reincarnation of x. -- Referencia a x
 ```
 En este ejemplo, ```y``` se usa como cualquier otra variable, pero sus cambios se hacen efectivos en ```x``` también. Además, no se puede declarar una variable de referencia sin inicializarla a no ser que sea en el argumento de una función:
 ```
-    let z : & int; // Error de compilación
+    bender y is reincarnation; -- Error de compilación
 ```
 
 ### Apuntadores 
-Solo hay apuntadores al heap, los cuales se denotan como ``` Type * ```. El valor ```null``` es un valor especial que es compatible con cualquier tipo de apuntador. Se usa ```new T``` para crear un elemento en el heap, ```delete identificador``` para eliminarlo, y no existe aritmética de apuntadores.
+Solo hay apuntadores al heap, los cuales se denotan como ```<T> art```. El valor ```an apprentice``` es un valor especial que es compatible con cualquier tipo de apuntador. Se usa ```born as <T> member``` para crear un elemento en el heap, ```<id> has died``` para eliminarlo, y no existe aritmética de apuntadores.
+```
+bender x of water art is born as water member.
+x has died.
+``` 
 
 
 ### Tipos de Datos
 
 #### Entero
-Números enteros del tamaño del registro (```int```). Almacenados en complemento 2.
+Números enteros del tamaño del registro (```air```). Almacenados en complemento 2.
 
 #### Flotante
-Números flotantes de 32 y 64 bits (```float``` y ```double```). Siguen el estándar [IEEE 754](https://en.wikipedia.org/wiki/IEEE_754#:~:text=The%20IEEE%20Standard%20for%20Floating,and%20Electronics%20Engineers%20(IEEE).&text=Many%20hardware%20floating-point%20units%20use%20the%20IEEE%20754%20standard.)
+Números flotantes de 32 bits (```water``` ). Siguen el estándar [IEEE 754](https://en.wikipedia.org/wiki/IEEE_754#:~:text=The%20IEEE%20Standard%20for%20Floating,and%20Electronics%20Engineers%20(IEEE).&text=Many%20hardware%20floating-point%20units%20use%20the%20IEEE%20754%20standard.)
 
 #### Booleano
-Tipo booleano con dos posibles valores: ```true``` o ```false``` (```bool```). Cuentan con sus propios operadores:
-- ``` and ```: Retorna ```true``` si ambos argumentos valen ```true```. De otra forma retorna ```false```.
-- ``` or ```: Retorna ```true``` si alguno de los argumentos vale ```true```. De otra forma retorna ```false```.
-- ``` not ```: Retorna ```true``` si ambos argumentos tienen el mismo valor. De otra forma retorna ```false```.
+Tipo booleano con dos posibles valores: ```lightning master``` o ```fire master``` (```fire```). Cuentan con sus propios operadores:
+- ``` and ```: Retorna ```lightning master``` si ambos argumentos valen ```lightning master```. De otra forma retorna ```fire master```.
+- ``` or ```: Retorna ```lightning master``` si alguno de los argumentos vale ```lightning master```. De otra forma retorna ```fire master```.
+- ``` not ```: Retorna ```lightning master``` si ambos argumentos tienen el mismo valor. De otra forma retorna ```fire master```.
 
 
 #### Char
-Tipo de dato que representa un caracter. Codificados en formato ascii.
+Tipo de dato que representa un caracter (```earth```). Codificados en formato ascii.
 
 #### String
-Alias para un arreglo de caracteres (```string```).
+Alias para un arreglo de caracteres (```metal```).
 
 #### Arreglo
 Los arreglos tienen tamaño constante de elaboración y se declaran como:
 ```
-let a : T[Size];
-let a = {a0,a1,a2};
+bender <id> of <element> nation since <size> years.
+bender <id> of <element> nation since <size> years is master of <exp0>, <exp1>, ..., <expk>.
 ```
 Los arreglos soportan indexación, es la única operación que soportan:
 ```
-let x : T[Size] = ...;
-x[i] // evalua al elemento i del arreglo x. 
+bender toph of earth nation since 42 years is master of aang, aang_jr, aang_jr_jr.
+disciple <i> of toph // evalua al elemento i del arreglo toph. 
 ```
-Para acceder al elemento `i` del arreglo `x` es necesario que `i` esté en el rango `[0,Size)`. De lo contrario, es un error de ejecución
+Para acceder al elemento `i` del arreglo `toph` es necesario que `i` esté en el rango `[0,Size)`. De lo contrario, es un error de ejecución
 
 #### Struct
-tipo producto o record: ```struct <struct_name> {x0 : T0, ..., xk : Tk}``` donde ```xi``` de tipo ```Ti``` es un atributo del struct.
-Para acceder a un atributo `x0` de un struct `s`, usamos el clásico operador punto: `s.x0`
+tipo producto o record:
+ ```element <id> is compound by <tag0> arf of <T0>, ...``` 
+ donde ```tagi``` de tipo ```Ti``` es un atributo del struct.
+Para acceder a un atributo `x0` de un struct `s`, usamos:
+```using <id>'s <tag> art```
 
-Para crear un struct, usamos la sintaxis: `<struct_name>{expr0, ... , exprk}`. Por ejemplo:
+Para crear un struct, usamos la sintaxis: 
 ```
-struct S {a: int, b: float}
+element lava is compound by super_fire art of fire, bedrock art of earth.
 ...
-let s = S{1, 2.0};
+bender aang is learning lava control using <exp0>, <exp1>,...
 ```
 
 #### Union
-tipo suma o variante: ```union <union_name> = <tag_0> T0 | ... | <tag_k> Tk``` donde ```|``` separan los distintos tipos que puede tomar la union. Por ejemplo:
+tipo suma o variante: 
 ```
-union U { MyFloat: float, MyInt: int }
+energy <id> allows <tag0> technique of <T0> bending, ...
+``` 
+Para crear una instancia de una union usamos:
 ```
-Para crear una instancia de una union usamos la sintaxis `<union_typename>::<union_tag_name>{expr0, ... , exprk}`. Por ejemplo:  
+bender <id> is learning <union_id>'s <tag> technique from <exp>
 ```
-let u = U::MyFloat{2.0}
-```
-
 El tipo de una instancia de la union es la unión en sí misma, para acceder a un posible valor, se usa el nombre de esa etiqueta. Por ejemplo:
-
 ```
-let f : float = u.MyFloat
+using <var_name>'s <elem_tag> technique
+
 ```
 Es un error de ejecución que se le solicite un valor de un tipo distinto al tipo actualmente almacenado para la unión.  
 
-Para consultar por el tipo de una union usamos la sintaxis `<instance_name>.<tag_name>?`. Por ejemplo:   
+Para consultar por el tipo de una union usamos la sintaxis:
+```trying <var_name>'s <elem_tag> technique``` 
+Por ejemplo:   
 ```
-if (u.MyFloat?)
-   logn(u.MyFloat).
-else // if not float, it's int
-   u.MyInt % 2.
+if (tryng u MyFloat technique)
+   logn(using u's MyFloat technique).
+else -- if not float, it's int
+   using u's MyInt technique % 2.
 ```
 
 #### Aritmetica
 Sólo entre flotantes, entre enteros y entre ambos (en este último caso se retorna flotante). Usando los operadores: 
-- ``` + ``` para la suma.
-- ``` - ``` para la resta.
-- ``` * ``` para la multiplicación.
-- ``` / ``` para la división.
-- `%` módulo, solo para enteros
+- ``` and then ``` para la suma.
+- ``` but ``` para la resta.
+- ``` and thus ``` para la multiplicación.
+- ``` besides ``` para la división.
+- `left` módulo, solo para enteros
 
 #### Comparaciones
 Para tipos enteros, flotantes y booleanos:
-- ``` < ```: Retorna ```true``` si el argumento izquierdo es menor que el derecho. Para booleanos toma ```true``` como ```1``` y ```false``` como ```0```.
-- ``` <= ```: Retorna ```true``` si el argumento izquierdo es menor o igual que el derecho. Para booleanos toma ```true``` como ```1``` y ```false``` como ```0```.
-- ``` > ```: Retorna ```true``` si el argumento izquierdo es mayor que el derecho. Para booleanos toma ```true``` como ```1``` y ```false``` como ```0```.
-- ``` >= ```: Retorna ```true``` si el argumento izquierdo es mayor o igual que el derecho. Para booleanos toma ```true``` como ```1``` y ```false``` como ```0```.
-- ``` == ```: Retorna ```true``` si el argumento izquierdo es igual que el derecho. Además, para tipos compuestos compara los valores de forma profunda.
+- ``` is less than ```: Retorna ```lightning master``` si el argumento izquierdo es menor que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
+- ``` is less or equal than ```: Retorna ```lightning master``` si el argumento izquierdo es menor o igual que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
+- ``` is greater than ```: Retorna ```lightning master``` si el argumento izquierdo es mayor que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
+- ``` is greater or equal than ```: Retorna ```lightning master``` si el argumento izquierdo es mayor o igual que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
+- ``` is equal to ```: Retorna ```lightning master``` si el argumento izquierdo es igual que el derecho. Además, para tipos compuestos compara los valores de forma profunda.
 
 ### Instrucciones y Estructuras de Control de Flujo
 
 #### Comentarios
-Los comentarios omiten una linea del codigo a partir del comentario. Para esto se usa ``` // ```.
+Los comentarios omiten una linea del codigo a partir del comentario. Para esto se usa ``` -- ```.
 ```
-// Esto es un comentario
-let x = 1; // A partir de aqui es un comentario
-// 'let x = 1' de arriba si es codigo
+-- Esto es un comentario
+let x = 1; -- A partir de aqui es un comentario
+-- 'let x = 1' de arriba si es codigo
 ```
 
 #### Secuenciación y bloque de instrucciones
-El bloque de instrucciones es posiblemente vacío y retorna el valor de la última instrucción. La secuenciación se expresa con el símbolo ; entre cada expresión. Si se desea descartar el tipo de retorno de la última expresión y reemplazarlo por el tipo unitario, se utiliza el símbolo “.”:
+El bloque de instrucciones es posiblemente vacío y retorna el valor de la última instrucción. La secuenciación se expresa con el símbolo . entre cada expresión. Si se desea descartar el tipo de retorno de la última expresión y reemplazarlo por el tipo unitario, se utiliza el símbolo “~”:
 ```
-{
-    x+2;
-    y*4;
-    f();
+.-
+    x besides 2.
+    y and then 4.
     x
-}
+-.
 ```
 Esta expresión retorna el valor de x. Por otro lado: 
 ```        
-{
-    x+2;
-    y*4;
-    f();
+.-
+    x besides 2.
+    y and then 4.
     x.
-}
+    ~
+-.
 ```
 Esta expresión retorna el tipo unitario.
 
@@ -192,35 +200,31 @@ Esta expresión retorna el tipo unitario.
 #### If
 Como en lenguajes tradicionales: 
 ```
-if (expresión booleana) expresión else expresión
+if (<bool_exp>) <exp> otherwise <exp>
 ```
 La instrucción también se puede evaluar, y la evaluación de la expresión principal debe tener el mismo tipo que la expresión secundaria del caso por defecto. En caso de no tener expresión secundaria, el tipo de retorno sera el tipo unitario.
 
-#### For
-Como en lenguajes tradicionales: 
+#### For (acotado)
+Las iteraciones acotadas permiten repetir una secuencia no vacía de instrucciones por una cantidad fija de iteraciones, conocida antes de la primera iteración.
+La sintaxis para una iteración acotada es la siguiente:
 ```
-for ( posible declaración e inicialización; condición booleana; expresión de incremento ) expresión
+opening <step> <id> chakras from <start> to <end> <exp>
 ```
-
-#### ForEach
-Repetición determinada: 
-```
-for(variable_para_iterar : iterable) expresión
-```
+En `<exp>` no se permitira cambiar la variable de iteracion ni declarar una variable con el mismo nombre.
 
 #### While
 Como en lenguajes tradicionales: 
 ```
-while (condición booleana) expresión
+while <bool_exp> doing <exp>
 ```
 
 #### Control de Flujo para Ciclos
-Se tienen instrucciones ```break``` y ```continue``` que permiten terminar un ciclo o una iteración prematuramente y respectivamente. Ambas instrucciones pueden recibir un parámetro adicional para retornar valores, al mismo estilo del return:
+Se tienen instrucciones ```burst``` y ```to be continued``` que permiten terminar un ciclo o una iteración prematuramente y respectivamente. Ambas instrucciones pueden recibir un parámetro adicional para retornar valores, al mismo estilo del return:
 ```
 while (X) { 
     if (Y)
-        break 10;
-    i = i + 1
+        burst 10.
+    i is i and then 1
 }
 ```
 Así, la expresión de iteración puede retornar valores mediante su control de flujo.
@@ -228,48 +232,31 @@ Así, la expresión de iteración puede retornar valores mediante su control de 
 ### Sub-Rutinas
 
 #### Funciones 
-Todas las funciones retornan algo, y pueden tener los tipos de retorno inferidos de su cuerpo:
+Todas las funciones retornan algo:
 ```
-fn f(x: int) {
-    2*x
-}
+book <book_id> of <type_name> about <arg0_type> bender <arg0_id>, ... : <expr>
 ```
-Esa función es de tipo ```(int) -> int```. El tipo de los valores de entrada debe ser anotado.
-
 #### Procedimientos
 Son funciones que siempre retornan (), en otras palabras, retorna el tipo unit () y por lo tanto no puede ser utilizado como una subexpresión (a excepción de los bloques de instrucciones). Es imposible anotarles tipo de retorno como a las funciones, puesto que nunca retornan algo más que ().
 ```        
-proc f(x) {
-    print(x + 2)
-}
+travel <travel_id> made by <arg0_type> bender <arg0_id>, ... : <expr>
 ```
 Sus tipos de argumento también son anotables.
 
 #### Orden de Ejecución
-Existe un procedimiento especial ```proc main()``` que es el punto de partida del programa. Toda variable que esté declarada fuera de la función main debe ser constante en tiempo de compilación. 
+Existe un procedimiento especial ```main``` que es el punto de partida del programa. Toda variable que esté declarada fuera de la función main debe ser constante en tiempo de compilación. 
 
 #### Sobre Funciones y Procedimientos
 
 ###### Pasaje de Argumentos
-Todos los argumentos se pasan por valor, el pasaje de parámetros por referencia se logra mediante los tipos de referencia ```&T```. Esto es, cuando se llama a una función o procedimiento ```F``` de firma ```F(x : &T)```, con argumento ```z```, dicha función declara internamente a la variable ```x : &T``` de la siguiente manera:
+Todos los argumentos se pasan por valor, el pasaje de parámetros por referencia se logra mediante los tipos de referencia . Esto es, cuando se llama a una función o procedimiento ```F``` que tiene un paramentro `x` por referencia, con argumento ```z```, dicha función declara internamente a la variable ```x``` de la siguiente manera:
 ```
-let x : &T = &z;
-```
-###### Sintaxis de Declaración
-
-- Funciones:
-```
-func <name>([arg_list]) [-> <output_type>] expr
-```
-- Procedimientos:
-```
-proc <name>([arg_list]) expr
-```
- 
+bender x is reincarnation of z.
+``` 
 ###### Default Arguments
 podemos definir valores por defecto a los argumentos de las funciones, por ejemplo: 
 ``` 
-f(x : int, y : int = 4, z : int = -1)
+book desert_travel of earth with air bender aang is 73, earth bender toph is 'z':
 ```
 Los argumentos con valores por defecto tienen que ser los últimos (más a la derecha) en la firma.
 
