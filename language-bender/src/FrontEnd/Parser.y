@@ -63,8 +63,6 @@ import qualified FrontEnd.Errors  as E
     not                 { TK.Token _ TK.TKnot }
     if                  { TK.Token _ TK.TKif }
     otherwise           { TK.Token _ TK.TKotherwise }
-    int                 { TK.Token _ (TK.TKint $$) }
-    float               { TK.Token _ (TK.TKfloat $$) }
     comma               { TK.Token _ TK.TKcomma }
     colon               { TK.Token _ TK.TKcolon }
     beginBlock          { TK.Token _ TK.TKbeginBlock }
@@ -86,13 +84,15 @@ import qualified FrontEnd.Errors  as E
     opening             { TK.Token _ TK.TKopening }
     chakrasFrom         { TK.Token _ TK.TKchakrasFrom }
     to                  { TK.Token _ TK.TKto }
-    char                { TK.Token _ (TK.TKchar $$) }
-    string              { TK.Token _ (TK.TKstring $$) }
-    id                  { TK.Token _ (TK.TKid $$ ) }
     elipsis             { TK.Token _ TK.TKelipsis }
     toBeContinued       { TK.Token _ TK.TKtoBeContinued }
     burst               { TK.Token _ TK.TKburst }
     return              { TK.Token _ TK.TKreturn }
+    int                 { TK.Token _ (TK.TKint $$) }
+    float               { TK.Token _ (TK.TKfloat $$) }
+    char                { TK.Token _ (TK.TKchar $$) }
+    string              { TK.Token _ (TK.TKstring $$) }
+    id                  { TK.Token _ (TK.TKid $$ ) }
  
 
 %%
@@ -108,11 +108,46 @@ Declarations    : Declaration { [$1] }
                 | Declarations Declaration { $2:$1 }
 
 Declaration :: { AST.Declaration }
-Declaration : element id compoundBy StructIdDecls               { AST.Struct $2 (reverse $4) }
-            
+Declaration : element id compoundBy StructIdDecls                   { AST.Struct $2 (reverse $4) }
+            | energy id allows UnionIdDecls                         { AST.Union  $2 (reverse $4) }
+            | VarDecl                                               { $1 }
+
+
 StructIdDecls   :: { [(String, AST.Type)] }
-                :  id skillOf Type                              {[($1, $3)]}
-                |  StructIdDecls comma id skillOf Type          { ($3, $5):$1 }
+                :  id skillOf Type                                  {[($1, $3)]}
+                |  StructIdDecls comma id skillOf Type              { ($3, $5):$1 }
+
+UnionIdDecls   :: { [(String, AST.Type)] }
+                :  id techniqueOf Type bending                      { [($1, $3)] }
+                |  UnionIdDecls comma id techniqueOf Type bending   { ($3, $5):$1 }
+
+VarDecl        :: { AST.Declaration }
+VarDecl         : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
+                | bender id of Type is Expr                         { AST.Variable $2 (Just $4) (Just $6) False}
+                | bender id is Expr                                 { AST.Variable $2 Nothing (Just $4) False}
+                | eternal bender id of Type is Expr                 { AST.Variable $3 (Just $5) (Just $7) True}
+                | eternal bender id is Expr                         { AST.Variable $3 Nothing (Just $5) True}
+
+                
+Expr        :: {AST.Expr} 
+Expr        :  int                                                  { AST.ConstInt $1 }
+            |  float                                                { AST.ConstFloat $1 }
+            |  char                                                 { AST.ConstChar $1 }
+            |  string                                               { AST.ConstString $1 }
+            |  lightning                                            { AST.ConstBool True }
+            |  fireMaster                                           { AST.ConstBool False }
+            |  id                                                   { AST.Id $1 }
+            |  toBeContinued Expr                                   { AST.Continue  (Just $2) }
+            |  burst Expr                                           { AST.Break     (Just $2) }
+            |  return Expr                                          { AST.Return    (Just $2) }
+            |  toBeContinued                                        { AST.Continue  Nothing }
+            |  burst                                                { AST.Break     Nothing }
+            |  return                                               { AST.Return    Nothing }
+
+Exprs       ::  { [AST.Expr] }
+            :   Expr                                                { [$1] }
+            |   Declaration                                         { [AST.Declaration $1] } 
+            
 
 Type        :: { AST.Type }
 Type        :  water                    { AST.TFloat }
@@ -122,9 +157,6 @@ Type        :  water                    { AST.TFloat }
             |  fire                     { AST.TBool }
             |  id                       { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
             |  Type art                 { AST.TPtr $1}
-
-
-
 
 
 {

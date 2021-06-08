@@ -38,7 +38,7 @@ data BinOpr  = Mult
              deriving(Eq, Show)
 
 -- Unary operators
-data UnOpr  = Negation
+data UnOpr  = Negation  
             | Negative
             | Unit
             deriving(Eq, Show)
@@ -49,6 +49,7 @@ data Expr   = ConstInt        { iVal :: Int}
             | ConstChar       { cVal :: String}
             | ConstString     { sVal :: String}
             | ConstBool       { bVal :: Bool }
+            | ConstUnit
             | Id              { name :: Name}
             | BinOper         { bOpr :: BinOpr, lexpr :: Expr, rexpr :: Expr}
             | UnOper          { uOpr :: UnOpr, expr :: Expr }
@@ -58,9 +59,9 @@ data Expr   = ConstInt        { iVal :: Int}
             | While           { cond :: Expr, cicBody :: Expr}
             | If              { cond :: Expr, accExpr :: Expr, failExpr :: Expr }
             | ExprBlock       { exprs :: [Expr] }
-            | Return          { expr :: Expr }
-            | Break           { expr :: Expr }
-            | Continue        { expr :: Expr }
+            | Return          { maybeExpr :: Maybe Expr }
+            | Break           { maybeExpr :: Maybe Expr }
+            | Continue        { maybeExpr :: Maybe Expr }
             | Declaration     { decl :: Declaration }
             deriving(Eq, Show)
 
