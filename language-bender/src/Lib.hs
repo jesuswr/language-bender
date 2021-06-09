@@ -8,6 +8,7 @@ import              FrontEnd.CommandLine
 import              FrontEnd.Lexer
 import              FrontEnd.Parser
 import qualified    Utils.Constants
+import qualified    Control.Monad as CM
 
 langBender :: IO ()
 langBender = do
@@ -17,11 +18,31 @@ langBender = do
         Left strError -> do
             putStrLn strError
         Right (Result opts warnings) -> do
-            -- seguir con el flujo
-            --print opts
+
+            CM.when (not $ null warnings) $ print warnings -- poner bonito
+
+            CM.when (help opts) $ print "help" -- poner bonito
+
             content <- readFile (fileName opts)
-            --print content
+
             let tokens = scanTokens content
-            --print tokens
-            print . parseTokens . snd $ tokens
+
+            CM.when (printLex opts || justLex opts) $ 
+                print tokens -- poner bonito
+
+            if (justLex opts) then return ()
+                else do
+
+                    let ast = parseTokens . snd $ tokens
+
+                    CM.when (printPar opts || justPar opts) $ 
+                        print ast -- poner bonito
+
+                    if (justPar opts) then return ()
+                        else do
+                            putStrLn "not implemented"
+                            return ()
+
+
+
 

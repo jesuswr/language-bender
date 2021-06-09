@@ -5,6 +5,8 @@ import System.Directory
 data Opts = Opts {
         fileName :: String,
         help     :: Bool,
+        justLex  :: Bool,
+        justPar  :: Bool,
         printLex :: Bool,
         printPar :: Bool,
         objFile  :: String
@@ -56,6 +58,10 @@ processFlags ("-lex":xs) opts warnings =
     processFlags xs (opts{printLex = True}) warnings
 processFlags ("-par":xs) opts warnings =
     processFlags xs (opts{printPar = True}) warnings
+processFlags ("-jlex":xs) opts warnings =
+    processFlags xs (opts{justLex = True}) warnings
+processFlags ("-jpar":xs) opts warnings =
+    processFlags xs (opts{justPar = True}) warnings
 processFlags ("-o":xs) opts warnings
     | null xs =
         processFlags xs opts (noObjFileName:warnings)
