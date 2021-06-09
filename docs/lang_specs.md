@@ -208,7 +208,7 @@ La instrucción también se puede evaluar, y la evaluación de la expresión pri
 Las iteraciones acotadas permiten repetir una secuencia no vacía de instrucciones por una cantidad fija de iteraciones, conocida antes de la primera iteración.
 La sintaxis para una iteración acotada es la siguiente:
 ```
-opening <step> <id> chakras from <start> to <end> <exp>
+opening <step> of <id> chakras from <start> to <end> <exp>
 ```
 En `<exp>` no se permitira cambiar la variable de iteracion ni declarar una variable con el mismo nombre.
 
