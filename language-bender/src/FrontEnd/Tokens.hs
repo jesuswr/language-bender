@@ -34,6 +34,7 @@ data TokenType =
     TKnation                             |
     TKyear                               |
     TKmasterOf                           |
+    TKRightNow                           |
     TKdisciple                           |
     TKelement                            |
     TKcompoundBy                         |
@@ -44,7 +45,7 @@ data TokenType =
     TKallows                             |
     TKtechniqueOf                        |
     TKbending                            |
-    TKtechniquesFrom                     |
+    TKtechniqueFrom                      |
     TKusing                              |
     TKquotmark_s                         |
     TKtechnique                          |
@@ -88,7 +89,7 @@ data TokenType =
     TKto                                 |
     TKchar            {char  :: String}  |
     TKstring          {str :: String}    |
-    TKid              {id_  :: String}    |
+    TKid              {name  :: String}  |
     TKelipsis                            |
     TKtoBeContinued                      |
     TKburst                              |
@@ -101,7 +102,7 @@ instance Show Token where
     show (Token pos TKfloat{numF = n} )  = "Literal Float: '" ++ (show n) ++ (showPos pos)
     show (Token pos TKchar{char = c} )   = "Literal Char: '" ++ c ++ (showPos pos)
     show (Token pos TKstring{str = s} )  = "Literal String: '" ++ s ++ (showPos pos)
-    show (Token pos TKid{id_ = idt} )     = "Identifier token: '" ++ idt ++ (showPos pos)
+    show (Token pos TKid{name = id_} )   = "Identifier token: '" ++ id_ ++ (showPos pos)
     show (Token pos token )              = "Token: '" ++ (show token) ++ (showPos pos)
 
 showPos :: Position -> String

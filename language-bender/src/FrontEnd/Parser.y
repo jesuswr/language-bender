@@ -34,6 +34,7 @@ import qualified FrontEnd.Errors  as E
     nation              { TK.Token _ TK.TKnation }
     year                { TK.Token _ TK.TKyear }
     masterOf            { TK.Token _ TK.TKmasterOf }
+    rightNow            { TK.Token _ TK.TKRightNow }
     disciple            { TK.Token _ TK.TKdisciple }
     element             { TK.Token _ TK.TKelement }
     compoundBy          { TK.Token _ TK.TKcompoundBy }
@@ -44,7 +45,7 @@ import qualified FrontEnd.Errors  as E
     allows              { TK.Token _ TK.TKallows }
     techniqueOf         { TK.Token _ TK.TKtechniqueOf }
     bending             { TK.Token _ TK.TKbending }
-    techniquesFrom      { TK.Token _ TK.TKtechniquesFrom }
+    techniqueFrom       { TK.Token _ TK.TKtechniqueFrom }
     using               { TK.Token _ TK.TKusing }
     quotmark_s          { TK.Token _ TK.TKquotmark_s }
     technique           { TK.Token _ TK.TKtechnique }
@@ -69,8 +70,8 @@ import qualified FrontEnd.Errors  as E
     endBlock            { TK.Token _ TK.TKendBlock }
     dot                 { TK.Token _ TK.TKdot }
     unit                { TK.Token _ TK.TKunit }
-    openParent          { TK.Token _ TK.TKopenParent }
-    closeParent         { TK.Token _ TK.TKcloseParent }
+    '('                 { TK.Token _ TK.TKopenParent }
+    ')'                 { TK.Token _ TK.TKcloseParent }
     in                  { TK.Token _ TK.TKin }
     bookWith            { TK.Token _ TK.TKbookWith }
     with                { TK.Token _ TK.TKwith }
@@ -99,64 +100,137 @@ import qualified FrontEnd.Errors  as E
 -- Grammar
 
 -- Source Symbol
-Program :: { AST.Program }
-Program : Declarations { AST.Program (reverse $1) }
+Program         :: { AST.Program }
+    : Declarations                                  { AST.Program (reverse $1) }
 
 -- Program as declaration list
 Declarations    :: { [AST.Declaration] }
-Declarations    : Declaration { [$1] }
-                | Declarations Declaration { $2:$1 }
+    : Declaration                                       { [$1] }
+    | Declarations Declaration                          { $2:$1 }
 
-Declaration :: { AST.Declaration }
-Declaration : element id compoundBy StructIdDecls                   { AST.Struct $2 (reverse $4) }
-            | energy id allows UnionIdDecls                         { AST.Union  $2 (reverse $4) }
-            | VarDecl                                               { $1 }
+Declaration     :: { AST.Declaration }
+    : element id compoundBy StructIdDecls               { AST.Struct $2 (reverse $4) }
+    | energy id allows UnionIdDecls                     { AST.Union  $2 (reverse $4) }
+    | VarDecl                                           { $1 }
+    | FuncDecl                                          { $1 }
+    | ProcDecl                                          { $1 }
 
+ProcDecl        :: { AST.Declaration }
+    : travel id madeBy FuncArg colon Exprs              { AST.Func $2 (reverse $4) (Just AST.TUnit) $6 }
+    | travel id colon Exprs                             { AST.Func $2 [] (Just AST.TUnit) $4 }
+
+FuncDecl        :: { AST.Declaration }
+    : book id of Type about FuncArg colon Exprs         { AST.Func $2 (reverse $6) (Just $4) $8 }
+    | book id of Type colon Exprs                       { AST.Func $2 [] (Just $4) $6 }
+    | book id about FuncArg colon Exprs                 { AST.Func $2 (reverse $4) Nothing $6 }
+    | book id colon Exprs                               { AST.Func $2 [] Nothing $4 }
+
+FuncArg         :: { [AST.FuncArg] }
+    : FuncDefArgDecl                                    { $1 }
+    | FuncArgDecl                                       { $1 }
+    | FuncArgDecl comma FuncDefArgDecl                  { $3 ++ $1 }
+
+FuncDefArgDecl :: { [AST.FuncArg] }
+    : Type bender id is Expr                            { [AST.FuncArg $3 $1 (Just $5)] }
+    | FuncDefArgDecl comma Type bender id is Expr       { (AST.FuncArg $5 $3 (Just $7)):$1 }
+
+FuncArgDecl     :: { [AST.FuncArg] }
+    : Type bender id                                    { [AST.FuncArg $3 $1 Nothing] }
+    | FuncArgDecl comma Type bender id                  { (AST.FuncArg $5 $3 Nothing):$1 }
 
 StructIdDecls   :: { [(String, AST.Type)] }
-                :  id skillOf Type                                  {[($1, $3)]}
-                |  StructIdDecls comma id skillOf Type              { ($3, $5):$1 }
+    : id skillOf Type                                   { [($1, $3)] }
+    | StructIdDecls comma id skillOf Type               { ($3, $5):$1 }
 
-UnionIdDecls   :: { [(String, AST.Type)] }
-                :  id techniqueOf Type bending                      { [($1, $3)] }
-                |  UnionIdDecls comma id techniqueOf Type bending   { ($3, $5):$1 }
+UnionIdDecls    :: { [(String, AST.Type)] }
+    : id techniqueOf Type bending                       { [($1, $3)] }
+    | UnionIdDecls comma id techniqueOf Type bending    { ($3, $5):$1 }
 
-VarDecl        :: { AST.Declaration }
-VarDecl         : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
-                | bender id of Type is Expr                         { AST.Variable $2 (Just $4) (Just $6) False}
-                | bender id is Expr                                 { AST.Variable $2 Nothing (Just $4) False}
-                | eternal bender id of Type is Expr                 { AST.Variable $3 (Just $5) (Just $7) True}
-                | eternal bender id is Expr                         { AST.Variable $3 Nothing (Just $5) True}
+VarDecl         :: { AST.Declaration }
+    : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
+    | bender id of Type is Assign                       { AST.Variable $2 (Just $4) (Just $6) False }
+    | bender id is Assign                               { AST.Variable $2 Nothing (Just $4) False }
+    | eternal bender id of Type is Assign               { AST.Variable $3 (Just $5) (Just $7) True }
+    | eternal bender id is Assign                       { AST.Variable $3 Nothing (Just $5) True }
 
-                
-Expr        :: {AST.Expr} 
-Expr        :  int                                                  { AST.ConstInt $1 }
-            |  float                                                { AST.ConstFloat $1 }
-            |  char                                                 { AST.ConstChar $1 }
-            |  string                                               { AST.ConstString $1 }
-            |  lightning                                            { AST.ConstBool True }
-            |  fireMaster                                           { AST.ConstBool False }
-            |  id                                                   { AST.Id $1 }
-            |  toBeContinued Expr                                   { AST.Continue  (Just $2) }
-            |  burst Expr                                           { AST.Break     (Just $2) }
-            |  return Expr                                          { AST.Return    (Just $2) }
-            |  toBeContinued                                        { AST.Continue  Nothing }
-            |  burst                                                { AST.Break     Nothing }
-            |  return                                               { AST.Return    Nothing }
+Expr            :: { AST.Expr } 
+    : int                                               { AST.NumExpr . AST.ConstInt $ $1 }
+    | float                                             { AST.NumExpr . AST.ConstFloat $ $1 }
+    | char                                              { AST.ConstChar $1 }
+    | string                                            { AST.ConstString $1 }
+    | lightning                                         { AST.BoolExpr $ AST.TrueC }
+    | fireMaster                                        { AST.BoolExpr $ AST.FalseC }
+    | id                                                { AST.Id $1 }
+    | toBeContinued Expr                                { AST.Continue  (Just $2) }
+    | burst Expr                                        { AST.Break     (Just $2) }
+    | return Expr                                       { AST.Return    (Just $2) }
+    | toBeContinued                                     { AST.Continue  Nothing }
+    | burst                                             { AST.Break     Nothing }
+    | return                                            { AST.Return    Nothing }
+    | ExprBlock                                         { $1 }
+    | id is Assign                                      { AST.Assign $1 $3 }
+    | opening Expr of id chakrasFrom 
+        Expr to Expr colon Expr                         { AST.For $4 $2 $6 $8 $10 }
+    | while Expr doing colon Expr                       { AST.While $2 $5 }
+    | trying id quotmark_s id technique                 { AST.UnionTrying $2 $4 }
+    | using id quotmark_s id technique                  { AST.UnionUsing $2 $4 }
 
-Exprs       ::  { [AST.Expr] }
-            :   Expr                                                { [$1] }
-            |   Declaration                                         { [AST.Declaration $1] } 
-            
 
-Type        :: { AST.Type }
-Type        :  water                    { AST.TFloat }
-            |  air                      { AST.TInt }
-            |  earth                    { AST.TChar }
-            |  string                   { AST.TString }   
-            |  fire                     { AST.TBool }
-            |  id                       { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
-            |  Type art                 { AST.TPtr $1}
+Exprs           ::  { AST.Expr }
+    : Expr                                              { $1 }
+    | unit                                              { AST.ConstUnit }
+    | Declaration                                       { AST.Declaration $1 } 
+
+Assign          :: { AST.Expr }
+    : Expr                                              { $1 } 
+    | masterOf ExprList rightNow                        { AST.Array (reverse $2) }
+    | AssignStruct                                      { $1 }
+    | AssignUnion                                       { $1 }
+
+AssignStruct    :: { AST.Expr }
+    : learning Type control using
+        ExprList rightNow                               { AST.ConstStruct $2 (reverse $5) }
+
+AssignUnion     :: { AST.Expr }
+    : learning Type quotmark_s id 
+        techniqueFrom Expr                              { AST.ConstUnion $2 $4 $6}
+
+-- < Expression block Grammar > -----------------------------------------------------------  
+ExprBlock       ::  { AST.Expr }
+    : beginBlock ExprSeq endBlock                       { AST.ExprBlock (reverse $2) }
+    | beginBlock endBlock                               { AST.ExprBlock [] }
+
+ExprSeq         ::  { [AST.Expr] }
+    : LastInBlock                                       { [$1] }
+    | Seq LastInBlock                                   { $2:$1 }
+
+Seq             :: { [AST.Expr] }
+    : Exprs Dots                                        { [$1] }
+    | Seq Exprs Dots                                    { $2:$1 }
+    | Dots                                              { [] }
+    
+LastInBlock     :: { AST.Expr }
+    : Exprs                                             { $1 }
+    | Exprs Dots                                        { $1 }
+
+Dots            :: { [AST.Expr] }
+    : dot                                               { [] }
+    | Dots dot                                          { [] }
+
+--------------------------------------------------------------------------------------------  
+
+ExprList        :: { [AST.Expr] }
+    : Expr                                              { [$1] }
+    | ExprList comma Expr                               { $3:$1 }
+
+Type            :: { AST.Type }
+    : water                                             { AST.TFloat }
+    | air                                               { AST.TInt }
+    | earth                                             { AST.TChar }
+    | string                                            { AST.TString }   
+    | fire                                              { AST.TBool }
+    | id                                                { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
+    | Type art                                          { AST.TPtr $1 }
 
 
 {

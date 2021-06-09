@@ -84,6 +84,7 @@ tokens :-
 <0>     nation @w since                            { pushTK TKnation }
 <0>     years                                      { pushTK TKyear }
 <0>     master @w of                               { pushTK TKmasterOf }
+<0>     right @w now                               { pushTK TKRightNow }
 <0>     disciple                                   { pushTK TKdisciple }
 
                 -- struct
@@ -91,14 +92,14 @@ tokens :-
 <0>     is @w compound @w by                       { pushTK TKcompoundBy }
 <0>     skill @w of                                { pushTK TKskillOf }
 <0>     learning                                   { pushTK TKlearning }
-<0>     control @w from                            { pushTK TKcontrol }
+<0>     control                                    { pushTK TKcontrol }
 
                 -- union
 <0>     energy                                     { pushTK TKenergy }
 <0>     allows                                     { pushTK TKallows }
 <0>     technique @w of                            { pushTK TKtechniqueOf }
 <0>     bending                                    { pushTK TKbending }
-<0>     techniques @w from                         { pushTK TKtechniquesFrom }
+<0>     technique @w from                          { pushTK TKtechniqueFrom }
 <0>     using                                      { pushTK TKusing }
 <0>     \'s                                        { pushTK TKquotmark_s }
 <0>     technique                                  { pushTK TKtechnique }
