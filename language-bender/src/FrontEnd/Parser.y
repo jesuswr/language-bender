@@ -115,25 +115,27 @@ Declaration     :: { AST.Declaration }
     | ProcDecl                                          { $1 }
 
 ProcDecl        :: { AST.Declaration }
-    : travel id madeBy FuncDefArgDecl colon Exprs       { AST.Func $2 (reverse $4) (Just AST.TUnit) $6 }
+    : travel id madeBy FuncArg colon Exprs              { AST.Func $2 (reverse $4) (Just AST.TUnit) $6 }
     | travel id colon Exprs                             { AST.Func $2 [] (Just AST.TUnit) $4 }
 
 FuncDecl        :: { AST.Declaration }
-    : book id of Type about FuncDefArgDecl colon Exprs  { AST.Func $2 (reverse $6) (Just $4) $8 }
+    : book id of Type about FuncArg colon Exprs         { AST.Func $2 (reverse $6) (Just $4) $8 }
     | book id of Type colon Exprs                       { AST.Func $2 [] (Just $4) $6 }
-    | book id about FuncDefArgDecl colon Exprs          { AST.Func $2 (reverse $4) Nothing $6 }
+    | book id about FuncArg colon Exprs                 { AST.Func $2 (reverse $4) Nothing $6 }
     | book id colon Exprs                               { AST.Func $2 [] Nothing $4 }
+
+FuncArg         :: { [AST.FuncArg] }
+    : FuncDefArgDecl                                    { $1 }
+    | FuncArgDecl                                       { $1 }
+    | FuncArgDecl comma FuncDefArgDecl                  { $3 ++ $1 }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : Type bender id is Expr                            { [AST.FuncArg $3 $1 (Just $5)] }
-    | Type bender id                                    { [AST.FuncArg $3 $1 Nothing] }
     | FuncDefArgDecl comma Type bender id is Expr       { (AST.FuncArg $5 $3 (Just $7)):$1 }
-    | FuncDefArgDecl comma Type bender id               { (AST.FuncArg $5 $3 Nothing):$1 }
 
 FuncArgDecl     :: { [AST.FuncArg] }
     : Type bender id                                    { [AST.FuncArg $3 $1 Nothing] }
     | FuncArgDecl comma Type bender id                  { (AST.FuncArg $5 $3 Nothing):$1 }
-    
 
 StructIdDecls   :: { [(String, AST.Type)] }
     :  id skillOf Type                                  { [($1, $3)] }

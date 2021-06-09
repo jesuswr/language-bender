@@ -51,10 +51,9 @@
 --     ~
 -- -.
 
-bender aang is 
-.-
-. .
-4 . . .
-3 . . . . . . . 
-
--.
+--book book1 about water bender katara, air bender aang is 73:
+--.-
+--. .
+--4 . . .
+--3 . . . . . . . ~ .
+---.
