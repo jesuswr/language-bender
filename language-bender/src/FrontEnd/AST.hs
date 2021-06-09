@@ -16,14 +16,17 @@ data Type = TFloat
           | TBool
           | TArray { arrType :: Type, size :: Expr }
           | TPtr   { ptrType :: Type }
+          | TUnit 
           | CustomType { tName :: Name }
           deriving(Eq, Show)
+
+data FuncArg = FuncArg{ argName :: Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq, Show)
 
 -- Declaration of new things
 data Declaration    = Variable  { decName :: Name, varType ::  Maybe Type, initVal :: Maybe Expr, isConst :: Bool }
                     | Union     { decName :: Name, fields :: [(Name, Type)] }
                     | Struct    { decName :: Name, fields :: [(Name, Type)] }
-                    | Func      { decName :: Name, args :: [(Name, Type)], retType :: Type , body :: Expr }
+                    | Func      { decName :: Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
                     deriving(Eq, Show)
 
 -- Binary operators

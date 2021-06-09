@@ -6,5 +6,5 @@ module FrontEnd.Utils where
 data Position = Position {row :: Int, col :: Int} deriving (Eq)
 
 instance Show Position where
-	show (Position r c) =
-		" line " ++ (show r) ++ ", column " ++ (show c) ++ "."
+    show (Position r c) =
+        " line " ++ show r ++ ", column " ++ show c ++ "."

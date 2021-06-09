@@ -88,7 +88,7 @@ data TokenType =
     TKto                                 |
     TKchar            {char  :: String}  |
     TKstring          {str :: String}    |
-    TKid              {id  :: String}    |
+    TKid              {name  :: String}    |
     TKelipsis                            |
     TKtoBeContinued                      |
     TKburst                              |
@@ -101,7 +101,7 @@ instance Show Token where
     show (Token pos TKfloat{numF = n} )  = "Literal Float: '" ++ (show n) ++ (showPos pos)
     show (Token pos TKchar{char = c} )   = "Literal Char: '" ++ c ++ (showPos pos)
     show (Token pos TKstring{str = s} )  = "Literal String: '" ++ s ++ (showPos pos)
-    show (Token pos TKid{id = id_} )     = "Identifier token: '" ++ id_ ++ (showPos pos)
+    show (Token pos TKid{name = id_} )     = "Identifier token: '" ++ id_ ++ (showPos pos)
     show (Token pos token )              = "Token: '" ++ (show token) ++ (showPos pos)
 
 showPos :: Position -> String

@@ -112,13 +112,27 @@ Declaration     :: { AST.Declaration }
     | energy id allows UnionIdDecls                     { AST.Union  $2 (reverse $4) }
     | VarDecl                                           { $1 }
     | FuncDecl                                          { $1 }
+    | ProcDecl                                          { $1 }
+
+ProcDecl        :: { AST.Declaration }
+    : travel id madeBy FuncDefArgDecl colon Exprs       { AST.Func $2 (reverse $4) (Just AST.TUnit) $6 }
+    | travel id colon Exprs                             { AST.Func $2 [] (Just AST.TUnit) $4 }
 
 FuncDecl        :: { AST.Declaration }
-    : book id of Type about FuncArgDecl colon Exprs     { AST.Func $2 (reverse $6) $4 $8 }
- 
-FuncArgDecl     :: { [(String, AST.Type)] }
-    : Type bender id                                    { [($3, $1)] }
-    | FuncArgDecl comma Type bender id                  { ($5, $3):$1 } -- @todo xD no recuerdo como es la sintaxis para def args
+    : book id of Type about FuncDefArgDecl colon Exprs  { AST.Func $2 (reverse $6) (Just $4) $8 }
+    | book id of Type colon Exprs                       { AST.Func $2 [] (Just $4) $6 }
+    | book id about FuncDefArgDecl colon Exprs          { AST.Func $2 (reverse $4) Nothing $6 }
+    | book id colon Exprs                               { AST.Func $2 [] Nothing $4 }
+
+FuncDefArgDecl :: { [AST.FuncArg] }
+    : Type bender id is Expr                            { [AST.FuncArg $3 $1 (Just $5)] }
+    | FuncDefArgDecl comma Type bender id is Expr       { (AST.FuncArg $5 $3 (Just $7)):$1 }
+    | FuncArgDecl                                       { $1 }
+
+FuncArgDecl     :: { [AST.FuncArg] }
+    : Type bender id                                    { [AST.FuncArg $3 $1 Nothing] }
+    | FuncArgDecl comma Type bender id                  { (AST.FuncArg $5 $3 Nothing):$1 }
+    
 
 StructIdDecls   :: { [(String, AST.Type)] }
     :  id skillOf Type                                  { [($1, $3)] }
@@ -149,11 +163,38 @@ Expr            :: { AST.Expr }
     |  toBeContinued                                    { AST.Continue  Nothing }
     |  burst                                            { AST.Break     Nothing }
     |  return                                           { AST.Return    Nothing }
+    |  ExprBlock                                        { $1 }
+
 
 Exprs           ::  { AST.Expr }
     :   Expr                                            { $1 }
+    |   unit                                            { AST.ConstUnit }
     |   Declaration                                     { AST.Declaration $1 } 
-            
+
+-- < Expression block Grammar > -----------------------------------------------------------  
+ExprBlock       ::  { AST.Expr }
+    :   beginBlock ExprSeq endBlock                     { AST.ExprBlock (reverse $2) }
+    |   beginBlock endBlock                             { AST.ExprBlock [] }
+
+ExprSeq         ::  { [AST.Expr] }
+    :   LastInBlock                                     { [$1] }
+    |   Seq LastInBlock                                 { $2:$1 }
+
+Seq             :: { [AST.Expr] }
+    :   Exprs Dots                                      { [$1] }
+    |   Seq Exprs Dots                                  { $2:$1 }
+    |   Dots                                            { [] }
+    
+LastInBlock     :: { AST.Expr }
+    :   Exprs                                           { $1 }
+    |   Exprs Dots                                      { $1 }
+
+Dots            :: { [AST.Expr] }
+    :   dot                                             { [] }
+    |   Dots dot                                        { [] }
+
+--------------------------------------------------------------------------------------------  
+
 
 Type            :: { AST.Type }
     :  water                                            { AST.TFloat }
