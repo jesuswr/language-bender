@@ -62,3 +62,8 @@
 --.-
 --    aang is 312.
 ---.
+
+
+book book1:
+    opening 5 of a chakras from 312321321 to 10 : 
+        while lightning master doing : 3

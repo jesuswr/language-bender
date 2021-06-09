@@ -168,6 +168,9 @@ Expr            :: { AST.Expr }
     | return                                            { AST.Return    Nothing }
     | ExprBlock                                         { $1 }
     | Assign                                            { $1 }
+    | opening Expr of id chakrasFrom 
+        Expr to Expr colon Expr                         { AST.For $4 $2 $6 $8 $10 }
+    | while Expr doing colon Expr                       { AST.While $2 $5 }
 
 Exprs           ::  { AST.Expr }
     : Expr                                              { $1 }
@@ -203,15 +206,18 @@ Dots            :: { [AST.Expr] }
 
 --------------------------------------------------------------------------------------------  
 
+ExprList        :: { [AST.Expr] }
+    : Expr                                              { [$1] }
+    | ExprList comma Expr                               { $3:$1 }
 
 Type            :: { AST.Type }
-    :  water                                            { AST.TFloat }
-    |  air                                              { AST.TInt }
-    |  earth                                            { AST.TChar }
-    |  string                                           { AST.TString }   
-    |  fire                                             { AST.TBool }
-    |  id                                               { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
-    |  Type art                                         { AST.TPtr $1 }
+    : water                                             { AST.TFloat }
+    | air                                               { AST.TInt }
+    | earth                                             { AST.TChar }
+    | string                                            { AST.TString }   
+    | fire                                              { AST.TBool }
+    | id                                                { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
+    | Type art                                          { AST.TPtr $1 }
 
 
 {

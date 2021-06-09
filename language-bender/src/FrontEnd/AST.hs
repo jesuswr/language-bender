@@ -72,7 +72,7 @@ data Expr   = ConstChar       { cVal :: String}
             | Id              { name :: Name}
             | Assign          { variable :: Name, value :: Expr}
             | FunCall         { fname :: Name, actualArgs :: [Expr]}
-            | For             { initDecl :: Declaration, cond :: Expr, step :: Expr, cicBody :: Expr }
+            | For             { iteratorName :: Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr }
             | While           { cond :: Expr, cicBody :: Expr}
             | If              { cond :: Expr, accExpr :: Expr, failExpr :: Expr }
             | ExprBlock       { exprs :: [Expr] }
