@@ -126,8 +126,9 @@ FuncDecl        :: { AST.Declaration }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : Type bender id is Expr                            { [AST.FuncArg $3 $1 (Just $5)] }
+    | Type bender id                                    { [AST.FuncArg $3 $1 Nothing] }
     | FuncDefArgDecl comma Type bender id is Expr       { (AST.FuncArg $5 $3 (Just $7)):$1 }
-    | FuncArgDecl                                       { $1 }
+    | FuncDefArgDecl comma Type bender id               { (AST.FuncArg $5 $3 Nothing):$1 }
 
 FuncArgDecl     :: { [AST.FuncArg] }
     : Type bender id                                    { [AST.FuncArg $3 $1 Nothing] }
