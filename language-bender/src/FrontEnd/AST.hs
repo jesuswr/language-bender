@@ -37,11 +37,12 @@ data BoolBinOpr  = And
                  deriving(Eq, Show)
 
 --  Boolean Expressions
-data BoolExpr   = True
-                | False
+data BoolExpr   = ConstTrue
+                | ConstFalse
                 | BoolBinOp { bBinOpr :: BoolBinOpr, lBVal :: Expr, rBVal :: Expr } 
                 | Negation  { bVal :: Expr }
                 deriving(Eq, Show)
+
 
 -- < Numeric expressions > --------------------------------------
 --  Numeric Binary Operators
@@ -82,7 +83,7 @@ data Expr   = ConstChar       { cVal :: String}
             | Declaration     { decl :: Declaration }
             | NumExpr         { numExpr :: NumExpr }
             | BoolExpr        { boolExpr :: BoolExpr }
-            | ExprList        { list :: [Expr] }
+            | Array           { list :: [Expr] }
             deriving(Eq, Show)
 
 -- Program data type     

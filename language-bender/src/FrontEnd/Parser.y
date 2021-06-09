@@ -34,6 +34,7 @@ import qualified FrontEnd.Errors  as E
     nation              { TK.Token _ TK.TKnation }
     year                { TK.Token _ TK.TKyear }
     masterOf            { TK.Token _ TK.TKmasterOf }
+    rightNow            { TK.Token _ TK.TKRightNow }
     disciple            { TK.Token _ TK.TKdisciple }
     element             { TK.Token _ TK.TKelement }
     compoundBy          { TK.Token _ TK.TKcompoundBy }
@@ -153,12 +154,12 @@ VarDecl         :: { AST.Declaration }
     | eternal bender id is Expr                         { AST.Variable $3 Nothing (Just $5) True }
 
 Expr            :: { AST.Expr } 
-    : int                                               { AST.ConstInt $1 }
-    | float                                             { AST.ConstFloat $1 }
+    : int                                               { AST.NumExpr . AST.ConstInt $ $1 }
+    | float                                             { AST.NumExpr . AST.ConstFloat $ $1 }
     | char                                              { AST.ConstChar $1 }
     | string                                            { AST.ConstString $1 }
-    | lightning                                         { AST.ConstBool True }
-    | fireMaster                                        { AST.ConstBool False }
+    | lightning                                         { AST.BoolExpr $ AST.ConstTrue }
+    | fireMaster                                        { AST.BoolExpr $ AST.ConstFalse }
     | id                                                { AST.Id $1 }
     | toBeContinued Expr                                { AST.Continue  (Just $2) }
     | burst Expr                                        { AST.Break     (Just $2) }
@@ -172,6 +173,7 @@ Expr            :: { AST.Expr }
         Expr to Expr colon Expr                         { AST.For $4 $2 $6 $8 $10 }
     | while Expr doing colon Expr                       { AST.While $2 $5 }
 
+
 Exprs           ::  { AST.Expr }
     : Expr                                              { $1 }
     | unit                                              { AST.ConstUnit }
@@ -179,7 +181,7 @@ Exprs           ::  { AST.Expr }
 
 Assign          :: { AST.Expr }
     : id is Expr                                        { AST.Assign $1 $3 } --@TODO struct y union
-
+    | id is masterOf ExprList rightNow                  { AST.Assign $1 $ AST.Array (reverse $4) }
 
 
 -- < Expression block Grammar > -----------------------------------------------------------  

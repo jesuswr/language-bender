@@ -84,6 +84,7 @@ tokens :-
 <0>     nation @w since                            { pushTK TKnation }
 <0>     years                                      { pushTK TKyear }
 <0>     master @w of                               { pushTK TKmasterOf }
+<0>     right @w now                               { pushTK TKRightNow }
 <0>     disciple                                   { pushTK TKdisciple }
 
                 -- struct

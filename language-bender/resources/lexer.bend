@@ -64,6 +64,12 @@
 ---.
 
 
+--book book1:
+--    opening 5 of a chakras from 312321321 to 10 : 
+--        while lightning master doing : 3
+
 book book1:
-    opening 5 of a chakras from 312321321 to 10 : 
-        while lightning master doing : 3
+.-
+    aang is master of 3.0, 4.0 right now. 
+    aang is master of 3.0, 4.0 right now.
+-.

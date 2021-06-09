@@ -34,6 +34,7 @@ data TokenType =
     TKnation                             |
     TKyear                               |
     TKmasterOf                           |
+    TKRightNow                           |
     TKdisciple                           |
     TKelement                            |
     TKcompoundBy                         |
