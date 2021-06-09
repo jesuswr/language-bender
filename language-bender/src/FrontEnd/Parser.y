@@ -138,12 +138,12 @@ FuncArgDecl     :: { [AST.FuncArg] }
     | FuncArgDecl comma Type bender id                  { (AST.FuncArg $5 $3 Nothing):$1 }
 
 StructIdDecls   :: { [(String, AST.Type)] }
-    :  id skillOf Type                                  { [($1, $3)] }
-    |  StructIdDecls comma id skillOf Type              { ($3, $5):$1 }
+    : id skillOf Type                                   { [($1, $3)] }
+    | StructIdDecls comma id skillOf Type               { ($3, $5):$1 }
 
 UnionIdDecls    :: { [(String, AST.Type)] }
-    :  id techniqueOf Type bending                      { [($1, $3)] }
-    |  UnionIdDecls comma id techniqueOf Type bending   { ($3, $5):$1 }
+    : id techniqueOf Type bending                       { [($1, $3)] }
+    | UnionIdDecls comma id techniqueOf Type bending    { ($3, $5):$1 }
 
 VarDecl         :: { AST.Declaration }
     : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
@@ -153,48 +153,53 @@ VarDecl         :: { AST.Declaration }
     | eternal bender id is Expr                         { AST.Variable $3 Nothing (Just $5) True }
 
 Expr            :: { AST.Expr } 
-    :  int                                              { AST.ConstInt $1 }
-    |  float                                            { AST.ConstFloat $1 }
-    |  char                                             { AST.ConstChar $1 }
-    |  string                                           { AST.ConstString $1 }
-    |  lightning                                        { AST.ConstBool True }
-    |  fireMaster                                       { AST.ConstBool False }
-    |  id                                               { AST.Id $1 }
-    |  toBeContinued Expr                               { AST.Continue  (Just $2) }
-    |  burst Expr                                       { AST.Break     (Just $2) }
-    |  return Expr                                      { AST.Return    (Just $2) }
-    |  toBeContinued                                    { AST.Continue  Nothing }
-    |  burst                                            { AST.Break     Nothing }
-    |  return                                           { AST.Return    Nothing }
-    |  ExprBlock                                        { $1 }
-
+    : int                                               { AST.ConstInt $1 }
+    | float                                             { AST.ConstFloat $1 }
+    | char                                              { AST.ConstChar $1 }
+    | string                                            { AST.ConstString $1 }
+    | lightning                                         { AST.ConstBool True }
+    | fireMaster                                        { AST.ConstBool False }
+    | id                                                { AST.Id $1 }
+    | toBeContinued Expr                                { AST.Continue  (Just $2) }
+    | burst Expr                                        { AST.Break     (Just $2) }
+    | return Expr                                       { AST.Return    (Just $2) }
+    | toBeContinued                                     { AST.Continue  Nothing }
+    | burst                                             { AST.Break     Nothing }
+    | return                                            { AST.Return    Nothing }
+    | ExprBlock                                         { $1 }
+    | Assign                                            { $1 }
 
 Exprs           ::  { AST.Expr }
-    :   Expr                                            { $1 }
-    |   unit                                            { AST.ConstUnit }
-    |   Declaration                                     { AST.Declaration $1 } 
+    : Expr                                              { $1 }
+    | unit                                              { AST.ConstUnit }
+    | Declaration                                       { AST.Declaration $1 } 
+
+Assign          :: { AST.Expr }
+    : id is Expr                                        { AST.Assign $1 $3 } --@TODO struct y union
+
+
 
 -- < Expression block Grammar > -----------------------------------------------------------  
 ExprBlock       ::  { AST.Expr }
-    :   beginBlock ExprSeq endBlock                     { AST.ExprBlock (reverse $2) }
-    |   beginBlock endBlock                             { AST.ExprBlock [] }
+    : beginBlock ExprSeq endBlock                       { AST.ExprBlock (reverse $2) }
+    | beginBlock endBlock                               { AST.ExprBlock [] }
 
 ExprSeq         ::  { [AST.Expr] }
-    :   LastInBlock                                     { [$1] }
-    |   Seq LastInBlock                                 { $2:$1 }
+    : LastInBlock                                       { [$1] }
+    | Seq LastInBlock                                   { $2:$1 }
 
 Seq             :: { [AST.Expr] }
-    :   Exprs Dots                                      { [$1] }
-    |   Seq Exprs Dots                                  { $2:$1 }
-    |   Dots                                            { [] }
+    : Exprs Dots                                        { [$1] }
+    | Seq Exprs Dots                                    { $2:$1 }
+    | Dots                                              { [] }
     
 LastInBlock     :: { AST.Expr }
-    :   Exprs                                           { $1 }
-    |   Exprs Dots                                      { $1 }
+    : Exprs                                             { $1 }
+    | Exprs Dots                                        { $1 }
 
 Dots            :: { [AST.Expr] }
-    :   dot                                             { [] }
-    |   Dots dot                                        { [] }
+    : dot                                               { [] }
+    | Dots dot                                          { [] }
 
 --------------------------------------------------------------------------------------------  
 
