@@ -33,7 +33,18 @@ data Declaration    = Variable  { decName :: Name, varType ::  Maybe Type, initV
 --  Boolean Operators
 data BoolBinOpr  = And
                  | Or
-                 | Eq
+                 deriving(Eq, Show)
+
+--  Order operators
+data OrdOpr      = LessThan
+                 | GreaterThan
+                 | LessThanEq
+                 | GreaterThanEq
+                 deriving(Eq, Show)
+
+--  Equality / Comparation operators
+data EqOpr       = Eq
+                 | NotEq
                  deriving(Eq, Show)
 
 --  Boolean Expressions
@@ -41,8 +52,9 @@ data BoolExpr   = TrueC
                 | FalseC
                 | BoolBinOp { bBinOpr :: BoolBinOpr, lBVal :: Expr, rBVal :: Expr } 
                 | Negation  { bVal :: Expr }
+                | OrdOpr    { ordOpr :: OrdOpr, lOrdVal :: NumExpr, rOrdVal :: NumExpr }
+                | CompOpr   { eqOpr  :: EqOpr, lCompVal :: Expr, rCompVal :: Expr }
                 deriving(Eq, Show)
-
 
 -- < Numeric expressions > --------------------------------------
 --  Numeric Binary Operators
