@@ -70,8 +70,8 @@ import qualified FrontEnd.Errors  as E
     endBlock            { TK.Token _ TK.TKendBlock }
     dot                 { TK.Token _ TK.TKdot }
     unit                { TK.Token _ TK.TKunit }
-    openParent          { TK.Token _ TK.TKopenParent }
-    closeParent         { TK.Token _ TK.TKcloseParent }
+    '('                 { TK.Token _ TK.TKopenParent }
+    ')'                 { TK.Token _ TK.TKcloseParent }
     in                  { TK.Token _ TK.TKin }
     bookWith            { TK.Token _ TK.TKbookWith }
     with                { TK.Token _ TK.TKwith }
@@ -221,6 +221,64 @@ Type            :: { AST.Type }
     | id                                                { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
     | Type art                                          { AST.TPtr $1 }
 
+-- < Expression > ---------------------------------------------------------------------------
+
+Expr         :: { AST.Expr }                         
+             : SimpleExpr                       { $1 }
+             | SimpleExpr RelOpr SimpleExpr     { BinaryOp $2 $1 $3 }
+
+SimpleExpr   :: { AST.Expr }
+             : UnTerm                           { $1 }
+             | AddOprs                          { $1 }
+
+UnTerm       :: { AST.Expr }
+             : Term                             { $1 }
+             | UnOper UnTerm                    { AST.NumExpr (NumBinOp $1 $2) }
+
+AddOprs      :: { AST.Expr }
+             : UnTerm AddOpr UnTerm             { BinaryOp $2 $1 $3 }
+             | AddOprs AddOpr UnTerm            { BinaryOp $2 $1 $3 }
+
+Term         :: { AST.Expr }
+             : Factor                           { $1 }
+             | MulOprs                          { $1 }
+
+MulOprs      :: { AST.Expr }
+             : Factor MulOpr Factor             { BinaryOp $2 $1 $3 }
+             | MulOprs MulOpr Factor            { BinaryOp $2 $1 $3 }
+             
+Factor       :: { AST.Expr }                                 
+             :  num                             { AST.NumExpr . AST.NumConst $ $1 }
+             |  id                              { AST.Id $1 }
+             |  lightning                       { AST.BoolExpr AST.TrueC }
+             |  fireMaster                      { AST.BoolExpr AST.FalseC }
+             | '(' Expr ')'                     { $2 }
+             | not Factor                       { AST.BoolExpr (AST.Negation $2) }
+             | Expr                             { FunExpr ( getId . fst $ $1) (snd $1) (getPos . fst $ $1) } -- shift reduce warning
+
+
+RelOpr       :: { String }
+             : equal                              { "=" } 
+             --| '<>'                             { "<>" } 
+             | lessEqThan                         { "<=" }   
+             | greaterEqThan                      { ">=" }
+             | greaterThan                        { ">" }
+             | lessThan                           { "<" }
+
+UnOper       :: { AST.NumUnOpr }                      
+             : andThen                          { AST.Positive }
+             | but                              { AST.Negative }
+
+AddOpr       :: { AST.NumBinOp }
+             : '+'                              { "+" }
+             | '-'                              { "-" }
+             | or                               { "or" }
+
+MulOpr       :: { String }
+             : '*'                              { "*" }   
+             | '/'                              { "/" }   
+             | mod                              { "mod" }   
+             | and                              { "and" }
 
 {
 

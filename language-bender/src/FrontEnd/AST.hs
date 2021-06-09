@@ -37,8 +37,8 @@ data BoolBinOpr  = And
                  deriving(Eq, Show)
 
 --  Boolean Expressions
-data BoolExpr   = ConstTrue
-                | ConstFalse
+data BoolExpr   = TrueC
+                | FalseC
                 | BoolBinOp { bBinOpr :: BoolBinOpr, lBVal :: Expr, rBVal :: Expr } 
                 | Negation  { bVal :: Expr }
                 deriving(Eq, Show)
