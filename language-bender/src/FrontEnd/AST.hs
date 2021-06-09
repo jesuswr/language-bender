@@ -40,6 +40,8 @@ data BinOpr  = Mult
              | Eq
              deriving(Eq, Show)
 
+data NumExpr = MultOpr {lval :: Expr, rval :: Expr} deriving(Eq, Show)
+
 -- Unary operators
 data UnOpr  = Negation  
             | Negative
@@ -66,6 +68,8 @@ data Expr   = ConstInt        { iVal :: Int}
             | Break           { maybeExpr :: Maybe Expr }
             | Continue        { maybeExpr :: Maybe Expr }
             | Declaration     { decl :: Declaration }
+            | NumExpr         { intExpr :: NumExpr }
+            | ExprList        { list :: [Expr] }
             deriving(Eq, Show)
 
 -- Program data type     
