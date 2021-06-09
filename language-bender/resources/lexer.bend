@@ -68,8 +68,26 @@
 --    opening 5 of a chakras from 312321321 to 10 : 
 --        while lightning master doing : 3
 
-book book1:
+--book book1:
+--.-
+--    aang is master of 3.0, 4.0 right now. 
+--    aang is master of 3.0, 4.0 right now.
+---.
+
+--book sueno:
+--.-
+--    wahrman is learning sueno control using cama, almohada right now.
+---.
+
+--book x:
+--.-
+--    aang is learning fire's burn technique from lightning master.
+---.
+
+---bender aang is learning fire's burn technique from lightning master
+
+book y:
 .-
-    aang is master of 3.0, 4.0 right now. 
-    aang is master of 3.0, 4.0 right now.
+    trying aang's fly technique.
+    using katara's walk technique
 -.

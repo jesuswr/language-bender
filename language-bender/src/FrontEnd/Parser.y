@@ -45,7 +45,7 @@ import qualified FrontEnd.Errors  as E
     allows              { TK.Token _ TK.TKallows }
     techniqueOf         { TK.Token _ TK.TKtechniqueOf }
     bending             { TK.Token _ TK.TKbending }
-    techniquesFrom      { TK.Token _ TK.TKtechniquesFrom }
+    techniqueFrom       { TK.Token _ TK.TKtechniqueFrom }
     using               { TK.Token _ TK.TKusing }
     quotmark_s          { TK.Token _ TK.TKquotmark_s }
     technique           { TK.Token _ TK.TKtechnique }
@@ -148,18 +148,18 @@ UnionIdDecls    :: { [(String, AST.Type)] }
 
 VarDecl         :: { AST.Declaration }
     : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
-    | bender id of Type is Expr                         { AST.Variable $2 (Just $4) (Just $6) False }
-    | bender id is Expr                                 { AST.Variable $2 Nothing (Just $4) False }
-    | eternal bender id of Type is Expr                 { AST.Variable $3 (Just $5) (Just $7) True }
-    | eternal bender id is Expr                         { AST.Variable $3 Nothing (Just $5) True }
+    | bender id of Type is Assign                       { AST.Variable $2 (Just $4) (Just $6) False }
+    | bender id is Assign                               { AST.Variable $2 Nothing (Just $4) False }
+    | eternal bender id of Type is Assign               { AST.Variable $3 (Just $5) (Just $7) True }
+    | eternal bender id is Assign                       { AST.Variable $3 Nothing (Just $5) True }
 
 Expr            :: { AST.Expr } 
     : int                                               { AST.NumExpr . AST.ConstInt $ $1 }
     | float                                             { AST.NumExpr . AST.ConstFloat $ $1 }
     | char                                              { AST.ConstChar $1 }
     | string                                            { AST.ConstString $1 }
-    | lightning                                         { AST.BoolExpr $ AST.ConstTrue }
-    | fireMaster                                        { AST.BoolExpr $ AST.ConstFalse }
+    | lightning                                         { AST.BoolExpr $ AST.TrueC }
+    | fireMaster                                        { AST.BoolExpr $ AST.FalseC }
     | id                                                { AST.Id $1 }
     | toBeContinued Expr                                { AST.Continue  (Just $2) }
     | burst Expr                                        { AST.Break     (Just $2) }
@@ -168,10 +168,12 @@ Expr            :: { AST.Expr }
     | burst                                             { AST.Break     Nothing }
     | return                                            { AST.Return    Nothing }
     | ExprBlock                                         { $1 }
-    | Assign                                            { $1 }
+    | id is Assign                                      { AST.Assign $1 $3 }
     | opening Expr of id chakrasFrom 
         Expr to Expr colon Expr                         { AST.For $4 $2 $6 $8 $10 }
     | while Expr doing colon Expr                       { AST.While $2 $5 }
+    | trying id quotmark_s id technique                 { AST.UnionTrying $2 $4 }
+    | using id quotmark_s id technique                  { AST.UnionUsing $2 $4 }
 
 
 Exprs           ::  { AST.Expr }
@@ -180,9 +182,18 @@ Exprs           ::  { AST.Expr }
     | Declaration                                       { AST.Declaration $1 } 
 
 Assign          :: { AST.Expr }
-    : id is Expr                                        { AST.Assign $1 $3 } --@TODO struct y union
-    | id is masterOf ExprList rightNow                  { AST.Assign $1 $ AST.Array (reverse $4) }
+    : Expr                                              { $1 } 
+    | masterOf ExprList rightNow                        { AST.Array (reverse $2) }
+    | AssignStruct                                      { $1 }
+    | AssignUnion                                       { $1 }
 
+AssignStruct    :: { AST.Expr }
+    : learning Type control using
+        ExprList rightNow                               { AST.ConstStruct $2 (reverse $5) }
+
+AssignUnion     :: { AST.Expr }
+    : learning Type quotmark_s id 
+        techniqueFrom Expr                              { AST.ConstUnion $2 $4 $6}
 
 -- < Expression block Grammar > -----------------------------------------------------------  
 ExprBlock       ::  { AST.Expr }
@@ -221,64 +232,6 @@ Type            :: { AST.Type }
     | id                                                { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
     | Type art                                          { AST.TPtr $1 }
 
--- < Expression > ---------------------------------------------------------------------------
-
-Expr         :: { AST.Expr }                         
-             : SimpleExpr                       { $1 }
-             | SimpleExpr RelOpr SimpleExpr     { BinaryOp $2 $1 $3 }
-
-SimpleExpr   :: { AST.Expr }
-             : UnTerm                           { $1 }
-             | AddOprs                          { $1 }
-
-UnTerm       :: { AST.Expr }
-             : Term                             { $1 }
-             | UnOper UnTerm                    { AST.NumExpr (NumBinOp $1 $2) }
-
-AddOprs      :: { AST.Expr }
-             : UnTerm AddOpr UnTerm             { BinaryOp $2 $1 $3 }
-             | AddOprs AddOpr UnTerm            { BinaryOp $2 $1 $3 }
-
-Term         :: { AST.Expr }
-             : Factor                           { $1 }
-             | MulOprs                          { $1 }
-
-MulOprs      :: { AST.Expr }
-             : Factor MulOpr Factor             { BinaryOp $2 $1 $3 }
-             | MulOprs MulOpr Factor            { BinaryOp $2 $1 $3 }
-             
-Factor       :: { AST.Expr }                                 
-             :  num                             { AST.NumExpr . AST.NumConst $ $1 }
-             |  id                              { AST.Id $1 }
-             |  lightning                       { AST.BoolExpr AST.TrueC }
-             |  fireMaster                      { AST.BoolExpr AST.FalseC }
-             | '(' Expr ')'                     { $2 }
-             | not Factor                       { AST.BoolExpr (AST.Negation $2) }
-             | Expr                             { FunExpr ( getId . fst $ $1) (snd $1) (getPos . fst $ $1) } -- shift reduce warning
-
-
-RelOpr       :: { String }
-             : equal                              { "=" } 
-             --| '<>'                             { "<>" } 
-             | lessEqThan                         { "<=" }   
-             | greaterEqThan                      { ">=" }
-             | greaterThan                        { ">" }
-             | lessThan                           { "<" }
-
-UnOper       :: { AST.NumUnOpr }                      
-             : andThen                          { AST.Positive }
-             | but                              { AST.Negative }
-
-AddOpr       :: { AST.NumBinOp }
-             : '+'                              { "+" }
-             | '-'                              { "-" }
-             | or                               { "or" }
-
-MulOpr       :: { String }
-             : '*'                              { "*" }   
-             | '/'                              { "/" }   
-             | mod                              { "mod" }   
-             | and                              { "and" }
 
 {
 

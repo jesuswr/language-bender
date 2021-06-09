@@ -45,7 +45,7 @@ data TokenType =
     TKallows                             |
     TKtechniqueOf                        |
     TKbending                            |
-    TKtechniquesFrom                     |
+    TKtechniqueFrom                      |
     TKusing                              |
     TKquotmark_s                         |
     TKtechnique                          |

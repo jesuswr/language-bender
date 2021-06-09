@@ -81,7 +81,9 @@ data NumExpr = ConstInt       { iVal :: Int }
 -- Possible expressions. Remember, everything its an expression
 data Expr   = ConstChar       { cVal :: String}
             | ConstString     { sVal :: String}
-            | ConstUnit
+            | ConstStruct     { structType :: Type, list :: [Expr] }
+            | ConstUnion      { unionType :: Type, tag :: Name, value :: Expr }
+            | ConstUnit        -- cambiar const union y struct por instance
             | Id              { name :: Name}
             | Assign          { variable :: Name, value :: Expr}
             | FunCall         { fname :: Name, actualArgs :: [Expr]}
@@ -96,6 +98,8 @@ data Expr   = ConstChar       { cVal :: String}
             | NumExpr         { numExpr :: NumExpr }
             | BoolExpr        { boolExpr :: BoolExpr }
             | Array           { list :: [Expr] }
+            | UnionTrying     { unionName :: Name, tag :: Name }
+            | UnionUsing      { unionName :: Name, tag :: Name }
             deriving(Eq, Show)
 
 -- Program data type     
