@@ -35,6 +35,8 @@ processArgs args
             let opts = Opts {
                     fileName = name,
                     help     = False,
+                    justLex  = False,
+                    justPar  = False,
                     printLex = False,
                     printPar = False,
                     objFile  = ""
