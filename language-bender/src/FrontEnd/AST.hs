@@ -29,35 +29,47 @@ data Declaration    = Variable  { decName :: Name, varType ::  Maybe Type, initV
                     | Func      { decName :: Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
                     deriving(Eq, Show)
 
--- Binary operators
-data BinOpr  = Mult
-             | Div
-             | Mod
-             | Sum 
-             | Sub
-             | And
-             | Or
-             | Eq
+-- < Boolean Expressions > --------------------------------------
+--  Boolean Operators
+data BoolBinOpr  = And
+                 | Or
+                 | Eq
+                 deriving(Eq, Show)
+
+--  Boolean Expressions
+data BoolExpr   = True
+                | False
+                | BoolBinOp { bBinOpr :: BoolBinOpr, lBVal :: Expr, rBVal :: Expr } 
+                | Negation  { bVal :: Expr }
+                deriving(Eq, Show)
+
+-- < Numeric expressions > --------------------------------------
+--  Numeric Binary Operators
+data NumBinOpr  = Sum
+                | Sub
+                | Mult
+                | Div
+                | Mod
+                deriving(Eq, Show)
+
+--  Numeric Unary Operators
+data NumUnOpr   = Positive
+                | Negative
+                deriving(Eq, Show)
+
+--  Numeric Expression
+data NumExpr = ConstInt       { iVal :: Int }
+             | ConstFloat     { fVal :: Float }
+             | NumBinOp       { nBinOp :: NumBinOpr, lNVal :: Expr, rNVal :: Expr }
+             | NumUnOp        { nUnOp  :: NumUnOpr, val :: Expr }
              deriving(Eq, Show)
 
-data NumExpr = MultOpr {lval :: Expr, rval :: Expr} deriving(Eq, Show)
-
--- Unary operators
-data UnOpr  = Negation  
-            | Negative
-            | Unit
-            deriving(Eq, Show)
 
 -- Possible expressions. Remember, everything its an expression
-data Expr   = ConstInt        { iVal :: Int}
-            | ConstFloat      { fVal :: Float}
-            | ConstChar       { cVal :: String}
+data Expr   = ConstChar       { cVal :: String}
             | ConstString     { sVal :: String}
-            | ConstBool       { bVal :: Bool }
             | ConstUnit
             | Id              { name :: Name}
-            | BinOper         { bOpr :: BinOpr, lexpr :: Expr, rexpr :: Expr}
-            | UnOper          { uOpr :: UnOpr, expr :: Expr }
             | Assign          { variable :: Name, value :: Expr}
             | FunCall         { fname :: Name, actualArgs :: [Expr]}
             | For             { initDecl :: Declaration, cond :: Expr, step :: Expr, cicBody :: Expr }
@@ -68,7 +80,8 @@ data Expr   = ConstInt        { iVal :: Int}
             | Break           { maybeExpr :: Maybe Expr }
             | Continue        { maybeExpr :: Maybe Expr }
             | Declaration     { decl :: Declaration }
-            | NumExpr         { intExpr :: NumExpr }
+            | NumExpr         { numExpr :: NumExpr }
+            | BoolExpr        { boolExpr :: BoolExpr }
             | ExprList        { list :: [Expr] }
             deriving(Eq, Show)
 
