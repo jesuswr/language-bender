@@ -96,6 +96,7 @@ import qualified FrontEnd.Errors  as E
  
 
 
+%right is 
 %right ')' otherwise
 
 %%
@@ -150,11 +151,12 @@ UnionIdDecls    :: { [(String, AST.Type)] }
 
 VarDecl         :: { AST.Declaration }
     : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
-    | bender id of Type is Assign                       { AST.Variable $2 (Just $4) (Just $6) False }
-    | bender id is Assign                               { AST.Variable $2 Nothing (Just $4) False }
-    | eternal bender id of Type is Assign               { AST.Variable $3 (Just $5) (Just $7) True }
-    | eternal bender id is Assign                       { AST.Variable $3 Nothing (Just $5) True }
+    | bender id of Type Assign                       { AST.Variable $2 (Just $4) (Just $5) False }
+    | bender id Assign                               { AST.Variable $2 Nothing (Just $3) False }
+    | eternal bender id of Type Assign               { AST.Variable $3 (Just $5) (Just $6) True }
+    | eternal bender id Assign                       { AST.Variable $3 Nothing (Just $4) True }
     | bender id is reincarnationOf id                   { AST.Reference $2 $5 } 
+    
 
 Expr            :: { AST.Expr } 
     : int                                               { AST.NumExpr . AST.ConstInt $ $1 }
@@ -171,8 +173,8 @@ Expr            :: { AST.Expr }
     | burst                                             { AST.Break     Nothing }
     | return                                            { AST.Return    Nothing }
     | ExprBlock                                         { $1 }
-    | id is Assign                                      { AST.Assign $1 $3 }
-    | id quotmark_s id is Assign                        { AST.StructAssign $1 $3 $5 }
+    | id Assign                                         { AST.Assign $1 $2 }
+    | id quotmark_s id Assign                           { AST.StructAssign $1 $3 $4 }
     | opening Expr of id chakrasFrom 
         Expr to Expr colon Expr                         { AST.For $4 $2 $6 $8 $10 }
     | while Expr doing colon Expr                       { AST.While $2 $5 }
@@ -180,6 +182,11 @@ Expr            :: { AST.Expr }
     | using id quotmark_s id technique                  { AST.UnionUsing $2 $4 }
     | if '(' Expr ')' Expr otherwise Expr               { AST.If $3 $5 $7 }
     | if '(' Expr ')' Expr                              { AST.If $3 $5 AST.ConstUnit }
+    | in id bookWith ExprList elipsis                   { AST.FunCall $2 (reverse $4) }
+    | in id bookWith elipsis                            { AST.FunCall $2 [] }
+    | id bookWith ExprList elipsis                      { AST.FunCall $1 (reverse $3) }
+    | id bookWith elipsis                               { AST.FunCall $1 [] }
+
 
 
 Exprs           ::  { AST.Expr }
@@ -187,11 +194,12 @@ Exprs           ::  { AST.Expr }
     | unit                                              { AST.ConstUnit }
     | Declaration                                       { AST.Declaration $1 } 
 
+
 Assign          :: { AST.Expr }
-    : Expr                                              { $1 } 
-    | masterOf ExprList rightNow                        { AST.Array (reverse $2) }
-    | AssignStruct                                      { $1 }
-    | AssignUnion                                       { $1 }
+    : is Expr                                           { $2 } 
+    | is masterOf ExprList rightNow                     { AST.Array (reverse $3) }
+    | is AssignStruct                                   { $2 }
+    | is AssignUnion                                    { $2 }
 
 AssignStruct    :: { AST.Expr }
     : learning Type control using
@@ -222,8 +230,6 @@ LastInBlock     :: { AST.Expr }
 Dots            :: { [AST.Expr] }
     : dot                                               { [] }
     | Dots dot                                          { [] }
-
---------------------------------------------------------------------------------------------  
 
 ExprList        :: { [AST.Expr] }
     : Expr                                              { [$1] }
