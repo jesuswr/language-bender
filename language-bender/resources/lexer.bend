@@ -86,8 +86,19 @@
 
 ---bender aang is learning fire's burn technique from lightning master
 
-book y:
-.-
-    trying aang's fly technique.
-    using katara's walk technique
--.
+--book y:
+--.-
+--    trying aang's fly technique.
+--    using katara's walk technique
+---.
+
+
+--book a:
+--.-
+--    if (1) if (2) 3 otherwise 4.
+---.
+--
+--book a:
+--.-
+--    aangs's fly is 3.
+---.

@@ -86,6 +86,7 @@ data Expr   = ConstChar       { cVal :: String}
             | ConstUnit        -- cambiar const union y struct por instance
             | Id              { name :: Name}
             | Assign          { variable :: Name, value :: Expr}
+            | StructAssign    { variable :: Name, tag :: Name, value :: Expr}
             | FunCall         { fname :: Name, actualArgs :: [Expr]}
             | For             { iteratorName :: Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr }
             | While           { cond :: Expr, cicBody :: Expr}

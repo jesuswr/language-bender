@@ -11,7 +11,6 @@ import qualified FrontEnd.Errors  as E
 %name parseTokens
 %tokentype { TK.Token }
 %error { parseError }
--- %monad {}?
 
 %token
     bender              { TK.Token _ TK.TKbender }
@@ -96,6 +95,9 @@ import qualified FrontEnd.Errors  as E
     id                  { TK.Token _ (TK.TKid $$ ) }
  
 
+
+%right ')' otherwise
+
 %%
 -- Grammar
 
@@ -169,11 +171,14 @@ Expr            :: { AST.Expr }
     | return                                            { AST.Return    Nothing }
     | ExprBlock                                         { $1 }
     | id is Assign                                      { AST.Assign $1 $3 }
+    | id quotmark_s id is Assign                        { AST.StructAssign $1 $3 $5 }
     | opening Expr of id chakrasFrom 
         Expr to Expr colon Expr                         { AST.For $4 $2 $6 $8 $10 }
     | while Expr doing colon Expr                       { AST.While $2 $5 }
     | trying id quotmark_s id technique                 { AST.UnionTrying $2 $4 }
     | using id quotmark_s id technique                  { AST.UnionUsing $2 $4 }
+    | if '(' Expr ')' Expr otherwise Expr               { AST.If $3 $5 $7 }
+    | if '(' Expr ')' Expr                              { AST.If $3 $5 AST.ConstUnit }
 
 
 Exprs           ::  { AST.Expr }
