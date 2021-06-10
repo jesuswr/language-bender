@@ -17,7 +17,7 @@ import qualified FrontEnd.Errors  as E
     of                  { TK.Token _ TK.TKof }
     eternal             { TK.Token _ TK.TKeternal }
     is                  { TK.Token _ TK.TKis }
-    reincarnation       { TK.Token _ TK.TKreincarnation }
+    reincarnationOf     { TK.Token _ TK.TKreincarnation }
     art                 { TK.Token _ TK.TKart }
     apprentice          { TK.Token _ TK.TKapprentice }
     born                { TK.Token _ TK.TKborn }
@@ -154,6 +154,7 @@ VarDecl         :: { AST.Declaration }
     | bender id is Assign                               { AST.Variable $2 Nothing (Just $4) False }
     | eternal bender id of Type is Assign               { AST.Variable $3 (Just $5) (Just $7) True }
     | eternal bender id is Assign                       { AST.Variable $3 Nothing (Just $5) True }
+    | bender id is reincarnationOf id                   { AST.Reference $2 $5 } 
 
 Expr            :: { AST.Expr } 
     : int                                               { AST.NumExpr . AST.ConstInt $ $1 }
