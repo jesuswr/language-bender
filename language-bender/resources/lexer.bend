@@ -86,8 +86,34 @@
 
 ---bender aang is learning fire's burn technique from lightning master
 
-book y:
+--book y:
+--.-
+--    trying aang's fly technique.
+--    using katara's walk technique
+---.
+
+
+--book a:
+--.-
+--    if (1) if (2) 3 otherwise 4.
+---.
+--
+--book a:
+--.-
+--    aangs's fly is 3.
+---.
+
+--bender aang is reincarnation of anOldAvatar
+
+book x:
 .-
-    trying aang's fly technique.
-    using katara's walk technique
+    in x book with 2, 3, 4...
+-.
+
+book x:
+.-
+    bender aang of air& is 1.
+
+    artist aang has died.
+    bender aang is born as air member.
 -.

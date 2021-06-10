@@ -17,6 +17,7 @@ data Type = TFloat
           | TArray { arrType :: Type, size :: Expr }
           | TPtr   { ptrType :: Type }
           | TUnit 
+          | TReference { refType :: Type }
           | CustomType { tName :: Name }
           deriving(Eq, Show)
 
@@ -24,6 +25,7 @@ data FuncArg = FuncArg{ argName :: Name, argType :: Type, defaultVal :: Maybe Ex
 
 -- Declaration of new things
 data Declaration    = Variable  { decName :: Name, varType ::  Maybe Type, initVal :: Maybe Expr, isConst :: Bool }
+                    | Reference { decName :: Name, refName :: Name }
                     | Union     { decName :: Name, fields :: [(Name, Type)] }
                     | Struct    { decName :: Name, fields :: [(Name, Type)] }
                     | Func      { decName :: Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
@@ -86,6 +88,7 @@ data Expr   = ConstChar       { cVal :: String}
             | ConstUnit        -- cambiar const union y struct por instance
             | Id              { name :: Name}
             | Assign          { variable :: Name, value :: Expr}
+            | StructAssign    { variable :: Name, tag :: Name, value :: Expr}
             | FunCall         { fname :: Name, actualArgs :: [Expr]}
             | For             { iteratorName :: Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr }
             | While           { cond :: Expr, cicBody :: Expr}
@@ -100,6 +103,8 @@ data Expr   = ConstChar       { cVal :: String}
             | Array           { list :: [Expr] }
             | UnionTrying     { unionName :: Name, tag :: Name }
             | UnionUsing      { unionName :: Name, tag :: Name }
+            | New             { typeName :: Type }
+            | Delete          { ptrExpr :: Expr }
             deriving(Eq, Show)
 
 -- Program data type     
