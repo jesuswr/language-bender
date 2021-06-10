@@ -51,7 +51,8 @@ tokens :-
 <0>     bender                                     { pushTK TKbender }
 <0>     of                                         { pushTK TKof }
 <0>     eternal                                    { pushTK TKeternal }
-
+<0>     \&                                         { pushTK TKReference }
+<0>     \&+                                        { lexError }
                 -- asignment
 <0>     is                                         { pushTK TKis }
 
@@ -60,6 +61,7 @@ tokens :-
 
                 -- pointers
 <0>     art                                        { pushTK TKart }
+<0>     artist                                     { pushTK TKartist }
 <0>     an @w apprentice                           { pushTK TKapprentice }
 <0>     born @w as                                 { pushTK TKborn }
 <0>     member                                     { pushTK TKmember }

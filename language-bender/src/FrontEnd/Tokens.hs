@@ -15,11 +15,13 @@ data Token = Token {pos :: Position, tktype :: TokenType} deriving(Eq)
 -- Token Type Information
 data TokenType = 
     TKbender                             |
+    TKReference                          |
     TKof                                 |
     TKeternal                            |
     TKis                                 |
     TKreincarnation                      |
     TKart                                |
+    TKartist                             |
     TKapprentice                         |
     TKborn                               |
     TKmember                             |

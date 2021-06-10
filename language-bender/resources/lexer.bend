@@ -104,3 +104,16 @@
 ---.
 
 --bender aang is reincarnation of anOldAvatar
+
+book x:
+.-
+    in x book with 2, 3, 4...
+-.
+
+book x:
+.-
+    bender aang of air& is 1.
+
+    artist aang has died.
+    bender aang is born as air member.
+-.

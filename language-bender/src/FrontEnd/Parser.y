@@ -16,9 +16,11 @@ import qualified FrontEnd.Errors  as E
     bender              { TK.Token _ TK.TKbender }
     of                  { TK.Token _ TK.TKof }
     eternal             { TK.Token _ TK.TKeternal }
+    '&'                 { TK.Token _ TK.TKReference }
     is                  { TK.Token _ TK.TKis }
     reincarnationOf     { TK.Token _ TK.TKreincarnation }
     art                 { TK.Token _ TK.TKart }
+    artist              { TK.Token _ TK.TKartist}
     apprentice          { TK.Token _ TK.TKapprentice }
     born                { TK.Token _ TK.TKborn }
     member              { TK.Token _ TK.TKmember }
@@ -94,7 +96,6 @@ import qualified FrontEnd.Errors  as E
     string              { TK.Token _ (TK.TKstring $$) }
     id                  { TK.Token _ (TK.TKid $$ ) }
  
-
 
 %right is 
 %right ')' otherwise
@@ -186,7 +187,8 @@ Expr            :: { AST.Expr }
     | in id bookWith elipsis                            { AST.FunCall $2 [] }
     | id bookWith ExprList elipsis                      { AST.FunCall $1 (reverse $3) }
     | id bookWith elipsis                               { AST.FunCall $1 [] }
-
+    | born Type member                                  { AST.New $2 }
+    | artist Expr died                                  { AST.Delete $2 } 
 
 
 Exprs           ::  { AST.Expr }
@@ -243,7 +245,7 @@ Type            :: { AST.Type }
     | fire                                              { AST.TBool }
     | id                                                { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
     | Type art                                          { AST.TPtr $1 }
-
+    | Type '&'                                          { AST.TReference $1 }
 
 {
 

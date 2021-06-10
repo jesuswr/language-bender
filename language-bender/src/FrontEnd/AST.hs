@@ -17,6 +17,7 @@ data Type = TFloat
           | TArray { arrType :: Type, size :: Expr }
           | TPtr   { ptrType :: Type }
           | TUnit 
+          | TReference { refType :: Type }
           | CustomType { tName :: Name }
           deriving(Eq, Show)
 
@@ -102,6 +103,8 @@ data Expr   = ConstChar       { cVal :: String}
             | Array           { list :: [Expr] }
             | UnionTrying     { unionName :: Name, tag :: Name }
             | UnionUsing      { unionName :: Name, tag :: Name }
+            | New             { typeName :: Type }
+            | Delete          { ptrExpr :: Expr }
             deriving(Eq, Show)
 
 -- Program data type     
