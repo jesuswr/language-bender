@@ -1,3 +1,8 @@
+ </p align="center">
+<img src="https://github.com/jesuswr/language-bender/blob/develop/avatarcover.jpg" />
+
+<p align="center">
+
 # Language Bender
 
 ![ok](https://img.shields.io/badge/made-with%20love-green)
