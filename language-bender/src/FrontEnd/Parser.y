@@ -97,12 +97,25 @@ import qualified FrontEnd.Errors  as E
     id                  { TK.Token _ (TK.TKid $$ ) }
  
 
-%right is 
-%right not 
-%left '<' '<=' '>' '>=' '=='
-%left or '+' '-'  -- additive operators
-%left '*' '/' '%' and               -- multiplicative operators
+--%right is 
+--%right not 
+--%left '<' '<=' '>' '>=' '=='
+--%left or '+' '-'                    -- additive operators
+--%left '*' '/' '%' and               -- multiplicative operators
+
+%left and or
+%nonassoc '<' '<=' '>' '>=' 
+%left '=='
+%left '+' '-'
+%left '*' '/' '%'
+
+%right not
+
 %right ')' otherwise
+
+
+
+
 
 %%
 -- Grammar
@@ -189,7 +202,7 @@ Expr            :: { AST.Expr }
     | id bookWith elipsis                               { AST.FunCall $1 [] }
     | born Type member                                  { AST.New $2 }
     | artist Expr died                                  { AST.Delete $2 } 
-
+    | BExpr                                             { $1 }
 
 Exprs           ::  { AST.Expr }
     : Expr                                              { $1 }
@@ -250,42 +263,29 @@ Type            :: { AST.Type }
 -- < Expression > ---------------------------------------------------------------------------
 
 BExpr :: { AST.Expr }
-    : BoolExpr                                          { AST.BoolExpr $1}
-    | NumExpr                                           { AST.NumExpr $1 }
+    : Term BinOpr Term                                  { AST.Op2 $2 $1 $3 }
+    | BExpr BinOpr Term                                 { AST.Op2 $2 $1 $3 }
 
-BoolExpr :: { AST.BoolExpr }
-    : true                                              { AST.TrueC }
-    | false                                             { AST.FalseC }
-    | Expr BoolOpr Expr                                 { AST.BoolBinOp $2 $1 $3  }  
-    | NumExpr RelOpr NumExpr                            { AST.OrdOp $2 $1 $3 }
-    | Expr EqOpr Expr                                   { AST.CompOpr $2 $1 $3 }
-
-NumExpr :: { AST.NumExpr }
+Term :: { AST.Expr }    
     : int                                               { AST.ConstInt $1 }
     | float                                             { AST.ConstFloat $1 }
-    | Expr ArithOpr Expr                                { AST.NumBinOp $2 $1 $3 } 
+    | '(' Expr ')'                                      { $2 }
 
 -- >> Operators -----------------------------------------------------------------------------
 
-RelOpr   :: { AST.OrdOpr }
-    : '<'                                               { AST.LessThan }
-    | '<='                                              { AST.LessThanEq }
-    | '>'                                               { AST.GreaterThan }
-    | '>='                                              { AST.GreaterThanEq }
-
-EqOpr ::  { AST.EqOpr }
-    : '=='                                              { AST.Eq }
-
-BoolOpr  :: { AST.BoolBinOpr }
-    : and                                               { AST.And }
-    | or                                                { AST.Or }
-
-ArithOpr :: { AST.NumBinOpr }
-    : '+'                                               { AST.Sum }
-    | '-'                                               { AST.Sub }
-    | '*'                                               { AST.Mult }
-    | '/'                                               { AST.Div }
-    | '%'                                               { AST.Mod }
+BinOpr :: { AST.Opr2 }
+    : '+'                                             { AST.Sum }
+    | '-'                                             { AST.Sub }
+    | '*'                                             { AST.Mult }
+    | '/'                                             { AST.Div }
+    | '%'                                             { AST.Mod }
+    | and                                             { AST.And }
+    | or                                              { AST.Or }
+    | '<'                                             { AST.Lt }
+    | '<='                                            { AST.LtEq }
+    | '>'                                             { AST.Gt }
+    | '>='                                            { AST.GtEq }
+    | '=='                                            { AST.Eq }
 
 {
 

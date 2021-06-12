@@ -31,58 +31,29 @@ data Declaration    = Variable  { decName :: Name, varType ::  Maybe Type, initV
                     | Func      { decName :: Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
                     deriving(Eq, Show)
 
--- < Boolean Expressions > --------------------------------------
---  Boolean Operators
-data BoolBinOpr  = And
-                 | Or
-                 deriving(Eq, Show)
 
---  Order operators
-data OrdOpr      = LessThan
-                 | GreaterThan
-                 | LessThanEq
-                 | GreaterThanEq
-                 deriving(Eq, Show)
+data Opr2 = Sum
+          | Sub
+          | Mult
+          | Div
+          | Mod
+          | Lt
+          | LtEq
+          | Gt
+          | GtEq
+          | Eq
+          | And
+          | Not
+          deriving(Eq, Show)
 
---  Equality / Comparation operators
-data EqOpr       = Eq
-                 | NotEq
-                 deriving(Eq, Show)
-
---  Boolean Expressions
-data BoolExpr   = TrueC
-                | FalseC
-                | BoolBinOp { bBinOpr :: BoolBinOpr, lBVal :: Expr, rBVal :: Expr } 
-                | Negation  { bVal :: Expr }
-                | OrdOp     { ordOpr :: OrdOpr, lOrdVal :: NumExpr, rOrdVal :: NumExpr }
-                | CompOpr   { eqOpr  :: EqOpr, lCompVal :: Expr, rCompVal :: Expr }
-                deriving(Eq, Show)
-
--- < Numeric expressions > --------------------------------------
---  Numeric Binary Operators
-data NumBinOpr  = Sum
-                | Sub
-                | Mult
-                | Div
-                | Mod
-                deriving(Eq, Show)
-
---  Numeric Unary Operators
-data NumUnOpr   = Positive
-                | Negative
-                deriving(Eq, Show)
-
---  Numeric Expression
-data NumExpr = ConstInt       { iVal :: Int }
-             | ConstFloat     { fVal :: Float }
-             | NumBinOp       { nBinOp :: NumBinOpr, lNVal :: Expr, rNVal :: Expr }
-             | NumUnOp        { nUnOp  :: NumUnOpr, val :: Expr }
-             deriving(Eq, Show)
-
+data Opr1 = Negation
+          | Negative
 
 -- Possible expressions. Remember, everything its an expression
 data Expr   = ConstChar       { cVal :: String}
             | ConstString     { sVal :: String}
+            | ConstInt        { iVal :: Int }
+            | ConstFloat        { fVal :: Int }
             | ConstStruct     { structType :: Type, list :: [Expr] }
             | ConstUnion      { unionType :: Type, tag :: Name, value :: Expr }
             | ConstUnit        -- cambiar const union y struct por instance
@@ -98,8 +69,7 @@ data Expr   = ConstChar       { cVal :: String}
             | Break           { maybeExpr :: Maybe Expr }
             | Continue        { maybeExpr :: Maybe Expr }
             | Declaration     { decl :: Declaration }
-            | NumExpr         { numExpr :: NumExpr }
-            | BoolExpr        { boolExpr :: BoolExpr }
+            | Op2             { op2 :: Opr2, opr1 :: Expr, opr2 :: Expr }
             | Array           { list :: [Expr] }
             | UnionTrying     { unionName :: Name, tag :: Name }
             | UnionUsing      { unionName :: Name, tag :: Name }
@@ -108,17 +78,17 @@ data Expr   = ConstChar       { cVal :: String}
             deriving(Eq, Show)
 
 -- Program data type     
-newtype Program = Program{ decls :: [Declaration] }deriving(Show, Eq)
+newtype Program = Program{ decls :: [Declaration] }
 
 
 ---------- < show instances > -----------
 
-
+{-
 --instance Show Type where
 --  show (Type) = "xd"
 
 identShowType :: Type -> Int -> String
-identShowType type ident = undefined
+identShowType type_ ident = undefined
 
 --instance Show FuncArg where
 --  show = "xd"
@@ -185,3 +155,4 @@ instance Show Program where
 
 identShowProgram :: Program -> String
 identShowProgram p = undefined
+-}
