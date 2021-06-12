@@ -1,0 +1,6 @@
+reincarnation water
+reincarnation air
+reincarnationreincarnation earth
+reincarnation reincarnation fire
+reincarnation reincarnation reincarnation metal
+bender aang is reincarnation of roku
