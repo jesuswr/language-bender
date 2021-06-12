@@ -157,6 +157,7 @@ tokens :-
 <0>     is @w greater @w than                      { pushTK TKgreaterThan }
 <0>     is @w greater @w or @w equal @w than       { pushTK TKgreaterEqThan }
 <0>     is @w equal                                { pushTK TKequal }
+<0>     is @w not @w equal                         { pushTK TKnotEqual }
 
                 -- while
 <0>     while                                      { pushTK TKwhile }

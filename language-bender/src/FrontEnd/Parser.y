@@ -81,6 +81,7 @@ import qualified FrontEnd.Errors  as E
     '>'                 { TK.Token _ TK.TKgreaterThan }
     '>='                { TK.Token _ TK.TKgreaterEqThan }
     '=='                { TK.Token _ TK.TKequal }
+    '!='                { TK.Token _ TK.TKnotEqual }
     while               { TK.Token _ TK.TKwhile }
     doing               { TK.Token _ TK.TKdoing }
     opening             { TK.Token _ TK.TKopening }
@@ -96,25 +97,19 @@ import qualified FrontEnd.Errors  as E
     string              { TK.Token _ (TK.TKstring $$) }
     id                  { TK.Token _ (TK.TKid $$ ) }
  
+%right ')' otherwise
 
---%right is 
---%right not 
---%left '<' '<=' '>' '>=' '=='
---%left or '+' '-'                    -- additive operators
---%left '*' '/' '%' and               -- multiplicative operators
-
+%right is 
 %left and or
+
 %nonassoc '<' '<=' '>' '>=' 
-%left '=='
+%left '==' '!='
 %left '+' '-'
 %left '*' '/' '%'
 
 %right not
-
-%right ')' otherwise
-
-
-
+%right colon
+%right techniqueFrom
 
 
 %%
@@ -122,7 +117,7 @@ import qualified FrontEnd.Errors  as E
 
 -- Source Symbol
 Program         :: { AST.Program }
-    : Declarations                                  { AST.Program (reverse $1) }
+    : Declarations                                      { AST.Program (reverse $1) }
 
 -- Program as declaration list
 Declarations    :: { [AST.Declaration] }
@@ -152,8 +147,8 @@ FuncArg         :: { [AST.FuncArg] }
     | FuncArgDecl comma FuncDefArgDecl                  { $3 ++ $1 }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
-    : Type bender id is Expr                            { [AST.FuncArg $3 $1 (Just $5)] }
-    | FuncDefArgDecl comma Type bender id is Expr       { (AST.FuncArg $5 $3 (Just $7)):$1 }
+    : Type bender id Assign                             { [AST.FuncArg $3 $1 (Just $4)] }
+    | FuncDefArgDecl comma Type bender id Assign        { (AST.FuncArg $5 $3 (Just $6)):$1 }
 
 FuncArgDecl     :: { [AST.FuncArg] }
     : Type bender id                                    { [AST.FuncArg $3 $1 Nothing] }
@@ -169,23 +164,18 @@ UnionIdDecls    :: { [(String, AST.Type)] }
 
 VarDecl         :: { AST.Declaration }
     : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
-    | bender id of Type Assign                       { AST.Variable $2 (Just $4) (Just $5) False }
-    | bender id Assign                               { AST.Variable $2 Nothing (Just $3) False }
-    | eternal bender id of Type Assign               { AST.Variable $3 (Just $5) (Just $6) True }
-    | eternal bender id Assign                       { AST.Variable $3 Nothing (Just $4) True }
+    | bender id of Type Assign                          { AST.Variable $2 (Just $4) (Just $5) False }
+    | bender id Assign                                  { AST.Variable $2 Nothing (Just $3) False }
+    | eternal bender id of Type Assign                  { AST.Variable $3 (Just $5) (Just $6) True }
+    | eternal bender id Assign                          { AST.Variable $3 Nothing (Just $4) True }
     | bender id is reincarnationOf id                   { AST.Reference $2 $5 } 
     
 
 Expr            :: { AST.Expr } 
     : char                                              { AST.ConstChar $1 }
+    | '(' Expr ')'                                      { $2 }
     | string                                            { AST.ConstString $1 }
     | id                                                { AST.Id $1 }
-    | toBeContinued Expr                                { AST.Continue  (Just $2) }
-    | burst Expr                                        { AST.Break     (Just $2) }
-    | return Expr                                       { AST.Return    (Just $2) }
-    | toBeContinued                                     { AST.Continue  Nothing }
-    | burst                                             { AST.Break     Nothing }
-    | return                                            { AST.Return    Nothing }
     | ExprBlock                                         { $1 }
     | id Assign                                         { AST.Assign $1 $2 }
     | id quotmark_s id Assign                           { AST.StructAssign $1 $3 $4 }
@@ -202,13 +192,41 @@ Expr            :: { AST.Expr }
     | id bookWith elipsis                               { AST.FunCall $1 [] }
     | born Type member                                  { AST.New $2 }
     | artist Expr died                                  { AST.Delete $2 } 
-    | BExpr                                             { $1 }
+    | unit                                              { AST.ConstUnit }
 
+    -- >> Const Values ----------------------------------------------------------
+    | int                                               { AST.ConstInt $1 }
+    | float                                             { AST.ConstFloat $1 }
+    | true                                              { AST.ConstTrue }
+    | false                                             { AST.ConstFalse }
+
+    -- >> Binary Expressions ----------------------------------------------------
+
+    | Expr '+' Expr                                     { AST.Op2 AST.Sum $1 $3 }
+    | Expr '-' Expr                                     { AST.Op2 AST.Sub $1 $3 }
+    | Expr '*' Expr                                     { AST.Op2 AST.Mult $1 $3 }
+    | Expr '/' Expr                                     { AST.Op2 AST.Div $1 $3 }
+    | Expr '%' Expr                                     { AST.Op2 AST.Mod $1 $3 }
+    | Expr '<' Expr                                     { AST.Op2 AST.Lt $1 $3 }
+    | Expr '<=' Expr                                    { AST.Op2 AST.LtEq $1 $3 }
+    | Expr '>' Expr                                     { AST.Op2 AST.Gt $1 $3 }
+    | Expr '>=' Expr                                    { AST.Op2 AST.GtEq $1 $3 }
+    | Expr '==' Expr                                    { AST.Op2 AST.Eq $1 $3 }
+    | Expr '!=' Expr                                    { AST.Op2 AST.NotEq $1 $3 }
+    | Expr and Expr                                     { AST.Op2 AST.And $1 $3 }
+    | Expr or Expr                                      { AST.Op2 AST.Or $1 $3 }
+
+    -- >> Unary Expressions -----------------------------------------------------
+    | not Expr                                          { AST.Op1 AST.Negation $2 }
+    | '-' Expr                                          { AST.Op1 AST.Negative $2 }
+
+    -- < None evaluable expressions > -------------------------------------------
 Exprs           ::  { AST.Expr }
     : Expr                                              { $1 }
-    | unit                                              { AST.ConstUnit }
     | Declaration                                       { AST.Declaration $1 } 
-
+    | toBeContinued Expr                                { AST.Continue  (Just $2) }
+    | burst Expr                                        { AST.Break     (Just $2) }
+    | return Expr                                       { AST.Return    (Just $2) }
 
 Assign          :: { AST.Expr }
     : is Expr                                           { $2 } 
@@ -262,30 +280,7 @@ Type            :: { AST.Type }
 
 -- < Expression > ---------------------------------------------------------------------------
 
-BExpr :: { AST.Expr }
-    : Term BinOpr Term                                  { AST.Op2 $2 $1 $3 }
-    | BExpr BinOpr Term                                 { AST.Op2 $2 $1 $3 }
 
-Term :: { AST.Expr }    
-    : int                                               { AST.ConstInt $1 }
-    | float                                             { AST.ConstFloat $1 }
-    | '(' Expr ')'                                      { $2 }
-
--- >> Operators -----------------------------------------------------------------------------
-
-BinOpr :: { AST.Opr2 }
-    : '+'                                             { AST.Sum }
-    | '-'                                             { AST.Sub }
-    | '*'                                             { AST.Mult }
-    | '/'                                             { AST.Div }
-    | '%'                                             { AST.Mod }
-    | and                                             { AST.And }
-    | or                                              { AST.Or }
-    | '<'                                             { AST.Lt }
-    | '<='                                            { AST.LtEq }
-    | '>'                                             { AST.Gt }
-    | '>='                                            { AST.GtEq }
-    | '=='                                            { AST.Eq }
 
 {
 

@@ -13,7 +13,7 @@ import FrontEnd.Utils -- Position
 data Token = Token {pos :: Position, tktype :: TokenType} deriving(Eq)
 
 -- Token Type Information
-data TokenType = 
+data TokenType =
     TKbender                             |
     TKReference                          |
     TKof                                 |
@@ -84,6 +84,7 @@ data TokenType =
     TKgreaterThan                        |
     TKgreaterEqThan                      |
     TKequal                              |
+    TKnotEqual                           |
     TKwhile                              |
     TKdoing                              |
     TKopening                            |
@@ -95,18 +96,18 @@ data TokenType =
     TKelipsis                            |
     TKtoBeContinued                      |
     TKburst                              |
-    TKreturn         
+    TKreturn
 
     deriving(Eq, Show)
 
 instance Show Token where
-    show (Token pos TKint{numI = n} )    = "Literal Integer: '" ++ (show n) ++ (showPos pos)
-    show (Token pos TKfloat{numF = n} )  = "Literal Float: '" ++ (show n) ++ (showPos pos)
-    show (Token pos TKchar{char = c} )   = "Literal Char: '" ++ c ++ (showPos pos)
-    show (Token pos TKstring{str = s} )  = "Literal String: '" ++ s ++ (showPos pos)
-    show (Token pos TKid{name = id_} )   = "Identifier token: '" ++ id_ ++ (showPos pos)
-    show (Token pos token )              = "Token: '" ++ (show token) ++ (showPos pos)
+    show (Token pos TKint{numI = n} )    = "Literal Integer: '" ++ show n ++ showPos pos
+    show (Token pos TKfloat{numF = n} )  = "Literal Float: '" ++ show n ++ showPos pos
+    show (Token pos TKchar{char = c} )   = "Literal Char: '" ++ c ++ showPos pos
+    show (Token pos TKstring{str = s} )  = "Literal String: '" ++ s ++ showPos pos
+    show (Token pos TKid{name = id_} )   = "Identifier token: '" ++ id_ ++ showPos pos
+    show (Token pos token )              = "Token: '" ++ show token ++ showPos pos
 
 showPos :: Position -> String
-showPos pos = "' -- at position: " ++ (show pos)
+showPos pos = "' -- at position: " ++ show pos
 

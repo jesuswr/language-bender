@@ -42,6 +42,7 @@ data Opr2 = Sum
           | Gt
           | GtEq
           | Eq
+          | NotEq
           | And
           | Not
           deriving(Eq, Show)
@@ -55,6 +56,8 @@ data Expr   = ConstChar       { cVal :: String}
             | ConstInt        { iVal :: Int }
             | ConstFloat        { fVal :: Int }
             | ConstStruct     { structType :: Type, list :: [Expr] }
+            | ConstTrue 
+            | ConstFalse
             | ConstUnion      { unionType :: Type, tag :: Name, value :: Expr }
             | ConstUnit        -- cambiar const union y struct por instance
             | Id              { name :: Name}
@@ -70,6 +73,7 @@ data Expr   = ConstChar       { cVal :: String}
             | Continue        { maybeExpr :: Maybe Expr }
             | Declaration     { decl :: Declaration }
             | Op2             { op2 :: Opr2, opr1 :: Expr, opr2 :: Expr }
+            | Op1             { op1 :: Opr1, opr :: Expr }
             | Array           { list :: [Expr] }
             | UnionTrying     { unionName :: Name, tag :: Name }
             | UnionUsing      { unionName :: Name, tag :: Name }
