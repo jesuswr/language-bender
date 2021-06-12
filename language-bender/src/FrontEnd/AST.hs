@@ -44,17 +44,19 @@ data Opr2 = Sum
           | Eq
           | NotEq
           | And
+          | Or
           | Not
           deriving(Eq, Show)
 
 data Opr1 = Negation
           | Negative
+          deriving(Eq, Show)
 
 -- Possible expressions. Remember, everything its an expression
 data Expr   = ConstChar       { cVal :: String}
             | ConstString     { sVal :: String}
             | ConstInt        { iVal :: Int }
-            | ConstFloat        { fVal :: Int }
+            | ConstFloat      { fVal :: Float }
             | ConstStruct     { structType :: Type, list :: [Expr] }
             | ConstTrue 
             | ConstFalse
@@ -82,7 +84,7 @@ data Expr   = ConstChar       { cVal :: String}
             deriving(Eq, Show)
 
 -- Program data type     
-newtype Program = Program{ decls :: [Declaration] }
+newtype Program = Program{ decls :: [Declaration] } deriving(Show, Eq)
 
 
 ---------- < show instances > -----------
