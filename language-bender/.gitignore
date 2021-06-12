@@ -1,2 +1,5 @@
 .stack-work/
 *~
+*.info
+Parser.hs
+Lexer.hs

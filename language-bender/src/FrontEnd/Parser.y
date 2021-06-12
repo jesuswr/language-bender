@@ -28,8 +28,8 @@ import qualified FrontEnd.Errors  as E
     air                 { TK.Token _ TK.TKair }
     water               { TK.Token _ TK.TKwater }
     fire                { TK.Token _ TK.TKfire }
-    lightning           { TK.Token _ TK.TKlightning }
-    fireMaster          { TK.Token _ TK.TKfireMaster }
+    true                { TK.Token _ TK.TKlightning }
+    false               { TK.Token _ TK.TKfireMaster }
     earth               { TK.Token _ TK.TKearth }
     metal               { TK.Token _ TK.TKmetal }
     nation              { TK.Token _ TK.TKnation }
@@ -55,11 +55,11 @@ import qualified FrontEnd.Errors  as E
     about               { TK.Token _ TK.TKabout }
     travel              { TK.Token _ TK.TKtravel }
     madeBy              { TK.Token _ TK.TKmadeBy }
-    andThen             { TK.Token _ TK.TKandThen }
-    but                 { TK.Token _ TK.TKbut }
-    andThus             { TK.Token _ TK.TKandThus }
-    besides             { TK.Token _ TK.TKbesides }
-    left                { TK.Token _ TK.TKleft }
+    '+'                 { TK.Token _ TK.TKandThen }
+    '-'                 { TK.Token _ TK.TKbut }
+    '*'                 { TK.Token _ TK.TKandThus }
+    '/'                 { TK.Token _ TK.TKbesides }
+    '%'                 { TK.Token _ TK.TKleft }
     and                 { TK.Token _ TK.TKand }
     or                  { TK.Token _ TK.TKor }
     not                 { TK.Token _ TK.TKnot }
@@ -76,11 +76,11 @@ import qualified FrontEnd.Errors  as E
     in                  { TK.Token _ TK.TKin }
     bookWith            { TK.Token _ TK.TKbookWith }
     with                { TK.Token _ TK.TKwith }
-    lessThan            { TK.Token _ TK.TKlessThan }
-    lessEqThan          { TK.Token _ TK.TKlessEqThan }
-    greaterThan         { TK.Token _ TK.TKgreaterThan }
-    greaterEqThan       { TK.Token _ TK.TKgreaterEqThan }
-    equal               { TK.Token _ TK.TKequal }
+    '<'                 { TK.Token _ TK.TKlessThan }
+    '<='                { TK.Token _ TK.TKlessEqThan }
+    '>'                 { TK.Token _ TK.TKgreaterThan }
+    '>='                { TK.Token _ TK.TKgreaterEqThan }
+    '=='                { TK.Token _ TK.TKequal }
     while               { TK.Token _ TK.TKwhile }
     doing               { TK.Token _ TK.TKdoing }
     opening             { TK.Token _ TK.TKopening }
@@ -98,6 +98,10 @@ import qualified FrontEnd.Errors  as E
  
 
 %right is 
+%right not 
+%left '<' '<=' '>' '>=' '=='
+%left or '+' '-'  -- additive operators
+%left '*' '/' '%' and               -- multiplicative operators
 %right ')' otherwise
 
 %%
@@ -160,12 +164,8 @@ VarDecl         :: { AST.Declaration }
     
 
 Expr            :: { AST.Expr } 
-    : int                                               { AST.NumExpr . AST.ConstInt $ $1 }
-    | float                                             { AST.NumExpr . AST.ConstFloat $ $1 }
-    | char                                              { AST.ConstChar $1 }
+    : char                                              { AST.ConstChar $1 }
     | string                                            { AST.ConstString $1 }
-    | lightning                                         { AST.BoolExpr $ AST.TrueC }
-    | fireMaster                                        { AST.BoolExpr $ AST.FalseC }
     | id                                                { AST.Id $1 }
     | toBeContinued Expr                                { AST.Continue  (Just $2) }
     | burst Expr                                        { AST.Break     (Just $2) }
@@ -246,6 +246,46 @@ Type            :: { AST.Type }
     | id                                                { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
     | Type art                                          { AST.TPtr $1 }
     | Type '&'                                          { AST.TReference $1 }
+
+-- < Expression > ---------------------------------------------------------------------------
+
+BExpr :: { AST.Expr }
+    : BoolExpr                                          { AST.BoolExpr $1}
+    | NumExpr                                           { AST.NumExpr $1 }
+
+BoolExpr :: { AST.BoolExpr }
+    : true                                              { AST.TrueC }
+    | false                                             { AST.FalseC }
+    | Expr BoolOpr Expr                                 { AST.BoolBinOp $2 $1 $3  }  
+    | NumExpr RelOpr NumExpr                            { AST.OrdOp $2 $1 $3 }
+    | Expr EqOpr Expr                                   { AST.CompOpr $2 $1 $3 }
+
+NumExpr :: { AST.NumExpr }
+    : int                                               { AST.ConstInt $1 }
+    | float                                             { AST.ConstFloat $1 }
+    | Expr ArithOpr Expr                                { AST.NumBinOp $2 $1 $3 } 
+
+-- >> Operators -----------------------------------------------------------------------------
+
+RelOpr   :: { AST.OrdOpr }
+    : '<'                                               { AST.LessThan }
+    | '<='                                              { AST.LessThanEq }
+    | '>'                                               { AST.GreaterThan }
+    | '>='                                              { AST.GreaterThanEq }
+
+EqOpr ::  { AST.EqOpr }
+    : '=='                                              { AST.Eq }
+
+BoolOpr  :: { AST.BoolBinOpr }
+    : and                                               { AST.And }
+    | or                                                { AST.Or }
+
+ArithOpr :: { AST.NumBinOpr }
+    : '+'                                               { AST.Sum }
+    | '-'                                               { AST.Sub }
+    | '*'                                               { AST.Mult }
+    | '/'                                               { AST.Div }
+    | '%'                                               { AST.Mod }
 
 {
 

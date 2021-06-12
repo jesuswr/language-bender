@@ -107,13 +107,6 @@
 
 book x:
 .-
-    in x book with 2, 3, 4...
--.
-
-book x:
-.-
-    bender aang of air& is 1.
-
-    artist aang has died.
-    bender aang is born as air member.
--.
+    trying aang's fly technique.
+    using katara's walk technique
+-. 

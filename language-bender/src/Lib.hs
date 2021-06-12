@@ -19,7 +19,7 @@ langBender = do
             putStrLn strError
         Right (Result opts warnings) -> do
 
-            CM.when (not $ null warnings) $ print warnings -- poner bonito
+            CM.unless (null warnings) $ print warnings -- poner bonito
 
             CM.when (help opts) $ print "help" -- poner bonito
 
@@ -30,7 +30,7 @@ langBender = do
             CM.when (printLex opts || justLex opts) $ 
                 print tokens -- poner bonito
 
-            if (justLex opts) then return ()
+            if justLex opts then return ()
                 else do
 
                     let ast = parseTokens . snd $ tokens
@@ -38,7 +38,7 @@ langBender = do
                     CM.when (printPar opts || justPar opts) $ 
                         print ast -- poner bonito
 
-                    if (justPar opts) then return ()
+                    if justPar opts then return ()
                         else do
                             putStrLn "not implemented"
                             return ()

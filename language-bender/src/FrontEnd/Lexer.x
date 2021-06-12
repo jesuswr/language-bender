@@ -169,7 +169,7 @@ tokens :-
 
                 -- control flow
 
-<0>     to @w be @w continued                      { pushTK TKtoBeContinued }
+<0>     to @w be continued                      { pushTK TKtoBeContinued }
 <0>     burst                                      { pushTK TKburst }
 <0>     this @w story @w comes @w to @w an @w end  { pushTK TKreturn }
 

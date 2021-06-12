@@ -54,7 +54,7 @@ data BoolExpr   = TrueC
                 | FalseC
                 | BoolBinOp { bBinOpr :: BoolBinOpr, lBVal :: Expr, rBVal :: Expr } 
                 | Negation  { bVal :: Expr }
-                | OrdOpr    { ordOpr :: OrdOpr, lOrdVal :: NumExpr, rOrdVal :: NumExpr }
+                | OrdOp     { ordOpr :: OrdOpr, lOrdVal :: NumExpr, rOrdVal :: NumExpr }
                 | CompOpr   { eqOpr  :: EqOpr, lCompVal :: Expr, rCompVal :: Expr }
                 deriving(Eq, Show)
 
