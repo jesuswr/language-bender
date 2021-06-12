@@ -109,3 +109,79 @@ data Expr   = ConstChar       { cVal :: String}
 
 -- Program data type     
 newtype Program = Program{ decls :: [Declaration] }deriving(Show, Eq)
+
+
+---------- < show instances > -----------
+
+
+--instance Show Type where
+--  show (Type) = "xd"
+
+identShowType :: Type -> Int -> String
+identShowType type ident = undefined
+
+--instance Show FuncArg where
+--  show = "xd"
+
+identShowFuncArg :: FuncArg -> Int -> String
+identShowFuncArg f ident = undefined
+
+--instance Show Declaration where
+--  show = "xd"
+
+identShowDeclaration :: Declaration -> Int -> String
+identShowDeclaration d ident = undefined
+
+--instance Show BoolBinOpr where
+--  show = "xd"
+
+identShowBoolBinOpr :: BoolBinOpr -> Int -> String
+identShowBoolBinOpr d ident = undefined
+
+--instance Show OrdOpr where
+--  show = "xd"
+
+identShowOrdOpr :: OrdOpr -> Int -> String
+identShowOrdOpr d ident = undefined
+
+--instance Show EqOpr where
+--  show = "xd"
+
+identShowEqOpr :: EqOpr -> Int -> String
+identShowEqOpr d ident = undefined
+
+--instance Show BoolExpr where
+--  show = "xd"
+
+identShowBoolExpr :: BoolExpr -> Int -> String
+identShowBoolExpr d ident = undefined
+
+--instance Show NumBinOpr where
+--  show = "xd"
+
+identShowNumBinOpr :: NumBinOpr -> Int -> String
+identShowNumBinOpr n ident = undefined
+
+--instance Show NumUnOpr where
+--  show = "xd"
+
+identShowNumUnOpr :: NumUnOpr -> Int -> String
+identShowNumUnOpr n ident = undefined
+
+--instance Show NumExpr where
+--  show = "xd"
+
+identShowNumExpr :: NumExpr -> Int -> String
+identShowNumExpr n ident = undefined
+
+--instance Show Expr where
+--  show = "xd"
+
+identShowExpr :: Expr -> Int -> String
+identShowExpr e ident = undefined
+
+instance Show Program where
+  show = identShowProgram
+
+identShowProgram :: Program -> String
+identShowProgram p = undefined

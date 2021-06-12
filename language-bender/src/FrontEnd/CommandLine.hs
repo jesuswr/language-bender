@@ -1,6 +1,7 @@
 module FrontEnd.CommandLine where
 
-import System.Directory
+import           System.Directory
+import qualified FrontEnd.Errors as E
 
 data Opts = Opts {
         fileName :: String,
@@ -13,24 +14,20 @@ data Opts = Opts {
     }
     deriving(Show)
 
-type ErrorMsg = String
-
-type Warning  = String
-
-data Result = Result Opts [Warning]
+data Result = Result Opts [E.Warning]
 
 -- Process incoming arguments as strings and return result if everything ok, 
 -- or an error message otherwise
-processArgs :: [String] -> IO (Either ErrorMsg Result)
+processArgs :: [String] -> IO (Either E.Error Result)
 processArgs args
     | null args =
-        return $ Left "ERROR: No arguments given"
+        return $ Left (E.CliError E.NoArgs)
     | not $ validFileName (head args) =
-        return $ Left "ERROR: The given file name its not valid"
+        return $ Left (E.CliError E.InvalidFileName)
     | otherwise = do
         fileExist <- doesFileExist name
         if not fileExist then
-            return $ Left "ERROR: The given file name doesnt exist"
+            return $ Left (E.CliError E.DoesNotExistFileName)
         else do
             let opts = Opts {
                     fileName = name,
@@ -51,7 +48,7 @@ processArgs args
 
 
 
-processFlags :: [String] -> Opts -> [String] -> (Opts, [String])
+processFlags :: [String] -> Opts -> [E.Warning] -> (Opts, [E.Warning])
 processFlags [] opts warnings =
     (opts, warnings)
 processFlags ("--help":xs) opts warnings =
@@ -73,12 +70,12 @@ processFlags ("-o":xs) opts warnings
         processFlags (tail xs) (opts{objFile = name}) warnings
     where
         name = head xs
-        noObjFileName = "WARNING: No name was given for -o flag"
-        unvalidFileName s = "WARNING: Unvalid object file name: " ++ s
+        noObjFileName = (E.CliWarning E.NoObjFileName)
+        unvalidFileName s = (E.CliWarning (E.InvalidObjFileName s))
 processFlags (x:xs) opts warnings =
     processFlags xs opts (unknownArg x:warnings)
     where
-        unknownArg s = "WARNING: Unknown argument: " ++ s
+        unknownArg s = (E.CliWarning (E.UnknownArg s))
 
 
 validObjFileName :: String -> Bool
