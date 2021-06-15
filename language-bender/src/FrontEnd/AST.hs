@@ -45,7 +45,6 @@ data Opr2 = Sum
           | NotEq
           | And
           | Or
-          | Not
           deriving(Eq)
 
 data Opr1 = Negation
@@ -161,9 +160,6 @@ identShowOpr2 ident And =
 
 identShowOpr2 ident Or =
   replicate ident ' ' ++ "Or\n"
-
-identShowOpr2 ident Not =
-  replicate ident ' ' ++ "Not\n"
 
 
 identShowFuncArg :: Int -> FuncArg -> String
