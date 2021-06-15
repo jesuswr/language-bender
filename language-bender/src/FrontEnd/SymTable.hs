@@ -12,7 +12,8 @@ import qualified FrontEnd.AST        as AST
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.Trans as T
 import qualified Control.Monad.RWS   as RWS
-import qualified Data.Map.Strict     as Map
+import qualified Data.Map.Strict     as M
+import qualified Data.List           as L
 -----------------------------------------------------------------
 
 -- <Type Definitions> ------------------------------------------
@@ -24,7 +25,7 @@ type ScopeStack = [Scope]
 type Identifier = String                        
 -- | Map from ids to its corresponding symbol data. Multiple symbols may have the same name, that's why we keep a 
 --   list of Symbols instead of a single symbol
-type Dictionary = Map.Map Identifier [Symbol] 
+type Dictionary = M.Map Identifier [Symbol] 
 -- | State used to simulate an imperative process of type checking 
 type LangBendState a = RWS.RWST () [E.Error] SymTable a
 
@@ -57,4 +58,85 @@ data SymTable = SymTable
     } deriving (Eq, Show)
 
 
+-- < Utility Functions > ----------------------------------------
 
+-- | Create a new empty table
+newTable :: SymTable
+newTable = SymTable{
+    stDict = M.empty,
+    stScopeStk = [0],
+    stNextScope = 1
+}
+
+-- | Push a new scope in the given table
+pushEmptyScope :: SymTable -> SymTable
+pushEmptyScope st@SymTable{stNextScope = s, stScopeStk = stk} = st{stNextScope = s + 1, stScopeStk = s:stk}
+
+-- | Pop Current scope; If stack is empty, leave it empty
+popCurrentScope :: SymTable -> SymTable
+popCurrentScope st@SymTable{stScopeStk = [0]} = st
+popCurrentScope st@SymTable{stScopeStk = (_:stk)} = st{stScopeStk = stk}
+
+-- | Retrieve current scope from a table
+stCurrScope :: SymTable -> Scope
+stCurrScope = head . stScopeStk  
+
+-- | Insert a new symbol. Note that the scope attribute for such symbol is going to be overriden
+insertSymbol :: Symbol 
+             -> SymTable
+             -> Maybe SymTable
+insertSymbol s st = Nothing
+    where
+        -- aux data
+        symId = identifier s                -- Symbol Name
+        currScope = stCurrScope st          -- current scope
+        maybeExisting = findSymbol symId st -- find symbol if defined with provided name 
+        
+        -- add symbol if possible 
+        newSym = s{scope = currScope}       -- symbol to be added in case of succesfull insertion.
+        symDict = stDict st                 -- current dict of symbols.
+        syms    = M.lookup symId symDict    -- find name in symbol dict.
+        newSyms = case syms of              -- if no symbol at all, list starts inexistent, create a new one 
+            Nothing -> [newSym]             -- with our new symbol. Otherwise, add symbol to current list
+            Just ls -> newSym:ls
+        newSymDict = M.insert symId newSyms symDict
+
+        newSt = st{stDict=newSymDict}
+
+
+        res = case maybeExisting of 
+            Nothing     -> Nothing
+            Just sym    -> if scope sym == currScope -- could not insert symbol if already in current scope 
+                                then Nothing 
+                                else Just newSt
+
+
+-- | Find Symbol by name if available in current scope
+findSymbol  :: Identifier   -- ^ Symbol identifier
+            -> SymTable     -- ^ Table to look in
+            -> Maybe Symbol -- ^ Symbol to return if some was found 
+findSymbol id st = findSymbol' id st (const True) 
+
+-- | Find Symbol by name that matches given predicate. 
+-- If Symbol occurs multiple times, then we return the one whose scope 
+-- is the nearest to the top of the scope stack
+findSymbol' :: Identifier       -- ^ Id to search for 
+            -> SymTable         -- ^ Table to look in
+            -> (Symbol -> Bool) -- ^ Filter function 
+            -> Maybe Symbol     -- ^ Symbol to return
+findSymbol' id st f = res
+    where 
+        scopeStk     = stScopeStk st            -- Scope stack
+        maybeSyms    = M.lookup id $ stDict st  -- Related Symbols with this name
+
+        findSym  l  =  [s | s <- l, scope s `elem` scopeStk, f s]           -- search for elems in scope that matches given property
+        maxInScope l = L.maximumBy (\a b -> compare (scope a) (scope b)) l  -- search element in maximum scope 
+
+        -- Compute result 
+        res = case maybeSyms of 
+            Nothing -> Nothing 
+            Just l  -> case findSym  l of 
+                        [] -> Nothing
+                        ss -> Just $ maxInScope ss
+ 
+        
