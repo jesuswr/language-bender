@@ -411,7 +411,7 @@ identShowDeclaration ident (Func name param retT bodyExp) =
 
 
 identShowProgram :: Program -> String
-identShowProgram program = "~  AST  ~\n"
-  ++ concatMap (identShowDeclaration 2) (decls program)
+identShowProgram program = --"~  AST  ~\n"
+  concatMap (identShowDeclaration 2) (decls program)
   ++ "\n"
 

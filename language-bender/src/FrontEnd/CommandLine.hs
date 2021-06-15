@@ -22,27 +22,37 @@ processArgs :: [String] -> IO (Either E.Error Result)
 processArgs args
     | null args =
         return $ Left (E.CliError E.NoArgs)
-    | not $ validFileName (head args) =
-        return $ Left (E.CliError E.InvalidFileName)
+    | (not $ elem "--help" args) && (not $ validFileName (head args)) =
+        return $ Left (E.CliError E.InvalidFileName) 
     | otherwise = do
-        fileExist <- doesFileExist name
-        if not fileExist then
-            return $ Left (E.CliError E.DoesNotExistFileName)
+
+        let opts = Opts {
+                fileName = name,
+                help     = False,
+                justLex  = False,
+                justPar  = False,
+                printLex = False,
+                printPar = False,
+                objFile  = ""
+        }
+        
+        if (elem "--help" args) then
+            return . Right $ Result opts{help=True} []
         else do
-            let opts = Opts {
-                    fileName = name,
-                    help     = False,
-                    justLex  = False,
-                    justPar  = False,
-                    printLex = False,
-                    printPar = False,
-                    objFile  = ""
-                }
-            let (newOpts, warnings) = processFlags (tail args) opts []
-            if null $ objFile newOpts then
-                return . Right $ Result newOpts{objFile = fileName opts} warnings
-            else
-                return . Right $ Result newOpts warnings
+
+            fileExist <- doesFileExist name
+            
+            if not fileExist 
+                then
+                    return $ Left (E.CliError E.DoesNotExistFileName)
+                else do
+                    
+                    let (newOpts, warnings) = processFlags (tail args) opts []
+                    
+                    if null $ objFile newOpts then
+                        return . Right $ Result newOpts{objFile = fileName opts} warnings
+                    else
+                        return . Right $ Result newOpts warnings
         where
             name = head args
 

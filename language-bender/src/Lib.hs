@@ -25,49 +25,53 @@ langBender = do
                 mapM_ print warnings
                 putStrLn "\n"
 
-            CM.when (help opts) $ print helpMsg
+            -- CM.when (help opts) $ print helpMsg
 
-            content <- readFile (fileName opts)
+            if help opts then 
+                putStrLn helpMsg
+            else do
 
-            let lexerResult = scanTokens content
-            let lexerErrors = fst lexerResult
-            let tokens = snd lexerResult
+                content <- readFile (fileName opts)
 
-            CM.when (not $ null lexerErrors) $ do
-                putStrLn "~ Lexer Errors ~\n"
-                mapM_ print lexerErrors
-                putStrLn "\n"
+                let lexerResult = scanTokens content
+                let lexerErrors = fst lexerResult
+                let tokens = snd lexerResult
 
-            CM.when (printLex opts || justLex opts) $ do
-                putStrLn "~ Tokens ~\n"
-                mapM_ print tokens
-                putStrLn "\n"
+                CM.when (not $ null lexerErrors) $ do
+                    putStrLn "~ Lexer Errors ~\n"
+                    mapM_ print lexerErrors
+                    putStrLn "\n"
 
-            if justLex opts then return ()
-                else do
+                CM.when (printLex opts || justLex opts) $ do
+                    putStrLn "~ Tokens ~\n"
+                    mapM_ print tokens
+                    putStrLn "\n"
 
-                    let ast = parseTokens tokens
+                if justLex opts then return ()
+                    else do
 
-                    CM.when (printPar opts || justPar opts) $ do
-                        putStrLn "~ Abstract Syntax Tree ~\n"
-                        print ast
-                        putStrLn "\n"
+                        let ast = parseTokens tokens
 
-                    if justPar opts then return ()
-                        else do
-                            putStrLn "not implemented"
-                            return ()
+                        CM.when (printPar opts || justPar opts) $ do
+                            putStrLn "~ Abstract Syntax Tree ~\n"
+                            print ast
+                            putStrLn "\n"
+
+                        if justPar opts then return ()
+                            else do
+                                putStrLn "not implemented"
+                                return ()
 
 
 
 
 helpMsg :: String
 helpMsg = "~ lbend ~ A language bender compiler.\n"
-    ++ "Usage: lbend <bend file> [options]\n"
+    ++ "Usage: stack exec -- lbend <bend file> [options]\n"
     ++ "Options:\n"
     ++ "--help         show this help.\n"
     ++ "-lex           print lexer output.\n"
     ++ "-par           print parser output.\n"
     ++ "-jlex          just use the Lexer in the input.\n"
     ++ "-jpar          just use the Lexer and the Parser in the input.\n"
-    ++ "-o <file>                Place the output into <file>."
+    ++ "-o <file>      Place the output into <file>."
