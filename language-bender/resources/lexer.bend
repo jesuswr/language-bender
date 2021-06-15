@@ -115,6 +115,6 @@ book x:
 .-
     --bender aang is 1.0 and then 20.
     --aang is 1 and then 1 and then 3.
-    1 and then 3 and thus 2
+    1 and then 3 and thus 2.
     3 and thus 2 and then 1
 -.

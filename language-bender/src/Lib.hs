@@ -55,7 +55,6 @@ langBender = do
                         CM.when (printPar opts || justPar opts) $ do
                             putStrLn "~ Abstract Syntax Tree ~\n"
                             print ast
-                            putStrLn "\n"
 
                         if justPar opts then return ()
                             else do
