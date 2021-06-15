@@ -16,15 +16,14 @@ type Identifier = String
 
 
 data Category
-    = Variable      {}
-    | Constant      {}
-    | Type          {}
-    | Procedure     {}
-    | Function      {}
-    | StructType    {}
-    | UnionType     {}
-    | ReferenceType {}
-    | Parameter     {}
+    = Variable      { varType ::  Maybe AST.Type, initVal :: Maybe AST.Expr }
+    | Constant      { varType ::  AST.Type, initVal :: AST.Expr }
+    | Type          { unType :: AST.Type}
+    | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
+    | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
+    | StructType    { fields :: [(AST.Name, AST.Type)] }
+    | UnionType     { fields :: [(AST.Name, AST.Type)] }
+    | Reference     { refName :: AST.Name, refType :: AST.Type }
     deriving (Eq, Show)
 
 
@@ -32,7 +31,7 @@ data SymValue = SymValue
     { identifier :: Identifier          -- Entry name
     , category :: Category              -- Category of the entry
     , scope :: Scope                    -- current scope at insertion
-    , enrtyType :: (Maybe String)       -- pointer to another entry
+    , enrtyType :: (Maybe SymValue)     -- pointer to another entry
     } deriving (Eq, Show)
 
 type Dictionary = Map.Map Identifier [SymValue]
