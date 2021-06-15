@@ -105,8 +105,16 @@
 
 --bender aang is reincarnation of anOldAvatar
 
+--book x:
+--.-
+--    trying aang's fly technique.
+--    using katara's walk technique
+---. 
+
 book x:
 .-
-    trying aang's fly technique.
-    using katara's walk technique
--. 
+    --bender aang is 1.0 and then 20.
+    --aang is 1 and then 1 and then 3.
+    1 and then 3 and thus 2
+    3 and thus 2 and then 1
+-.
