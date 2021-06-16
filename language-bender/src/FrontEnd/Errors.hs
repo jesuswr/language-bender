@@ -22,11 +22,17 @@ data CliError = NoArgs
 data ParsingError = ...
 -}
 
+-- | Static Analysis Errors
+data StaticError = SymbolNotInScope { symName :: Name } 
+                 | SymbolRedefinition {symName :: Name} 
+                 | ReferencingNonVariable { symName :: Name } deriving(Eq, Show)  
+
 -- Error Type: Possible errors we can report in the command line, so they should be properly 
 -- formated in their show instance
 data Error = 
     LexerError { pos :: Position, lexError :: LexerError }    |
-    CliError {cliError :: CliError}
+    CliError {cliError :: CliError}                           |
+    StaticError {staticError :: StaticError}
     deriving(Eq)
 
 instance Show Error where
