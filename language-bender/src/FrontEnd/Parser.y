@@ -99,6 +99,8 @@ import qualified FrontEnd.Errors  as E
  
 %right ')' otherwise
 
+%right toBeContinued burst return 
+
 %right is 
 %left and or
 
@@ -224,13 +226,15 @@ Expr            :: { AST.Expr }
     | not Expr                                          { AST.Op1 AST.Negation $2 }
     | '-' Expr                                          { AST.Op1 AST.Negative $2 }
 
+    -- >> Control Flow ----------------------------------------------------------
+    | toBeContinued Expr                                { AST.Continue  (Just $2) }
+    | burst Expr                                        { AST.Break     (Just $2) }
+    | return Expr                                       { AST.Return    (Just $2) }
+    
     -- < None evaluable expressions > -------------------------------------------
 Exprs           ::  { AST.Expr }
     : Expr                                              { $1 }
     | Declaration                                       { AST.Declaration $1 } 
-    | toBeContinued Expr                                { AST.Continue  (Just $2) }
-    | burst Expr                                        { AST.Break     (Just $2) }
-    | return Expr                                       { AST.Return    (Just $2) }
 
 Assign          :: { AST.Expr }
     : is Expr                                           { $2 } 
