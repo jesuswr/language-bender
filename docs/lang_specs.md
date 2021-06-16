@@ -12,20 +12,22 @@
 Si no se especifica el tipo de alguna función o variable, el compilador intentará inferirlo. Para inferir el tipo de una función se inspecciona su cuerpo, no sus llamadas.
 
 ### Basado en expresiones
-El lenguaje esta basado en expresiones. Esto es, todas las instruccions producen un valor. Para esto, Doe se basa en las siguientes reglas:
+El lenguaje esta basado en expresiones. Esto es, todas las instruccions producen un valor. Para esto, language bender se basa en las siguientes reglas:
 1) Los distintos caminos de ejecución de un bloque de instrucciones retornan el mismo tipo de dato. El caso contrario es un error de compilación.
-2) Un bloque de instrucciones (delimitado por '.-' y '-.') retorna lo que retorne la última sub expresión, o el último ```burst``` / ```to be continued``` en caso del control de flujo de los ciclos, o `this story comes to an end` en el caso de las funciones.
-3) Existe un símbolo especial que hace que una expresión retorne ```()``` (el tipo unitario). Por ahora el “~” al final de una expresión, la forzara a retornar el tipo unitario.
+2) Un bloque de instrucciones (delimitado por '.-' y '-.') retorna lo que retorne la última sub expresión, o el último ```burst``` / ```to be continued``` en caso del control de flujo de los ciclos, o ```this story comes to an end``` en el caso de las funciones.
+3) Existe un símbolo especial que hace que una expresión retorne ```()``` (el tipo unitario). El “~” al final de una expresión, la forzara a retornar el tipo unitario.
 4) Las expresiones que tienen caminos no definidos, retornan ```()``` por defecto (Ejemplo: un ```if``` sin un ```otherwise```).
 5) Adicionalmente, el tipo unitario ```()``` no es utilizable como un valor válido para una variable o función ni como anotación de tipo.
 
   **Nota:** Las instrucciones `burst` y `to be continued` son instrucciones especiales que no evalúan a un tipo concreto, en su lugar cambian el control del flujo de los ciclos. Cuando un camino de ejecución contiene una instrucción de este tipo, no se le considera para inferir el tipo de la expresión, sino el tipo de retorno del ciclo que lo contiene. Esto ocurre porque no tiene sentido evaluar una expresión cuyo valor es imposible de utilizar, como ocurre en estos casos. Así, permitimos patrones bastante útiles como:
 ```
-while lightning master doing .-
-  bender x is if (error()) 
-             break
-          otherwise 
-             f().
+while lightning master doing: 
+.-
+  bender x is 
+      if (in error book with ...) 
+          burst ~
+      otherwise 
+          in f book with ... 
            
   -- do something with x
 -.
@@ -244,6 +246,17 @@ travel <travel_id> made by <arg0_type> bender <arg0_id>, ... : <expr>
 ```
 Sus tipos de argumento también son anotables.
 
+#### Llamadas a Sub-Rutinas
+
+Para llamar a una función se usa la siguiente sintaxis:
+```
+oli
+```
+Para llamar a un procedimiento se usa la siguiente sintaxis:
+```
+olii
+```
+
 #### Orden de Ejecución
 Existe un procedimiento especial ```main``` que es el punto de partida del programa. Toda variable que esté declarada fuera de la función main debe ser constante en tiempo de compilación. 
 
@@ -254,6 +267,8 @@ Todos los argumentos se pasan por valor, el pasaje de parámetros por referencia
 ```
 bender x is reincarnation of z.
 ``` 
+En la declaración de una función, un argumento por referencia se indica mediante el tipo de referencia mediante la siguiente sintaxis: ``` <arg_type> reincarnation bender <arg_id> ```.
+
 ###### Default Arguments
 podemos definir valores por defecto a los argumentos de las funciones, por ejemplo: 
 ``` 
