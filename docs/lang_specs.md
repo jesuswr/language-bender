@@ -109,7 +109,7 @@ bender <id> of <element> nation since <size> years is master of <exp0>, <exp1>, 
 Los arreglos soportan indexación, es la única operación que soportan:
 ```
 bender toph of earth nation since 42 years is master of aang, aang_jr, aang_jr_jr right now.
-disciple <i> of toph // evalua al elemento i del arreglo toph. 
+disciple <i> of toph -- ^ evalua al elemento i del arreglo toph. 
 ```
 Para acceder al elemento `i` del arreglo `toph` es necesario que `i` esté en el rango `[0,Size)`. De lo contrario, es un error de ejecución
 
