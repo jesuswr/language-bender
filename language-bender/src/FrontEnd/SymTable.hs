@@ -26,8 +26,7 @@ type Identifier = String
 -- | Map from ids to its corresponding symbol data. Multiple symbols may have the same name, that's why we keep a 
 --   list of Symbols instead of a single symbol
 type Dictionary = M.Map Identifier [Symbol] 
--- | State used to simulate an imperative process of type checking 
-type LangBendState a = RWS.RWST () [E.Error] SymTable a
+    
 
 
 -- | Symbol Type with its corresponding data
@@ -39,7 +38,7 @@ data SymType
     | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
     | StructType    { fields :: [(AST.Name, AST.Type)] }
     | UnionType     { fields :: [(AST.Name, AST.Type)] }
-    | Reference     { refName :: AST.Name, refType :: AST.Type }
+    | Reference     { refName :: AST.Name, refType :: Maybe AST.Type } -- maybe in case we don't know its type yet, or it can't be tell 
     deriving (Eq, Show)
 
 -- | Symbol Data type
@@ -138,5 +137,8 @@ findSymbol' id st f = res
             Just l  -> case findSym  l of 
                         [] -> Nothing
                         ss -> Just $ maxInScope ss
- 
-        
+
+-- |Tells if a symbol is a variable or not:
+isVariable :: Symbol -> Bool 
+isVariable Symbol{symType = Variable{}} = True
+isVariable _ = False 
