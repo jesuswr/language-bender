@@ -69,9 +69,9 @@ data Expr   = ConstChar       { cVal :: String}
             | While           { cond :: Expr, cicBody :: Expr}
             | If              { cond :: Expr, accExpr :: Expr, failExpr :: Expr }
             | ExprBlock       { exprs :: [Expr] }
-            | Return          { maybeExpr :: Maybe Expr }
-            | Break           { maybeExpr :: Maybe Expr }
-            | Continue        { maybeExpr :: Maybe Expr }
+            | Return          { maybeExpr :: Expr }
+            | Break           { maybeExpr :: Expr }
+            | Continue        { maybeExpr :: Expr }
             | Declaration     { decl :: Declaration }
             | Op2             { op2 :: Opr2, opr1 :: Expr, opr2 :: Expr }
             | Op1             { op1 :: Opr1, opr :: Expr }
@@ -290,28 +290,16 @@ identShowExpr ident (ExprBlock exps) =
   concatMap (identShowExpr ident) exps
 
 identShowExpr ident (Return expm) = "\n" ++
-  case expm of
-    (Just exp_) -> 
-      replicate ident ' ' ++ "Return: \n"
-      ++ identShowExpr (ident + 2) exp_
-    Nothing ->
-      replicate ident ' ' ++ "Return ()\n"
+  replicate ident ' ' ++ "Return: \n"
+  ++ identShowExpr (ident + 2) expm
 
 identShowExpr ident (Break expm) = "\n" ++
-  case expm of
-    (Just exp_) -> 
-      replicate ident ' ' ++ "Break: \n"
-      ++ identShowExpr (ident + 2) exp_
-    Nothing ->
-      replicate ident ' ' ++ "Break ()\n"
+  replicate ident ' ' ++ "Break: \n"
+  ++ identShowExpr (ident + 2) expm
 
 identShowExpr ident (Continue expm) = "\n" ++
-  case expm of
-    (Just exp_) -> 
-      replicate ident ' ' ++ "Continue: \n"
-      ++ identShowExpr (ident + 2) exp_
-    Nothing ->
-      replicate ident ' ' ++ "Continue ()\n"
+  replicate ident ' ' ++ "Continue: \n"
+  ++ identShowExpr (ident + 2) expm
 
 identShowExpr ident (Declaration decl_) = "\n" ++
   identShowDeclaration ident decl_
@@ -388,7 +376,13 @@ identShowDeclaration ident (Struct name fs) =
   ++ concatMap (identShowField (ident + 2)) fs
 
 identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
-  case retT of
+  case retT of    
+    (Just TUnit) ->
+      replicate ident ' ' ++ "Declaration of Procedure '" ++ name ++ "'\n"
+      ++ replicate ident ' ' ++ "with parameters: \n"
+      ++ concatMap (identShowFuncArg (ident + 2)) param
+      ++ replicate ident ' ' ++ "with body:\n"
+      ++ identShowExpr (ident + 2) bodyExp
     (Just t)->
       replicate ident ' ' ++ "Declaration of Function '" ++ name ++ "'\n"
       ++ replicate ident ' ' ++ "with return type:\n"
@@ -398,7 +392,8 @@ identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
       ++ replicate ident ' ' ++ "with body:\n"
       ++ identShowExpr (ident + 2) bodyExp
     Nothing -> 
-      replicate ident ' ' ++ "Declaration of Procedure '" ++ name ++ "'\n"
+      replicate ident ' ' ++ "Declaration of Function '" ++ name ++ "'\n"
+      ++ replicate ident ' ' ++ "with return type: Inferred\n"
       ++ replicate ident ' ' ++ "with parameters: \n"
       ++ concatMap (identShowFuncArg (ident + 2)) param
       ++ replicate ident ' ' ++ "with body:\n"

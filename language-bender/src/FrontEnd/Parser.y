@@ -148,11 +148,15 @@ FuncArg         :: { [AST.FuncArg] }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : Type bender id Assign                             { [AST.FuncArg $3 $1 (Just $4)] }
+    | Type '&' bender id Assign                         { [AST.FuncArg $4 (AST.TReference $1) (Just $5)] }
     | FuncDefArgDecl comma Type bender id Assign        { (AST.FuncArg $5 $3 (Just $6)):$1 }
+    | FuncDefArgDecl comma Type '&' bender id Assign    { (AST.FuncArg $6 (AST.TReference $3) (Just $7)):$1 }
 
 FuncArgDecl     :: { [AST.FuncArg] }
     : Type bender id                                    { [AST.FuncArg $3 $1 Nothing] }
+    | Type '&' bender id                                { [AST.FuncArg $4 (AST.TReference $1) Nothing] }
     | FuncArgDecl comma Type bender id                  { (AST.FuncArg $5 $3 Nothing):$1 }
+    | FuncArgDecl comma Type '&' bender id              { (AST.FuncArg $6 (AST.TReference $3) Nothing):$1 }
 
 StructIdDecls   :: { [(String, AST.Type)] }
     : id skillOf Type                                   { [($1, $3)] }
@@ -276,7 +280,7 @@ Type            :: { AST.Type }
     | fire                                              { AST.TBool }
     | id                                                { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
     | Type art                                          { AST.TPtr $1 }
-    | Type '&'                                          { AST.TReference $1 }
+    --| Type '&'                                          { AST.TReference $1 }
 
 -- < Expression > ---------------------------------------------------------------------------
 
