@@ -75,6 +75,7 @@ Solo hay apuntadores al heap, los cuales se denotan como ```<T> art```. El valor
 ```
 bender x of water art is born as water member.
 x has died.
+x is an apprentice.
 ``` 
 
 
@@ -102,48 +103,60 @@ Alias para un arreglo de caracteres (```metal```).
 #### Arreglo
 Los arreglos tienen tamaño constante de elaboración y se declaran como:
 ```
-bender <id> of <element> nation since <size> years.
-bender <id> of <element> nation since <size> years is master of <exp0>, <exp1>, ..., <expk>.
+bender <id> of <element> nation since <size> years.                                                      -- ^ Sin inicializar
+bender <id> of <element> nation since <size> years is master of <exp0>, <exp1>, ..., <expk> right now.   -- ^ Inicializado
 ```
 Los arreglos soportan indexación, es la única operación que soportan:
 ```
-bender toph of earth nation since 42 years is master of aang, aang_jr, aang_jr_jr.
+bender toph of earth nation since 42 years is master of aang, aang_jr, aang_jr_jr right now.
 disciple <i> of toph // evalua al elemento i del arreglo toph. 
 ```
 Para acceder al elemento `i` del arreglo `toph` es necesario que `i` esté en el rango `[0,Size)`. De lo contrario, es un error de ejecución
 
 #### Struct
-tipo producto o record:
- ```element <id> is compound by <tag0> skill of <T0>, ...``` 
- donde ```tagi``` de tipo ```Ti``` es un atributo del struct.
-Para acceder a un atributo `x0` de un struct `s`, usamos:
-```using <id>'s <tag> skill```
+tipo producto o record. Para declarar un nuevo struct:
+ ```element <str_id> is compound by <tag0> skill of <T0>, ...``` 
+ donde ```tagi``` de tipo ```Ti``` es un atributo del struct.  
 
-Para crear un struct, usamos la sintaxis: 
+Para crear un struct, usamos la siguiente sintaxis:
+```
+bender <var_id> is learning <str_id> control using <exp0>, <exp1>, ..., <expn> right now
+```
+
+Para acceder a un atributo `<tag>` de un struct `<var_id>`, usamos:
+```using <var_id>'s <tag> skill```
+
+Para modificar un atributo `<tag>` de un struct `<var_id>`, usamos:
+```
+<var_id>'s <tag> is <expr>
+```
+
+Ejemplos: 
 ```
 element lava is compound by super_fire skill of fire, bedrock skill of earth.
-...
-bender aang is learning lava control using <exp0>, <exp1>,...
+bender aang is learning lava control using fire master, 'b' right now.
+bender zuko is using aang's super_fire skill.
+aang's bedrock is 'r'.
 ```
 
 #### Union
-tipo suma o variante: 
+tipo suma o variante. Para declarar una nueva union: 
 ```
-energy <id> allows <tag0> technique of <T0> bending, ...
+energy <union_id> allows <tag0> technique of <T0> bending, ...
 ``` 
 Para crear una instancia de una union usamos:
 ```
-bender <id> is learning <union_id>'s <tag> technique from <exp>
+bender <var_id> is learning <union_id>'s <tag> technique from <exp>
 ```
 El tipo de una instancia de la union es la unión en sí misma, para acceder a un posible valor, se usa el nombre de esa etiqueta. Por ejemplo:
 ```
-using <var_name>'s <elem_tag> technique
+using <var_id>'s <tag> technique
 
 ```
 Es un error de ejecución que se le solicite un valor de un tipo distinto al tipo actualmente almacenado para la unión.  
 
 Para consultar por el tipo de una union usamos la sintaxis:
-```trying <var_name>'s <elem_tag> technique``` 
+```trying <var_id>'s <tag> technique``` 
 Por ejemplo:   
 ```
 if (tryng u MyFloat technique)
@@ -223,7 +236,7 @@ while <bool_exp> doing <exp>
 #### Control de Flujo para Ciclos
 Se tienen instrucciones ```burst``` y ```to be continued``` que permiten terminar un ciclo o una iteración prematuramente y respectivamente. Ambas instrucciones pueden recibir un parámetro adicional para retornar valores, al mismo estilo del ```this story comes to an end```:
 ```
-while X doing 
+while X doing :
 .-
     if (Y)
         burst 10.
