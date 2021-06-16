@@ -4,6 +4,7 @@
 
 module FrontEnd.AST where
 
+import qualified FrontEnd.Utils as U
 
 -- for identifiers mostly
 type Name = String
@@ -60,18 +61,20 @@ data Expr   = ConstChar       { cVal :: String}
             | ConstTrue 
             | ConstFalse
             | ConstUnion      { unionType :: Type, tag :: Name, value :: Expr }
-            | ConstUnit        -- cambiar const union y struct por instance/literal
-            | Id              { name :: Name}
+            | ConstUnit
+            | ConstNull
+            | Id              { name :: Name, position :: U.Position}
             | Assign          { variable :: Name, value :: Expr}
             | StructAssign    { variable :: Name, tag :: Name, value :: Expr}
+            | StructAccess    { variable :: Name, tag :: Name }
             | FunCall         { fname :: Name, actualArgs :: [Expr]}
             | For             { iteratorName :: Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr }
             | While           { cond :: Expr, cicBody :: Expr}
             | If              { cond :: Expr, accExpr :: Expr, failExpr :: Expr }
             | ExprBlock       { exprs :: [Expr] }
-            | Return          { maybeExpr :: Expr }
-            | Break           { maybeExpr :: Expr }
-            | Continue        { maybeExpr :: Expr }
+            | Return          { expr :: Expr }
+            | Break           { expr :: Expr }
+            | Continue        { expr :: Expr }
             | Declaration     { decl :: Declaration }
             | Op2             { op2 :: Opr2, opr1 :: Expr, opr2 :: Expr }
             | Op1             { op1 :: Opr1, opr :: Expr }
@@ -80,6 +83,7 @@ data Expr   = ConstChar       { cVal :: String}
             | UnionUsing      { unionName :: Name, tag :: Name }
             | New             { typeName :: Type }
             | Delete          { ptrExpr :: Expr }
+            | ArrayIndexing   { index :: Expr, arrId :: Name}
             deriving(Eq)
 
 -- Program data type     
@@ -213,7 +217,7 @@ identShowType ident (CustomType nm) = "\n" ++
 identShowExpr :: Int -> Expr -> String
 
 identShowExpr ident (ConstChar c) = "\n" ++
-  replicate ident ' ' ++ "Literal Character: '" ++ (show c) ++ "'\n"
+  replicate ident ' ' ++ "Literal Character: " ++ (show c) ++ "\n"
 
 identShowExpr ident (ConstString s) = "\n" ++
   replicate ident ' ' ++ "Literal String: '" ++ s ++ "'\n"
@@ -230,10 +234,10 @@ identShowExpr ident (ConstStruct t exps) = "\n" ++
   ++ replicate ident ' ' ++ "with fields:\n"
   ++ concatMap (identShowExpr (ident + 2)) exps 
 
-identShowExpr ident (ConstTrue) = "\n" ++
+identShowExpr ident ConstTrue = "\n" ++
   replicate ident ' ' ++ "Literal Bool: True\n"
 
-identShowExpr ident (ConstFalse) = "\n" ++
+identShowExpr ident ConstFalse = "\n" ++
   replicate ident ' ' ++ "Literal Bool: False\n"
 
 identShowExpr ident (ConstUnion t tag_ val) = "\n" ++
@@ -242,10 +246,13 @@ identShowExpr ident (ConstUnion t tag_ val) = "\n" ++
   ++ replicate ident ' ' ++ "with tag: " ++ tag_ ++ "\n"
   ++ replicate ident ' ' ++ "with fields:\n"
   ++ identShowExpr (ident + 2) val 
-identShowExpr ident (ConstUnit) = "\n" ++
+identShowExpr ident ConstUnit = "\n" ++
   replicate ident ' ' ++ "Unit ()\n"
 
-identShowExpr ident (Id nm) = "\n" ++
+identShowExpr ident ConstNull = "\n" ++
+  replicate ident ' ' ++ "Null\n"
+
+identShowExpr ident (Id nm pos_) = "\n" ++
   replicate ident ' ' ++ "Identifier: " ++ nm ++ "\n"
 
 identShowExpr ident (Assign nm val) = "\n" ++
@@ -255,6 +262,9 @@ identShowExpr ident (Assign nm val) = "\n" ++
 identShowExpr ident (StructAssign var tag_ val) = "\n" ++
   replicate ident ' ' ++ "Struct Assignment: '" ++ var ++ "' with tag '" ++ tag_ ++ "' <-\n"
   ++ identShowExpr (ident + 2) val 
+
+identShowExpr ident (StructAccess var tag_) = "\n" ++
+  replicate ident ' ' ++ "Struct Access: '" ++ var ++ "' with tag '" ++ tag_ ++ "'\n"
 
 identShowExpr ident (FunCall fnm args_) = "\n" ++
   replicate ident ' ' ++ "Function/Procedure call: " ++ fnm ++ "\n"
@@ -338,11 +348,14 @@ identShowExpr ident (Delete pt) = "\n" ++
   replicate ident ' ' ++ "Delete:\n"
   ++ identShowExpr (ident + 2) pt
 
+identShowExpr ident (ArrayIndexing exp_ arrNm) = "\n" ++
+  replicate ident ' ' ++ "Access Array: "++ arrNm ++", at position:\n"
+  ++ identShowExpr (ident + 2) exp_
+
 identShowField :: Int -> (Name, Type) -> String
 identShowField ident (name, t) = "\n" ++
   replicate ident ' ' ++ "field:" ++ name ++ "->\n"
   ++ identShowType (ident + 2) t
-
 
 identShowDeclaration :: Int -> Declaration -> String
 

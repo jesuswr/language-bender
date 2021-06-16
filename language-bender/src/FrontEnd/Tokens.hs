@@ -21,7 +21,6 @@ data TokenType =
     TKis                                 |
     TKreincarnation                      |
     TKart                                |
-    TKartist                             |
     TKapprentice                         |
     TKborn                               |
     TKmember                             |
@@ -41,6 +40,7 @@ data TokenType =
     TKelement                            |
     TKcompoundBy                         |
     TKskillOf                            |
+    TKskill                              |
     TKlearning                           |
     TKcontrol                            |
     TKenergy                             |

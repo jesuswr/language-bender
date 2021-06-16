@@ -20,8 +20,7 @@ import qualified FrontEnd.Errors  as E
     is                  { TK.Token _ TK.TKis }
     reincarnationOf     { TK.Token _ TK.TKreincarnation }
     art                 { TK.Token _ TK.TKart }
-    artist              { TK.Token _ TK.TKartist}
-    apprentice          { TK.Token _ TK.TKapprentice }
+    null                { TK.Token _ TK.TKapprentice }
     born                { TK.Token _ TK.TKborn }
     member              { TK.Token _ TK.TKmember }
     died                { TK.Token _ TK.TKdied }
@@ -40,6 +39,7 @@ import qualified FrontEnd.Errors  as E
     element             { TK.Token _ TK.TKelement }
     compoundBy          { TK.Token _ TK.TKcompoundBy }
     skillOf             { TK.Token _ TK.TKskillOf }
+    skill               { TK.Token _ TK.TKskill }
     learning            { TK.Token _ TK.TKlearning }
     control             { TK.Token _ TK.TKcontrol }
     energy              { TK.Token _ TK.TKenergy }
@@ -95,11 +95,12 @@ import qualified FrontEnd.Errors  as E
     float               { TK.Token _ (TK.TKfloat $$) }
     char                { TK.Token _ (TK.TKchar $$) }
     string              { TK.Token _ (TK.TKstring $$) }
-    id                  { TK.Token _ (TK.TKid $$ ) }
+    id                  { TK.Token _ (TK.TKid _) }
  
 %right ')' otherwise
 
 %right toBeContinued burst return 
+%left died
 
 %right is 
 %left and or
@@ -127,21 +128,21 @@ Declarations    :: { [AST.Declaration] }
     | Declarations Declaration                          { $2:$1 }
 
 Declaration     :: { AST.Declaration }
-    : element id compoundBy StructIdDecls               { AST.Struct $2 (reverse $4) }
-    | energy id allows UnionIdDecls                     { AST.Union  $2 (reverse $4) }
+    : element id compoundBy StructIdDecls               { AST.Struct ((TK.name . TK.tktype) $2) (reverse $4) }
+    | energy id allows UnionIdDecls                     { AST.Union  ((TK.name . TK.tktype) $2) (reverse $4) }
     | VarDecl                                           { $1 }
     | FuncDecl                                          { $1 }
     | ProcDecl                                          { $1 }
 
 ProcDecl        :: { AST.Declaration }
-    : travel id madeBy FuncArg colon Exprs              { AST.Func $2 (reverse $4) (Just AST.TUnit) $6 }
-    | travel id colon Exprs                             { AST.Func $2 [] (Just AST.TUnit) $4 }
+    : travel id madeBy FuncArg colon Exprs              { AST.Func ((TK.name . TK.tktype) $2) (reverse $4) (Just AST.TUnit) $6 }
+    | travel id colon Exprs                             { AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) $4 }
 
 FuncDecl        :: { AST.Declaration }
-    : book id of Type about FuncArg colon Exprs         { AST.Func $2 (reverse $6) (Just $4) $8 }
-    | book id of Type colon Exprs                       { AST.Func $2 [] (Just $4) $6 }
-    | book id about FuncArg colon Exprs                 { AST.Func $2 (reverse $4) Nothing $6 }
-    | book id colon Exprs                               { AST.Func $2 [] Nothing $4 }
+    : book id of Type about FuncArg colon Exprs         { AST.Func ((TK.name . TK.tktype) $2) (reverse $6) (Just $4) $8 }
+    | book id of Type colon Exprs                       { AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) $6 }
+    | book id about FuncArg colon Exprs                 { AST.Func ((TK.name . TK.tktype) $2) (reverse $4) Nothing $6 }
+    | book id colon Exprs                               { AST.Func ((TK.name . TK.tktype) $2) [] Nothing $4 }
 
 FuncArg         :: { [AST.FuncArg] }
     : FuncDefArgDecl                                    { $1 }
@@ -149,55 +150,56 @@ FuncArg         :: { [AST.FuncArg] }
     | FuncArgDecl comma FuncDefArgDecl                  { $3 ++ $1 }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
-    : Type bender id Assign                             { [AST.FuncArg $3 $1 (Just $4)] }
-    | Type '&' bender id Assign                         { [AST.FuncArg $4 (AST.TReference $1) (Just $5)] }
-    | FuncDefArgDecl comma Type bender id Assign        { (AST.FuncArg $5 $3 (Just $6)):$1 }
-    | FuncDefArgDecl comma Type '&' bender id Assign    { (AST.FuncArg $6 (AST.TReference $3) (Just $7)):$1 }
+    : Type bender id Assign                             { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Just $4)] }
+    | Type '&' bender id Assign                         { [AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) (Just $5)] }
+    | FuncDefArgDecl comma Type bender id Assign        { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Just $6)):$1 }
+    | FuncDefArgDecl comma Type '&' bender id Assign    { (AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Just $7)):$1 }
 
 FuncArgDecl     :: { [AST.FuncArg] }
-    : Type bender id                                    { [AST.FuncArg $3 $1 Nothing] }
-    | Type '&' bender id                                { [AST.FuncArg $4 (AST.TReference $1) Nothing] }
-    | FuncArgDecl comma Type bender id                  { (AST.FuncArg $5 $3 Nothing):$1 }
-    | FuncArgDecl comma Type '&' bender id              { (AST.FuncArg $6 (AST.TReference $3) Nothing):$1 }
+    : Type bender id                                    { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing] }
+    | Type '&' bender id                                { [AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing] }
+    | FuncArgDecl comma Type bender id                  { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing):$1 }
+    | FuncArgDecl comma Type '&' bender id              { (AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing):$1 }
 
 StructIdDecls   :: { [(String, AST.Type)] }
-    : id skillOf Type                                   { [($1, $3)] }
-    | StructIdDecls comma id skillOf Type               { ($3, $5):$1 }
+    : id skillOf Type                                   { [(((TK.name . TK.tktype) $1), $3)] }
+    | StructIdDecls comma id skillOf Type               { (((TK.name . TK.tktype) $3), $5):$1 }
 
 UnionIdDecls    :: { [(String, AST.Type)] }
-    : id techniqueOf Type bending                       { [($1, $3)] }
-    | UnionIdDecls comma id techniqueOf Type bending    { ($3, $5):$1 }
+    : id techniqueOf Type bending                       { [(((TK.name . TK.tktype) $1), $3)] }
+    | UnionIdDecls comma id techniqueOf Type bending    { (((TK.name . TK.tktype) $3), $5):$1 }
 
 VarDecl         :: { AST.Declaration }
-    : bender id of Type                                 { AST.Variable $2 (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
-    | bender id of Type Assign                          { AST.Variable $2 (Just $4) (Just $5) False }
-    | bender id Assign                                  { AST.Variable $2 Nothing (Just $3) False }
-    | eternal bender id of Type Assign                  { AST.Variable $3 (Just $5) (Just $6) True }
-    | eternal bender id Assign                          { AST.Variable $3 Nothing (Just $4) True }
-    | bender id is reincarnationOf id                   { AST.Reference $2 $5 } 
+    : bender id of Type                                 { AST.Variable ((TK.name . TK.tktype) $2) (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
+    | bender id of Type Assign                          { AST.Variable ((TK.name . TK.tktype) $2) (Just $4) (Just $5) False }
+    | bender id Assign                                  { AST.Variable ((TK.name . TK.tktype) $2) Nothing (Just $3) False }
+    | eternal bender id of Type Assign                  { AST.Variable ((TK.name . TK.tktype) $3) (Just $5) (Just $6) True }
+    | eternal bender id Assign                          { AST.Variable ((TK.name . TK.tktype) $3) Nothing (Just $4) True }
+    | bender id is reincarnationOf id                   { AST.Reference ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $5) }
     
 
 Expr            :: { AST.Expr } 
     : char                                              { AST.ConstChar $1 }
     | '(' Expr ')'                                      { $2 }
-    | string                                            { AST.ConstString $1 }
-    | id                                                { AST.Id $1 }
+    | id                                                { AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) }
     | ExprBlock                                         { $1 }
-    | id Assign                                         { AST.Assign $1 $2 }
-    | id quotmark_s id Assign                           { AST.StructAssign $1 $3 $4 }
+    | id Assign                                         { AST.Assign ((TK.name . TK.tktype) $1) $2 }
+    | id quotmark_s id Assign                           { AST.StructAssign ((TK.name . TK.tktype) $1) ((TK.name . TK.tktype) $3) $4 }
+    | using id quotmark_s id skill                      { AST.StructAccess ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) }
     | opening Expr of id chakrasFrom 
-        Expr to Expr colon Expr                         { AST.For $4 $2 $6 $8 $10 }
+        Expr to Expr colon Expr                         { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
     | while Expr doing colon Expr                       { AST.While $2 $5 }
-    | trying id quotmark_s id technique                 { AST.UnionTrying $2 $4 }
-    | using id quotmark_s id technique                  { AST.UnionUsing $2 $4 }
+    | trying id quotmark_s id technique                 { AST.UnionTrying ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) }
+    | using id quotmark_s id technique                  { AST.UnionUsing ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) }
     | if '(' Expr ')' Expr otherwise Expr               { AST.If $3 $5 $7 }
     | if '(' Expr ')' Expr                              { AST.If $3 $5 AST.ConstUnit }
-    | in id bookWith ExprList elipsis                   { AST.FunCall $2 (reverse $4) }
-    | in id bookWith elipsis                            { AST.FunCall $2 [] }
-    | id bookWith ExprList elipsis                      { AST.FunCall $1 (reverse $3) }
-    | id bookWith elipsis                               { AST.FunCall $1 [] }
+    | in id bookWith ExprList elipsis                   { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
+    | in id bookWith elipsis                            { AST.FunCall ((TK.name . TK.tktype) $2) [] }
+    | id bookWith ExprList elipsis                      { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) }
+    | id bookWith elipsis                               { AST.FunCall ((TK.name . TK.tktype) $1) [] }
     | born Type member                                  { AST.New $2 }
-    | artist Expr died                                  { AST.Delete $2 } 
+    | Expr died                                         { AST.Delete $1 }
+    | disciple Expr of id                               { AST.ArrayIndexing $2 ((TK.name . TK.tktype) $4) }
     | unit                                              { AST.ConstUnit }
 
     -- >> Const Values ----------------------------------------------------------
@@ -205,6 +207,8 @@ Expr            :: { AST.Expr }
     | float                                             { AST.ConstFloat $1 }
     | true                                              { AST.ConstTrue }
     | false                                             { AST.ConstFalse }
+    | string                                            { AST.ConstString $1 }
+    | null                                              { AST.ConstNull }
 
     -- >> Binary Expressions ----------------------------------------------------
 
@@ -227,9 +231,9 @@ Expr            :: { AST.Expr }
     | '-' Expr                                          { AST.Op1 AST.Negative $2 }
 
     -- >> Control Flow ----------------------------------------------------------
-    | toBeContinued Expr                                { AST.Continue  (Just $2) }
-    | burst Expr                                        { AST.Break     (Just $2) }
-    | return Expr                                       { AST.Return    (Just $2) }
+    | toBeContinued Expr                                { AST.Continue  $2 }
+    | burst Expr                                        { AST.Break     $2 }
+    | return Expr                                       { AST.Return    $2 }
     
     -- < None evaluable expressions > -------------------------------------------
 Exprs           ::  { AST.Expr }
@@ -238,9 +242,9 @@ Exprs           ::  { AST.Expr }
 
 Assign          :: { AST.Expr }
     : is Expr                                           { $2 } 
-    | is masterOf ExprList rightNow                     { AST.Array (reverse $3) }
     | is AssignStruct                                   { $2 }
     | is AssignUnion                                    { $2 }
+    | is AssignArray                                    { $2 }
 
 AssignStruct    :: { AST.Expr }
     : learning Type control using
@@ -248,7 +252,10 @@ AssignStruct    :: { AST.Expr }
 
 AssignUnion     :: { AST.Expr }
     : learning Type quotmark_s id 
-        techniqueFrom Expr                              { AST.ConstUnion $2 $4 $6}
+        techniqueFrom Expr                              { AST.ConstUnion $2 ((TK.name . TK.tktype) $4) $6}
+
+AssignArray     :: { AST.Expr }
+    : masterOf ExprList rightNow                        { AST.Array (reverse $2) }
 
 -- < Expression block Grammar > -----------------------------------------------------------  
 ExprBlock       ::  { AST.Expr }
@@ -280,11 +287,11 @@ Type            :: { AST.Type }
     : water                                             { AST.TFloat }
     | air                                               { AST.TInt }
     | earth                                             { AST.TChar }
-    | string                                            { AST.TString }   
+    | metal                                             { AST.TString }   
     | fire                                              { AST.TBool }
-    | id                                                { AST.CustomType $1 } -- RECORDAR ARREGLOS @TODO
+    | id                                                { AST.CustomType ((TK.name . TK.tktype) $1) }
+    | Type nation Expr year                             { AST.TArray $1 $3}
     | Type art                                          { AST.TPtr $1 }
-    --| Type '&'                                          { AST.TReference $1 }
 
 -- < Expression > ---------------------------------------------------------------------------
 

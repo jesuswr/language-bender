@@ -61,7 +61,6 @@ tokens :-
 
                 -- pointers
 <0>     art                                        { pushTK TKart }
-<0>     artist                                     { pushTK TKartist }
 <0>     an @w apprentice                           { pushTK TKapprentice }
 <0>     born @w as                                 { pushTK TKborn }
 <0>     member                                     { pushTK TKmember }
@@ -93,6 +92,7 @@ tokens :-
 <0>     element                                    { pushTK TKelement }
 <0>     is @w compound @w by                       { pushTK TKcompoundBy }
 <0>     skill @w of                                { pushTK TKskillOf }
+<0>     skill                                      { pushTK TKskill }
 <0>     learning                                   { pushTK TKlearning }
 <0>     control                                    { pushTK TKcontrol }
 

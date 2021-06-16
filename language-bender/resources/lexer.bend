@@ -119,14 +119,31 @@
 --    3 and thus 2 and then 1
 ---.
 
-book x:
-.-
-    bender x is 
-      if (in error book with ...) 
-          burst ~
-      otherwise 
-          in f book with .... 
+-- book x:
+-- .-
+--     bender x is 
+--       if (in error book with ...) 
+--           burst ~
+--       otherwise 
+--           in f book with .... 
            
-  -- do something with x
-    bender aang of water reincarnation -- is reincarnation of katara
+--   -- do something with x
+--     bender aang is reincarnation of roku.
+--     bender korra is reincarnation of aang.
+
+--     bender x of water art is born as water member.
+-- 	x has died.
+-- 	x is an apprentice.
+
+-- -.
+
+book xd:
+.-
+	--bender toph of earth nation since 42 years is master of aang, aang_jr, aang_jr_jr right now.
+	--disciple 4 of toph.
+
+	element lava is compound by super_fire skill of fire, bedrock skill of earth.
+	bender aang is learning lava control using fire master, 'b' right now.
+	bender zuko is using aang's super_fire skill.
+	aang's bedrock is 'r'.
 -.
