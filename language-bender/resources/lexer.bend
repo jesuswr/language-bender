@@ -111,10 +111,22 @@
 --    using katara's walk technique
 ---. 
 
+--book x:
+--.-
+--    --bender aang is 1.0 and then 20.
+--    --aang is 1 and then 1 and then 3.
+--    1 and then 3 and thus 2.
+--    3 and thus 2 and then 1
+---.
+
 book x:
 .-
-    --bender aang is 1.0 and then 20.
-    --aang is 1 and then 1 and then 3.
-    1 and then 3 and thus 2.
-    3 and thus 2 and then 1
+    bender x is 
+      if (in error book with ...) 
+          burst ~
+      otherwise 
+          in f book with .... 
+           
+  -- do something with x
+    bender aang of water reincarnation -- is reincarnation of katara
 -.
