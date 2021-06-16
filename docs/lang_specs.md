@@ -74,8 +74,8 @@ En este ejemplo, ```y``` se usa como cualquier otra variable, pero sus cambios s
 Solo hay apuntadores al heap, los cuales se denotan como ```<T> art```. El valor ```an apprentice``` es un valor especial que es compatible con cualquier tipo de apuntador. Se usa ```born as <T> member``` para crear un elemento en el heap, ```<id> has died``` para eliminarlo, y no existe aritmética de apuntadores.
 ```
 bender x of water art is born as water member.
-x has died.
 x is an apprentice.
+x has died.
 ``` 
 
 
