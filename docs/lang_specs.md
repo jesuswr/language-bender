@@ -115,17 +115,19 @@ Para acceder al elemento `<index>` del arreglo `toph` es necesario que `<index>`
 
 #### Struct
 tipo producto o record. Para declarar un nuevo struct:
- ```element <str_id> is compound by <tag0> skill of <T0>, ...``` 
+ ```
+ element <str_id> is compound by <tag0> skill of <T0>, ...
+ ``` 
  donde ```tagi``` de tipo ```Ti``` es un atributo del struct.  
 
 Para crear un struct, usamos la siguiente sintaxis:
 ```
 bender <var_id> is learning <str_id> control using <exp0>, <exp1>, ..., <expn> right now
 ```
-
 Para acceder a un atributo `<tag>` de un struct `<var_id>`, usamos:
-```using <var_id>'s <tag> skill```
-
+```
+using <var_id>'s <tag> skill
+```
 Para modificar un atributo `<tag>` de un struct `<var_id>`, usamos:
 ```
 <var_id>'s <tag> is <expr>
@@ -156,13 +158,15 @@ using <var_id>'s <tag> technique
 Es un error de ejecución que se le solicite un valor de un tipo distinto al tipo actualmente almacenado para la unión.  
 
 Para consultar por el tipo de una union usamos la sintaxis:
-```trying <var_id>'s <tag> technique``` 
+```
+trying <var_id>'s <tag> technique
+``` 
 Por ejemplo:   
 ```
 if (tryng u MyFloat technique)
-   logn(using u's MyFloat technique).
+   in logn book with using u's MyFloat technique...
 otherwise -- if not float, it's int
-   using u's MyInt technique % 2.
+   using u's MyInt technique left 2.
 ```
 
 #### Aritmetica
@@ -179,7 +183,8 @@ Para tipos enteros, flotantes y booleanos:
 - ``` is less or equal than ```: Retorna ```lightning master``` si el argumento izquierdo es menor o igual que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
 - ``` is greater than ```: Retorna ```lightning master``` si el argumento izquierdo es mayor que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
 - ``` is greater or equal than ```: Retorna ```lightning master``` si el argumento izquierdo es mayor o igual que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
-- ``` is equal to ```: Retorna ```lightning master``` si el argumento izquierdo es igual que el derecho. Además, para tipos compuestos compara los valores de forma profunda.
+- ``` is equal to ```: Retorna ```lightning master``` si el argumento izquierdo es igual que el derecho, de lo contrario retorna ```fire master```. Además, para tipos compuestos compara los valores de forma profunda.
+- ``` is not equal to ```: Retorna ```fire master``` si el argumento izquierdo es igual que el derecho, de lo contrario retorna ```lightning master```. Además, para tipos compuestos compara los valores de forma profunda.
 
 ### Instrucciones y Estructuras de Control de Flujo
 
@@ -192,7 +197,7 @@ bender x is 1. -- A partir de aqui es un comentario
 ```
 
 #### Secuenciación y bloque de instrucciones
-El bloque de instrucciones es posiblemente vacío y retorna el valor de la última instrucción. La secuenciación se expresa con el símbolo ```.``` entre cada expresión. Si se desea descartar el tipo de retorno de la última expresión y reemplazarlo por el tipo unitario, se utiliza el símbolo “\~”:
+El bloque de instrucciones es posiblemente vacío y retorna el valor de la última instrucción. La secuenciación se expresa con el símbolo ```.``` entre cada expresión. Si se desea descartar el tipo de retorno de la última expresión y reemplazarlo por el tipo unitario, se utiliza el operador “\~”. Este es un operador unitario que toma una expresión como argumento, la evalúa, y retorna el tipo unitario. 
 ```
 .-
     x besides 2.
@@ -218,6 +223,9 @@ Como en lenguajes tradicionales:
 if (<bool_exp>) <exp> otherwise <exp>
 ```
 La instrucción también se puede evaluar, y la evaluación de la expresión principal debe tener el mismo tipo que la expresión secundaria del caso por defecto. En caso de no tener expresión secundaria, el tipo de retorno sera el tipo unitario.
+```
+if (<bool_exp>) <exp> -- retorna el tipo unitario
+```
 
 #### For (acotado)
 Las iteraciones acotadas permiten repetir una secuencia no vacía de instrucciones por una cantidad fija de iteraciones, conocida antes de la primera iteración.
