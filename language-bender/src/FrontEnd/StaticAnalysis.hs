@@ -130,8 +130,16 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
             M.forM_ _args checkFArg
 
             -- Create a new symbol for this function 
-            let symType = ST.Function { ST.args=_args, ST.retType=fromMaybe AST.TUnit _retType, ST.body=_body }
-                symbol  = ST.Symbol { ST.identifier=_decName, ST.symType=symType, ST.scope=0, ST.enrtyType=Nothing }
+            let symbol  = ST.Symbol { 
+                                ST.identifier=_decName, 
+                                ST.symType=
+                                    ST.Function { 
+                                        ST.args=_args, 
+                                        ST.retType=fromMaybe AST.TUnit _retType, 
+                                        ST.body=_body }, 
+                                ST.scope=0, 
+                                ST.enrtyType=Nothing 
+                            }
 
             -- try to add function symbol 
             tryAddSymbol symbol
