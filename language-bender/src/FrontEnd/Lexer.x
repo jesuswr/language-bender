@@ -28,7 +28,7 @@ $ascii_str = [\0-\127] # [\"\\]
 @float = $digits+\.$digits+
 @comments = \-\-.*
 @linebreaks = \n+\r?\r+\n?
-@wn = [\ \n]
+@wn = [\ \n \r]
 @avatarIntro = Water\.@wn+Earth\.@wn+Fire\.@wn+Air\.@wn+Long@wn+ago\,@wn+the@wn+four@wn+nations@wn+lived@wn+together@wn+in@wn+harmony\.@wn+Then\,@wn+everything@wn+changed@wn+when@wn+the@wn+Fire@wn+Nation@wn+attacked\.@wn+Only@wn+the@wn+Avatar\,@wn+master@wn+of@wn+all@wn+four@wn+elements\,@wn+could@wn+stop@wn+them
 @w = \ +
 
@@ -36,161 +36,165 @@ tokens :-
 
     
                 -- ignore white spaces
-<0>     $white+                               ;
+<0>     $white+                                          ;
 
                 -- ignore 'avatar: the last air bender' first half of intro
-<0>     @avatarIntro                          ;
+<0>     @avatarIntro                                     ;
 
                 -- comments
-<0>     @comments                             ;
+<0>     @comments                                        ;
 
                 -- reserved keywords
                 
                 -- declarations
 
-<0>     bender                                     { pushTK TKbender }
-<0>     of                                         { pushTK TKof }
-<0>     eternal                                    { pushTK TKeternal }
+<0>     bender                                           { pushTK TKbender }
+<0>     of                                               { pushTK TKof }
+<0>     eternal                                          { pushTK TKeternal }
                 -- asignment
-<0>     is                                         { pushTK TKis }
+<0>     is                                               { pushTK TKis }
 
                 -- reference
-<0>     reincarnation @w of                        { pushTK TKreincarnation }
-<0>     reincarnation                              { pushTK TKReference }
-<0>     reincarnation(\ reincarnation)+            { lexError }
+<0>     reincarnation @w of                              { pushTK TKreincarnation }
+<0>     reincarnation                                    { pushTK TKReference }
+<0>     reincarnation(\ reincarnation)+                  { lexError }
 
                 -- pointers
-<0>     art                                        { pushTK TKart }
-<0>     an @w apprentice                           { pushTK TKapprentice }
-<0>     born @w as                                 { pushTK TKborn }
-<0>     member                                     { pushTK TKmember }
-<0>     has @w died                                { pushTK TKdied }
+<0>     art                                              { pushTK TKart }
+<0>     an @w apprentice                                 { pushTK TKapprentice }
+<0>     born @w as                                       { pushTK TKborn }
+<0>     member                                           { pushTK TKmember }
+<0>     has @w died                                      { pushTK TKdied }
 
                 -- Data types
 
                 -- int
-<0>     air                                        { pushTK TKair }
+<0>     air                                              { pushTK TKair }
                 -- float
-<0>     water                                      { pushTK TKwater }
+<0>     water                                            { pushTK TKwater }
                 -- boolean
-<0>     fire                                       { pushTK TKfire } 
-<0>     lightning @w master                        { pushTK TKlightning }
-<0>     fire @w master                             { pushTK TKfireMaster }
+<0>     fire                                             { pushTK TKfire } 
+<0>     lightning @w master                              { pushTK TKlightning }
+<0>     fire @w master                                   { pushTK TKfireMaster }
                 -- char
-<0>     earth                                      { pushTK TKearth }
+<0>     earth                                            { pushTK TKearth }
                 -- string
-<0>     metal                                      { pushTK TKmetal }
+<0>     metal                                            { pushTK TKmetal }
 
                 -- array 
-<0>     nation @w since                            { pushTK TKnation }
-<0>     years                                      { pushTK TKyear }
-<0>     master @w of                               { pushTK TKmasterOf }
-<0>     right @w now                               { pushTK TKRightNow }
-<0>     disciple                                   { pushTK TKdisciple }
+<0>     nation @w since                                  { pushTK TKnation }
+<0>     years                                            { pushTK TKyear }
+<0>     master @w of                                     { pushTK TKmasterOf }
+<0>     right @w now                                     { pushTK TKRightNow }
+<0>     disciple                                         { pushTK TKdisciple }
 
                 -- struct
-<0>     element                                    { pushTK TKelement }
-<0>     is @w compound @w by                       { pushTK TKcompoundBy }
-<0>     skill @w of                                { pushTK TKskillOf }
-<0>     skill                                      { pushTK TKskill }
-<0>     learning                                   { pushTK TKlearning }
-<0>     control                                    { pushTK TKcontrol }
+<0>     element                                          { pushTK TKelement }
+<0>     is @w compound @w by                             { pushTK TKcompoundBy }
+<0>     skill @w of                                      { pushTK TKskillOf }
+<0>     skill                                            { pushTK TKskill }
+<0>     learning                                         { pushTK TKlearning }
+<0>     control                                          { pushTK TKcontrol }
 
                 -- union
-<0>     energy                                     { pushTK TKenergy }
-<0>     allows                                     { pushTK TKallows }
-<0>     technique @w of                            { pushTK TKtechniqueOf }
-<0>     bending                                    { pushTK TKbending }
-<0>     technique @w from                          { pushTK TKtechniqueFrom }
-<0>     using                                      { pushTK TKusing }
-<0>     \'s                                        { pushTK TKquotmark_s }
-<0>     technique                                  { pushTK TKtechnique }
-<0>     trying                                     { pushTK TKtrying }
+<0>     energy                                           { pushTK TKenergy }
+<0>     allows                                           { pushTK TKallows }
+<0>     technique @w of                                  { pushTK TKtechniqueOf }
+<0>     bending                                          { pushTK TKbending }
+<0>     technique @w from                                { pushTK TKtechniqueFrom }
+<0>     using                                            { pushTK TKusing }
+<0>     \'s                                              { pushTK TKquotmark_s }
+<0>     technique                                        { pushTK TKtechnique }
+<0>     trying                                           { pushTK TKtrying }
 
                 -- functions and proc
-<0>     book                                       { pushTK TKbook }
-<0>     about                                      { pushTK TKabout }
-<0>     travel                                     { pushTK TKtravel }
-<0>     made @w by                                 { pushTK TKmadeBy }
+<0>     book                                             { pushTK TKbook }
+<0>     about                                            { pushTK TKabout }
+<0>     travel                                           { pushTK TKtravel }
+<0>     made @w by                                       { pushTK TKmadeBy }
 
                 -- operators
-<0>     and @w then                                { pushTK TKandThen }
-<0>     but                                        { pushTK TKbut }
-<0>     and @w thus                                { pushTK TKandThus }
-<0>     besides                                    { pushTK TKbesides }
-<0>     left                                       { pushTK TKleft }
-<0>     and                                        { pushTK TKand }
-<0>     or                                         { pushTK TKor }
-<0>     not                                        { pushTK TKnot }
+<0>     and @w then                                      { pushTK TKandThen }
+<0>     but                                              { pushTK TKbut }
+<0>     and @w thus                                      { pushTK TKandThus }
+<0>     besides                                          { pushTK TKbesides }
+<0>     left                                             { pushTK TKleft }
+<0>     and                                              { pushTK TKand }
+<0>     or                                               { pushTK TKor }
+<0>     not                                              { pushTK TKnot }
 
                 -- conditionals
-<0>     if                                         { pushTK TKif }
-<0>     otherwise                                  { pushTK TKotherwise }
+<0>     if                                               { pushTK TKif }
+<0>     \. ([\ \n \t \r] | @comments)* otherwise         { pushTK TKdotOtherwise} 
+<0>     otherwise                                        { pushTK TKotherwise }
 
                 -- other syntax is WIP
 
                 -- literals
-<0>     @float                                     { pushFloat }
-<0>     @int                                       { pushInt }
+<0>     @float                                           { pushFloat }
+<0>     @int                                             { pushInt }
                 
                 -- special characters
-<0>     \,                                         { pushTK TKcomma }
-<0>     \:                                         { pushTK TKcolon }
-<0>     \.\-                                       { pushTK TKbeginBlock }
-<0>     \-\.                                       { pushTK TKendBlock }
-<0>     \.                                         { pushTK TKdot }
-<0>     \~                                         { pushTK TKunit }
-<0>     \(                                         { pushTK TKopenParent }   
-<0>     \)                                         { pushTK TKcloseParent }
-<0>     \.\.\.                                     { pushTK TKelipsis }
+<0>     \,                                               { pushTK TKcomma }
+<0>     \:                                               { pushTK TKcolon }
+<0>     \.\-                                             { pushTK TKbeginBlock }
+<0>     \-\.                                             { pushTK TKendBlock }
+<0>     \.                                               { pushTK TKdot }
+<0>     \~                                               { pushTK TKunit }
+<0>     \(                                               { pushTK TKopenParent }   
+<0>     \)                                               { pushTK TKcloseParent }
+<0>     \.\.\.                                           { pushTK TKelipsis }
 
                 -- function calls
-<0>     in                                         { pushTK TKin }
-<0>     book @w with                               { pushTK TKbookWith }
+<0>     in                                               { pushTK TKin }
+<0>     book @w with                                     { pushTK TKbookWith }
 
                 -- proc calls
-<0>     with                                       { pushTK TKwith }
+<0>     travel @w with                                   { pushTK TKtravelWith }
 
                 -- compare operators
-<0>     is @w less @w than                         { pushTK TKlessThan }
-<0>     is @w less @w or @w equal @w than          { pushTK TKlessEqThan }
-<0>     is @w greater @w than                      { pushTK TKgreaterThan }
-<0>     is @w greater @w or @w equal @w than       { pushTK TKgreaterEqThan }
-<0>     is @w equal                                { pushTK TKequal }
-<0>     is @w not @w equal                         { pushTK TKnotEqual }
+<0>     is @w less @w than                               { pushTK TKlessThan }
+<0>     is @w less @w or @w equal @w than                { pushTK TKlessEqThan }
+<0>     is @w greater @w than                            { pushTK TKgreaterThan }
+<0>     is @w greater @w or @w equal @w than             { pushTK TKgreaterEqThan }
+<0>     is @w equal @w to                                { pushTK TKequal }
+<0>     is @w not @w equal @w to                         { pushTK TKnotEqual }
 
                 -- while
-<0>     while                                      { pushTK TKwhile }
-<0>     doing                                      { pushTK TKdoing }
+<0>     while                                            { pushTK TKwhile }
+<0>     doing                                            { pushTK TKdoing }
 
                 -- for
-<0>     opening                                    { pushTK TKopening }
-<0>     chakras @w from                            { pushTK TKchakrasFrom }
-<0>     to                                         { pushTK TKto }
+<0>     opening                                          { pushTK TKopening }
+<0>     chakras @w from                                  { pushTK TKchakrasFrom }
+<0>     to                                               { pushTK TKto }
 
                 -- control flow
 
-<0>     to @w be continued                      { pushTK TKtoBeContinued }
-<0>     burst                                      { pushTK TKburst }
-<0>     this @w story @w comes @w to @w an @w end  { pushTK TKreturn }
+<0>     to @w be continued                               { pushTK TKtoBeContinued }
+<0>     burst                                            { pushTK TKburst }
+<0>     this @w story @w comes @w to @w an @w end        { pushTK TKreturn }
+<0>     to @w be continued @w \~                         { pushTK TKtoBeContinuedUnit }
+<0>     burst @w \~                                      { pushTK TKburstUnit }
+<0>     this @w story @w comes @w to @w an @w end @w \~  { pushTK TKreturnUnit }
 
                 -- strings literals
-<0>     \"                                         { startStr `andBegin` strSt }
-<strSt> \"                                         { pushStr `andBegin` 0 }
-<strSt> @str_scapedchars                           { saveToStr }
-<strSt> @linebreaks                                { skip }
-<strSt> [\n\r\t]                                   { skip }
-<strSt> $ascii_str                                 { saveToStr }
-<strSt> .                                          { invalidCharError }
+<0>     \"                                               { startStr `andBegin` strSt }
+<strSt> \"                                               { pushStr `andBegin` 0 }
+<strSt> @str_scapedchars                                 { saveToStr }
+<strSt> @linebreaks                                      { skip }
+<strSt> [\n\r\t]                                         { skip }
+<strSt> $ascii_str                                       { saveToStr }
+<strSt> .                                                { invalidCharError }
 
                 -- chars
-<0>     @chars                                     { pushChar }
+<0>     @chars                                           { pushChar }
 
-<0>     $digits[$alphaNum\_]+                      { lexError }
-<0>     @ids                                       { pushId }
+<0>     $digits[$alphaNum\_]+                            { lexError }
+<0>     @ids                                             { pushId }
 
                 -- lexer error
-<0>     .                                          { lexError }
+<0>     .                                                { lexError }
 
 
 {

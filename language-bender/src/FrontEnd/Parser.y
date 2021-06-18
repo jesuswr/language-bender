@@ -65,6 +65,7 @@ import qualified FrontEnd.Errors  as E
     not                 { TK.Token _ TK.TKnot }
     if                  { TK.Token _ TK.TKif }
     otherwise           { TK.Token _ TK.TKotherwise }
+    dotOtherwise        { TK.Token _ TK.TKdotOtherwise }
     comma               { TK.Token _ TK.TKcomma }
     colon               { TK.Token _ TK.TKcolon }
     beginBlock          { TK.Token _ TK.TKbeginBlock }
@@ -75,7 +76,7 @@ import qualified FrontEnd.Errors  as E
     ')'                 { TK.Token _ TK.TKcloseParent }
     in                  { TK.Token _ TK.TKin }
     bookWith            { TK.Token _ TK.TKbookWith }
-    with                { TK.Token _ TK.TKwith }
+    travelWith          { TK.Token _ TK.TKtravelWith }
     '<'                 { TK.Token _ TK.TKlessThan }
     '<='                { TK.Token _ TK.TKlessEqThan }
     '>'                 { TK.Token _ TK.TKgreaterThan }
@@ -89,15 +90,20 @@ import qualified FrontEnd.Errors  as E
     to                  { TK.Token _ TK.TKto }
     elipsis             { TK.Token _ TK.TKelipsis }
     toBeContinued       { TK.Token _ TK.TKtoBeContinued }
+    toBeContinuedUnit   { TK.Token _ TK.TKtoBeContinuedUnit }
     burst               { TK.Token _ TK.TKburst }
+    burstUnit           { TK.Token _ TK.TKburstUnit }
     return              { TK.Token _ TK.TKreturn }
+    returnUnit          { TK.Token _ TK.TKreturnUnit }
     int                 { TK.Token _ (TK.TKint $$) }
     float               { TK.Token _ (TK.TKfloat $$) }
     char                { TK.Token _ (TK.TKchar $$) }
     string              { TK.Token _ (TK.TKstring $$) }
     id                  { TK.Token _ (TK.TKid _) }
  
-%right ')' otherwise
+--%right ')' otherwise
+%right colon otherwise dotOtherwise
+%left unit
 
 %right toBeContinued burst return 
 %left died
@@ -111,7 +117,7 @@ import qualified FrontEnd.Errors  as E
 %left '*' '/' '%'
 
 %right not
-%right colon
+--%right colon
 %right techniqueFrom
 
 
@@ -185,24 +191,31 @@ Expr            :: { AST.Expr }
     | ExprBlock                                         { $1 }
     | id Assign                                         { AST.Assign ((TK.name . TK.tktype) $1) $2 }
     | id quotmark_s id Assign                           { AST.StructAssign ((TK.name . TK.tktype) $1) ((TK.name . TK.tktype) $3) $4 }
-    | using id quotmark_s id skill                      { AST.StructAccess ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) }
+    | using Expr quotmark_s id skill                    { AST.StructAccess $2 ((TK.name . TK.tktype) $4) }
     | opening Expr of id chakrasFrom 
         Expr to Expr colon Expr                         { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
     | while Expr doing colon Expr                       { AST.While $2 $5 }
-    | trying id quotmark_s id technique                 { AST.UnionTrying ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) }
-    | using id quotmark_s id technique                  { AST.UnionUsing ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) }
-    | if '(' Expr ')' Expr otherwise Expr               { AST.If $3 $5 $7 }
-    | if '(' Expr ')' Expr                              { AST.If $3 $5 AST.ConstUnit }
+    | trying Expr quotmark_s id technique               { AST.UnionTrying $2 ((TK.name . TK.tktype) $4) }
+    | using Expr quotmark_s id technique                { AST.UnionUsing $2 ((TK.name . TK.tktype) $4) }
+    | if  Expr colon Expr otherwise Expr                { AST.If $2 $4 $6 }
+    | if  Expr colon Expr dotOtherwise Expr             { AST.If $2 $4 $6 }
+    | if  Expr colon Expr                               { AST.If $2 $4 AST.ConstUnit }
+   
     | in id bookWith ExprList elipsis                   { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
     | in id bookWith elipsis                            { AST.FunCall ((TK.name . TK.tktype) $2) [] }
     | id bookWith ExprList elipsis                      { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) }
     | id bookWith elipsis                               { AST.FunCall ((TK.name . TK.tktype) $1) [] }
+
+    | in id travelWith ExprList elipsis                 { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
+    | in id travelWith elipsis                          { AST.FunCall ((TK.name . TK.tktype) $2) [] }
+    | id travelWith ExprList elipsis                    { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) }
+    | id travelWith elipsis                             { AST.FunCall ((TK.name . TK.tktype) $1) [] }
+
     | born Type member                                  { AST.New $2 }
     | Expr died                                         { AST.Delete $1 }
     | disciple Expr of id                               { AST.ArrayIndexing $2 ((TK.name . TK.tktype) $4) }
-    | unit                                              { AST.ConstUnit }
 
-    -- >> Const Values ----------------------------------------------------------
+    -- >> Const Values --------------------------------------------------------------------------------
     | int                                               { AST.ConstInt $1 }
     | float                                             { AST.ConstFloat $1 }
     | true                                              { AST.ConstTrue }
@@ -210,7 +223,7 @@ Expr            :: { AST.Expr }
     | string                                            { AST.ConstString $1 }
     | null                                              { AST.ConstNull }
 
-    -- >> Binary Expressions ----------------------------------------------------
+    -- >> Binary Expressions --------------------------------------------------------------------------
 
     | Expr '+' Expr                                     { AST.Op2 AST.Sum $1 $3 }
     | Expr '-' Expr                                     { AST.Op2 AST.Sub $1 $3 }
@@ -226,20 +239,25 @@ Expr            :: { AST.Expr }
     | Expr and Expr                                     { AST.Op2 AST.And $1 $3 }
     | Expr or Expr                                      { AST.Op2 AST.Or $1 $3 }
 
-    -- >> Unary Expressions -----------------------------------------------------
+    -- >> Unary Expressions ------------------------------------------------------------------------------
     | not Expr                                          { AST.Op1 AST.Negation $2 }
     | '-' Expr                                          { AST.Op1 AST.Negative $2 }
+    | Expr unit                                         { AST.Op1 AST.UnitOperator $1 }
 
-    -- >> Control Flow ----------------------------------------------------------
+    -- >> Control Flow -----------------------------------------------------------------------------------
     | toBeContinued Expr                                { AST.Continue  $2 }
     | burst Expr                                        { AST.Break     $2 }
     | return Expr                                       { AST.Return    $2 }
+    | toBeContinuedUnit                                 { AST.Continue  AST.ConstUnit }
+    | burstUnit                                         { AST.Break     AST.ConstUnit }
+    | returnUnit                                        { AST.Return    AST.ConstUnit }
     
-    -- < None evaluable expressions > -------------------------------------------
+    -- >> Evaluable and none evaluable expressions > -----------------------------------------------------
 Exprs           ::  { AST.Expr }
     : Expr                                              { $1 }
     | Declaration                                       { AST.Declaration $1 } 
 
+    -- >> Assigment ---------------------------------------------------------------------------------------
 Assign          :: { AST.Expr }
     : is Expr                                           { $2 } 
     | is AssignStruct                                   { $2 }
@@ -257,7 +275,7 @@ AssignUnion     :: { AST.Expr }
 AssignArray     :: { AST.Expr }
     : masterOf ExprList rightNow                        { AST.Array (reverse $2) }
 
--- < Expression block Grammar > -----------------------------------------------------------  
+-- < Expression block Grammar > --------------------------------------------------------------------------  
 ExprBlock       ::  { AST.Expr }
     : beginBlock ExprSeq endBlock                       { AST.ExprBlock (reverse $2) }
     | beginBlock endBlock                               { AST.ExprBlock [] }
@@ -283,6 +301,7 @@ ExprList        :: { [AST.Expr] }
     : Expr                                              { [$1] }
     | ExprList comma Expr                               { $3:$1 }
 
+    -- >> Types -------------------------------------------------------------------------------------
 Type            :: { AST.Type }
     : water                                             { AST.TFloat }
     | air                                               { AST.TInt }

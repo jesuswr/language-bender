@@ -66,6 +66,7 @@ data TokenType =
     TKnot                                |
     TKif                                 |
     TKotherwise                          |
+    TKdotOtherwise                       |
     TKint             {numI :: Int}      |
     TKfloat           {numF :: Float}    |
     TKcomma                              |
@@ -78,7 +79,7 @@ data TokenType =
     TKcloseParent                        |
     TKin                                 |
     TKbookWith                           |
-    TKwith                               |
+    TKtravelWith                         |
     TKlessThan                           |
     TKlessEqThan                         |
     TKgreaterThan                        |
@@ -95,8 +96,11 @@ data TokenType =
     TKid              {name  :: String}  |
     TKelipsis                            |
     TKtoBeContinued                      |
+    TKtoBeContinuedUnit                  |
     TKburst                              |
-    TKreturn
+    TKburstUnit                          |
+    TKreturn                             |
+    TKreturnUnit
 
     deriving(Eq, Show)
 

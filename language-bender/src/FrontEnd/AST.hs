@@ -50,6 +50,7 @@ data Opr2 = Sum
 
 data Opr1 = Negation
           | Negative
+          | UnitOperator
           deriving(Eq)
 
 -- Possible expressions. Remember, everything its an expression
@@ -66,7 +67,7 @@ data Expr   = ConstChar       { cVal :: String}
             | Id              { name :: Name, position :: U.Position}
             | Assign          { variable :: Name, value :: Expr}
             | StructAssign    { variable :: Name, tag :: Name, value :: Expr}
-            | StructAccess    { variable :: Name, tag :: Name }
+            | StructAccess    { struct :: Expr, tag :: Name }
             | FunCall         { fname :: Name, actualArgs :: [Expr]}
             | For             { iteratorName :: Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr }
             | While           { cond :: Expr, cicBody :: Expr}
@@ -79,8 +80,8 @@ data Expr   = ConstChar       { cVal :: String}
             | Op2             { op2 :: Opr2, opr1 :: Expr, opr2 :: Expr }
             | Op1             { op1 :: Opr1, opr :: Expr }
             | Array           { list :: [Expr] }
-            | UnionTrying     { unionName :: Name, tag :: Name }
-            | UnionUsing      { unionName :: Name, tag :: Name }
+            | UnionTrying     { union :: Expr, tag :: Name }
+            | UnionUsing      { union :: Expr, tag :: Name }
             | New             { typeName :: Type }
             | Delete          { ptrExpr :: Expr }
             | ArrayIndexing   { index :: Expr, arrId :: Name}
@@ -123,6 +124,9 @@ identShowOpr1 ident Negation =
 
 identShowOpr1 ident Negative =
   replicate ident ' ' ++ "Negative\n"
+
+identShowOpr1 ident UnitOperator =
+  replicate ident ' ' ++ "Unit Operator\n"
 
 identShowOpr2 :: Int -> Opr2 -> String
 
@@ -244,7 +248,7 @@ identShowExpr ident (ConstUnion t tag_ val) = "\n" ++
   replicate ident ' ' ++ "Literal Union:\n"
   ++ identShowType (ident + 2) t 
   ++ replicate ident ' ' ++ "with tag: " ++ tag_ ++ "\n"
-  ++ replicate ident ' ' ++ "with fields:\n"
+  ++ replicate ident ' ' ++ "with value:\n"
   ++ identShowExpr (ident + 2) val 
 identShowExpr ident ConstUnit = "\n" ++
   replicate ident ' ' ++ "Unit ()\n"
@@ -263,8 +267,10 @@ identShowExpr ident (StructAssign var tag_ val) = "\n" ++
   replicate ident ' ' ++ "Struct Assignment: '" ++ var ++ "' with tag '" ++ tag_ ++ "' <-\n"
   ++ identShowExpr (ident + 2) val 
 
-identShowExpr ident (StructAccess var tag_) = "\n" ++
-  replicate ident ' ' ++ "Struct Access: '" ++ var ++ "' with tag '" ++ tag_ ++ "'\n"
+identShowExpr ident (StructAccess stru tag_) = "\n" ++
+  replicate ident ' ' ++ "Struct Access: \n"
+  ++ identShowExpr (ident + 2) stru
+  ++ replicate ident ' ' ++ " with tag '" ++ tag_ ++ "'\n"
 
 identShowExpr ident (FunCall fnm args_) = "\n" ++
   replicate ident ' ' ++ "Function/Procedure call: " ++ fnm ++ "\n"
@@ -332,12 +338,14 @@ identShowExpr ident (Array l) = "\n" ++
   replicate ident ' ' ++ "Array Literal with elements:\n"
   ++ concatMap (identShowExpr (ident + 2)) l
 
-identShowExpr ident (UnionTrying nm tag_) = "\n" ++
-  replicate ident ' ' ++  "Check Union '" ++ nm ++ "'\n"
+identShowExpr ident (UnionTrying u tag_) = "\n" ++
+  replicate ident ' ' ++  "Check Union: \n"
+  ++ identShowExpr (ident + 2) u
   ++ replicate ident ' ' ++ "with tag '" ++ tag_ ++ "'\n"
 
-identShowExpr ident (UnionUsing nm tag_) = "\n" ++
-  replicate ident ' ' ++  "Access Union '" ++ nm ++ "'\n"
+identShowExpr ident (UnionUsing u tag_) = "\n" ++
+  replicate ident ' ' ++  "Access Union: \n"
+  ++ identShowExpr (ident + 2) u
   ++ replicate ident ' ' ++ "with tag '" ++ tag_ ++ "'\n"
 
 identShowExpr ident (New t) = "\n" ++
@@ -351,6 +359,7 @@ identShowExpr ident (Delete pt) = "\n" ++
 identShowExpr ident (ArrayIndexing exp_ arrNm) = "\n" ++
   replicate ident ' ' ++ "Access Array: "++ arrNm ++", at position:\n"
   ++ identShowExpr (ident + 2) exp_
+
 
 identShowField :: Int -> (Name, Type) -> String
 identShowField ident (name, t) = "\n" ++

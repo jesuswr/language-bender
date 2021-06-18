@@ -137,13 +137,100 @@
 
 -- -.
 
-book xd:
-.-
-	--bender toph of earth nation since 42 years is master of aang, aang_jr, aang_jr_jr right now.
-	--disciple 4 of toph.
+-- book xd:
+-- .-
+-- 	--bender toph of earth nation since 42 years is master of aang, aang_jr, aang_jr_jr right now.
+-- 	--disciple 4 of toph.
 
-	element lava is compound by super_fire skill of fire, bedrock skill of earth.
-	bender aang is learning lava control using fire master, 'b' right now.
-	bender zuko is using aang's super_fire skill.
-	aang's bedrock is 'r'.
+-- 	element lava is compound by super_fire skill of fire, bedrock skill of earth.
+-- 	bender aang is learning lava control using fire master, 'b' right now.
+-- 	bender zuko is using aang's super_fire skill.
+-- 	aang's bedrock is 'r'.
+-- -.
+
+-- book xd:
+-- .-
+-- 	bender aang of air is 42.
+-- 	energy nature allows tornado technique of air bending, blood_bending technique of water bending.
+-- 	bender kyoshi is learning nature's tornado technique from aang.
+-- 	bender xd is using kyoshi's tornado technique.
+-- 	trying kyoshi's tornado technique.
+-- -.
+
+-- book y:
+-- .-
+-- 	(5 and then 7) and thus (6 but 4) besides 6 left 2
+-- -.
+
+-- book z:
+-- .-
+--     2 is less than 3.
+--     4 is less or equal than 4.
+--     6 is greater than 2.
+--     3 is greater or equal than 3.
+--     6 is equal to 6.
+--     8 is not equal to 5
+-- -.
+
+-- book empty:
+-- .--.
+
+-- book notempty: bender x is 2
+
+-- book for:
+-- .-
+-- 	opening 1 of aang chakras from 7 to 0:
+--     	aang.
+-- -.
+
+-- book While:
+-- .-
+-- 	bender i is 0.
+-- 	while i is less than n doing:
+--     	i is i and then 1.
+-- -.
+
+-- book whatIf:
+-- .-
+-- 	if C0:
+-- 		5.   -- ahora deja porner punto aqui
+-- 	otherwise
+-- 		.- 6 . 7 -.
+-- 	.    -- punto de mas necesario, como lo quito?
+-- 	8 .
+-- 	if C1:
+-- 		if C2:
+-- 			something  -- tambien puedes no ponerlo
+-- 		otherwise
+-- 			something_else.
+
+-- 	bender xd is while C3 doing:
+-- 	.-
+-- 		bender lol is 
+-- 			if E:
+-- 				burst ~
+-- 			otherwise
+-- 				xxd
+-- 	-.
+
+-- -.
+
+-- book break:
+-- .-
+-- 	bender X of air.
+-- 	bender i of air is 0.
+-- 	X is while i is less than 100 doing :
+-- 	.-
+-- 	    if i is equal to 42:
+-- 	        burst 42 ~ .      -- ~(burst 42) evalua el busrt 42 y retorna (), por lo que el tipo del if queda '()' y el del while 'air'. 
+-- 	    i is i and then 1
+-- 	-.
+-- -.
+
+travel sea_odyssey made by air bender aang, water bender katara : 
+.-
+    aang -- got lost at sea,
+    and then katara. -- but she found him
+    -- and they scape together. So
+    this story comes to an end ~
 -.
