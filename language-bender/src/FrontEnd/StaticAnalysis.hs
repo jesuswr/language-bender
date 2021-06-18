@@ -9,7 +9,7 @@ import qualified FrontEnd.SymTable   as ST
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
-import Data.Maybe(isNothing)
+import Data.Maybe(isNothing, maybe, fromMaybe)
 -----------------------------------------------------------------
 
 type ErrorLog = [E.Error]
@@ -20,7 +20,7 @@ type AnalyzerState = RWS.RWST () ErrorLog AnalysisState IO
 -- | State of current analysis 
 data AnalysisState = State {
     symTable :: ST.SymTable,
-    ast :: AST.Program 
+    ast :: AST.Program
 }
 
 -- | Add error to state of RWST
@@ -28,7 +28,7 @@ addError :: E.Error -> AnalyzerState ()
 addError e = RWS.tell [e]
 
 addStaticError :: E.StaticError -> AnalyzerState ()
-addStaticError = addError . E.StaticError  
+addStaticError = addError . E.StaticError
 
 -- | Function to check if every name used is in the current scope
 namesAnalysis :: AST.Program -> AnalyzerState ()
@@ -47,11 +47,7 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
             currSt@State{symTable = st} <- RWS.get
 
             -- check if type of variable is currently defined when it's customType 
-            case t of
-                Just (AST.CustomType id) -> do
-                    case ST.findSymbol id st of
-                        Nothing ->  addError . E.StaticError . E.SymbolNotInScope $ id
-
+            case t of Just t' -> checkType t'
 
             -- Create a new symbol
             let symType = ST.Variable{ ST.varType = t, ST.initVal = ival}
@@ -77,9 +73,9 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
                 _       -> addError . E.StaticError . E.ReferencingNonVariable $ refId
 
             -- Get reference type:
-            let refType = case refSym of 
+            let refType = case refSym of
                     Just ST.Symbol{ST.symType = ST.Variable{ST.varType=t}} -> t
-                    Nothing -> Nothing 
+                    Nothing -> Nothing
 
                 newType = ST.Reference refId refType
             -- create new symbol 
@@ -88,13 +84,8 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
             -- try to add symbol 
             tryAddSymbol newSym
 
-            return ()
-            -- Add current symbol definition to ast
-
         -- Check union definition 
         checkDecls AST.Union {AST.decName=_decName, AST.fields=_fields} = do
-            -- Get current state:
-            st@State{symTable=symTb} <- RWS.get
 
             -- Create new symbol 
             --  Check that all types are valid 
@@ -107,11 +98,9 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
 
             -- check if add symbol is possible 
             tryAddSymbol symbol
-            
+
         -- Check Struct definition 
         checkDecls AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
-            -- Get current state:
-            st@State{symTable=symTb} <- RWS.get
 
             -- Create new symbol 
             --  Check that all types are valid 
@@ -125,22 +114,70 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
             -- check if add symbol is possible 
             tryAddSymbol symbol
 
+        -- Check function declaration
+        checkDecls AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
+
+            -- check valid return type if needed 
+            case _retType of Just t -> checkType t
+
+            -- Function to check a single function argument 
+            let checkFArg :: AST.FuncArg -> AnalyzerState ()
+                checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
+                                checkType _argType -- check argument type 
+                                case _defaultVal of Just expr -> checkExpr expr -- check expression validity
+
+            -- check arguments
+            M.forM_ _args checkFArg
+
+            -- Create a new symbol for this function 
+            let symType = ST.Function { ST.args=_args, ST.retType=fromMaybe AST.TUnit _retType, ST.body=_body }
+                symbol  = ST.Symbol { ST.identifier=_decName, ST.symType=symType, ST.scope=0, ST.enrtyType=Nothing }
+
+            -- try to add function symbol 
+            tryAddSymbol symbol
+
+            -- Push an empty scope 
+            pushEmptyScope  -- argument scope
+
+            -- try add arguments as variables
+            let variables = [ 
+                        ST.Symbol {
+                            ST.identifier=_argName, 
+                            ST.symType= ST.Variable{ST.varType= Just _argType, ST.initVal=_defaultVal} , 
+                            ST.scope=0, 
+                            ST.enrtyType=Nothing 
+                        }
+                        | (AST.FuncArg _argName _argType _defaultVal) <- _args
+                    ]
+
+            M.forM_ variables tryAddSymbol
+            
+            -- push body scope, and check body 
+            pushEmptyScope  -- body scope
+
+            checkExpr _body
+
+            popEmptyScope   -- body scope
+
+            popEmptyScope   -- argument scope
+
+
         checkExpr :: AST.Expr -> AnalyzerState ()
         checkExpr _ = undefined
 
 -- | Checks if a given type is a valid one 
 checkType :: AST.Type -> AnalyzerState ()
 checkType AST.CustomType {AST.tName=_tName} = do
-    st@State{symTable=symTb} <- RWS.get 
+    st@State{symTable=symTb} <- RWS.get
 
     -- try to find symbol
-    let symbol =  ST.findSymbol _tName symTb 
+    let symbol =  ST.findSymbol _tName symTb
 
     -- Check if symbol was correct 
-    case symbol of 
+    case symbol of
         Nothing -> addStaticError $ E.SymbolNotInScope { E.symName=_tName}
         Just ST.Symbol { ST.symType= ST.Type{} } -> return ()
-        _  -> addStaticError $ E.NotValidType{E.nonTypeName = _tName}   
+        _  -> addStaticError $ E.NotValidType{E.nonTypeName = _tName}
 
     return ()
 
@@ -148,7 +185,25 @@ checkType AST.CustomType {AST.tName=_tName} = do
 tryAddSymbol :: ST.Symbol -> AnalyzerState ()
 tryAddSymbol s@ST.Symbol {ST.identifier=_identifier} = do
     -- get current state
-    currSt@State{symTable=st} <- RWS.get 
-    case ST.insertSymbol s st of 
+    currSt@State{symTable=st} <- RWS.get
+    case ST.insertSymbol s st of
         Nothing -> addStaticError $ E.SymbolRedefinition _identifier -- if could not add, it's because of symbol redefinition
         Just st' -> RWS.put currSt{symTable = st'}                   -- update state
+
+-- | Utility function to push an empty scope, updating state
+pushEmptyScope :: AnalyzerState ()
+pushEmptyScope = do
+    st@State{symTable = symTb} <- RWS.get
+
+    let symTb' = ST.pushEmptyScope symTb
+
+    RWS.put st{symTable=symTb'}
+
+-- | Utility function to pop an empty scope, possibly changing current state
+popEmptyScope :: AnalyzerState ()
+popEmptyScope = do
+    st@State{symTable = symTb} <- RWS.get 
+
+    let symTb' = ST.popCurrentScope  symTb
+
+    RWS.put st{symTable = symTb'}
