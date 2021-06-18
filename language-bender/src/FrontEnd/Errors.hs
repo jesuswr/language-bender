@@ -25,7 +25,9 @@ data ParsingError = ...
 -- | Static Analysis Errors
 data StaticError = SymbolNotInScope { symName :: Name } 
                  | SymbolRedefinition {symName :: Name} 
-                 | ReferencingNonVariable { symName :: Name } deriving(Eq, Show)  
+                 | ReferencingNonVariable { symName :: Name } 
+                 | NotValidType  {nonTypeName :: Name }
+                 deriving(Eq, Show)  
 
 -- Error Type: Possible errors we can report in the command line, so they should be properly 
 -- formated in their show instance

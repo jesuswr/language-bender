@@ -80,7 +80,8 @@ popCurrentScope st@SymTable{stScopeStk = (_:stk)} = st{stScopeStk = stk}
 stCurrScope :: SymTable -> Scope
 stCurrScope = head . stScopeStk  
 
--- | Insert a new symbol. Note that the scope attribute for such symbol is going to be overriden
+-- | Insert a new symbol. Note that the scope attribute for such symbol is going to be overriden.
+-- | May Return nothing in case of symbol redefinition
 insertSymbol :: Symbol 
              -> SymTable
              -> Maybe SymTable
@@ -138,7 +139,9 @@ findSymbol' id st f = res
                         [] -> Nothing
                         ss -> Just $ maxInScope ss
 
--- |Tells if a symbol is a variable or not:
+
+
+-- | Tells if a symbol is a variable or not:
 isVariable :: Symbol -> Bool 
 isVariable Symbol{symType = Variable{}} = True
 isVariable _ = False 
