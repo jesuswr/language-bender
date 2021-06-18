@@ -6,9 +6,8 @@ module FrontEnd.SymTable where
 
 
 -- <Language Bender Imports> ------------------------------------
-import qualified FrontEnd.Errors     as E
 import qualified FrontEnd.AST        as AST
-
+import qualified FrontEnd.Utils      as U
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.Trans as T
 import qualified Control.Monad.RWS   as RWS
@@ -36,9 +35,9 @@ data SymType
     | Type          { unType :: AST.Type}
     | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
     | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
-    | StructType    { fields :: [(AST.Name, AST.Type)] }
-    | UnionType     { fields :: [(AST.Name, AST.Type)] }
-    | Reference     { refName :: AST.Name, refType :: Maybe AST.Type } -- maybe in case we don't know its type yet, or it can't be tell 
+    | StructType    { fields :: [(U.Name, AST.Type)] }
+    | UnionType     { fields :: [(U.Name, AST.Type)] }
+    | Reference     { refName :: U.Name, refType :: Maybe AST.Type } -- maybe in case we don't know its type yet, or it can't be tell 
     deriving (Eq, Show)
 
 -- | Symbol Data type
@@ -145,3 +144,8 @@ findSymbol' id st f = res
 isVariable :: Symbol -> Bool 
 isVariable Symbol{symType = Variable{}} = True
 isVariable _ = False 
+
+-- | Tells if a symbol is a reference or not
+isReference :: Symbol -> Bool
+isReference Symbol {symType=Reference{}} = True
+isReference _ = False

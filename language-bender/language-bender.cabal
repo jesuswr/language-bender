@@ -32,6 +32,9 @@ library
       FrontEnd.Errors
       FrontEnd.Lexer
       FrontEnd.Parser
+      FrontEnd.StaticAnalysis
+      FrontEnd.StaticErrors
+      FrontEnd.SymTable
       FrontEnd.Tokens
       FrontEnd.Utils
       Lib
@@ -48,9 +51,11 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , containers >=0.6.2.1
     , directory
     , extra
     , hspec
+    , mtl
   default-language: Haskell2010
 
 executable lbend
@@ -63,17 +68,19 @@ executable lbend
   build-depends:
       array
     , base >=4.7 && <5
+    , containers >=0.6.2.1
     , directory
     , extra
     , hspec
     , language-bender
+    , mtl
   default-language: Haskell2010
 
 test-suite lang-bender-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      FrontEnd.LexerSpec
+      FrontEnd.SymTableSpec
       Paths_language_bender
   hs-source-dirs:
       test
@@ -81,8 +88,10 @@ test-suite lang-bender-test
   build-depends:
       array
     , base >=4.7 && <5
+    , containers >=0.6.2.1
     , directory
     , extra
     , hspec
     , language-bender
+    , mtl
   default-language: Haskell2010

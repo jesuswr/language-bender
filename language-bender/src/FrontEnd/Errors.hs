@@ -1,7 +1,8 @@
 -- File describing possible error and their corresponding error message
 module FrontEnd.Errors where
-
 import FrontEnd.Utils -- Position
+import FrontEnd.StaticErrors
+
 
 ---- < Errors > -----
 
@@ -22,12 +23,6 @@ data CliError = NoArgs
 data ParsingError = ...
 -}
 
--- | Static Analysis Errors
-data StaticError = SymbolNotInScope { symName :: Name } 
-                 | SymbolRedefinition {symName :: Name} 
-                 | ReferencingNonVariable { symName :: Name } 
-                 | NotValidType  {nonTypeName :: Name }
-                 deriving(Eq, Show)  
 
 -- Error Type: Possible errors we can report in the command line, so they should be properly 
 -- formated in their show instance

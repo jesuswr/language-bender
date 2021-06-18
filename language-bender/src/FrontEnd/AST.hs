@@ -6,8 +6,6 @@ module FrontEnd.AST where
 
 import qualified FrontEnd.Utils as U
 
--- for identifiers mostly
-type Name = String
 
 -- Type Definition
 data Type = TFloat
@@ -19,17 +17,17 @@ data Type = TFloat
           | TPtr   { ptrType :: Type }
           | TUnit 
           | TReference { refType :: Type }
-          | CustomType { tName :: Name }
+          | CustomType { tName :: U.Name }
           deriving(Eq)
 
-data FuncArg = FuncArg{ argName :: Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq)
+data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq)
 
 -- Declaration of new things
-data Declaration    = Variable  { decName :: Name, varType ::  Maybe Type, initVal :: Maybe Expr, isConst :: Bool }
-                    | Reference { decName :: Name, refName :: Name }
-                    | Union     { decName :: Name, fields :: [(Name, Type)] }
-                    | Struct    { decName :: Name, fields :: [(Name, Type)] }
-                    | Func      { decName :: Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
+data Declaration    = Variable  { decName :: U.Name, varType ::  Maybe Type, initVal :: Maybe Expr, isConst :: Bool }
+                    | Reference { decName :: U.Name, refName :: U.Name }
+                    | Union     { decName :: U.Name, fields :: [(U.Name, Type)] }
+                    | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] }
+                    | Func      { decName :: U.Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
                     deriving(Eq)
 
 
@@ -61,15 +59,15 @@ data Expr   = ConstChar       { cVal :: String}
             | ConstStruct     { structType :: Type, list :: [Expr] }
             | ConstTrue 
             | ConstFalse
-            | ConstUnion      { unionType :: Type, tag :: Name, value :: Expr }
+            | ConstUnion      { unionType :: Type, tag :: U.Name, value :: Expr }
             | ConstUnit
             | ConstNull
-            | Id              { name :: Name, position :: U.Position}
-            | Assign          { variable :: Name, value :: Expr}
-            | StructAssign    { variable :: Name, tag :: Name, value :: Expr}
-            | StructAccess    { struct :: Expr, tag :: Name }
-            | FunCall         { fname :: Name, actualArgs :: [Expr]}
-            | For             { iteratorName :: Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr }
+            | Id              { name :: U.Name, position :: U.Position}
+            | Assign          { variable :: U.Name, value :: Expr}
+            | StructAssign    { struct :: Expr, tag :: U.Name, value :: Expr}
+            | StructAccess    { struct :: Expr, tag :: U.Name }
+            | FunCall         { fname :: U.Name, actualArgs :: [Expr]}
+            | For             { iteratorName :: U.Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr }
             | While           { cond :: Expr, cicBody :: Expr}
             | If              { cond :: Expr, accExpr :: Expr, failExpr :: Expr }
             | ExprBlock       { exprs :: [Expr] }
@@ -80,11 +78,11 @@ data Expr   = ConstChar       { cVal :: String}
             | Op2             { op2 :: Opr2, opr1 :: Expr, opr2 :: Expr }
             | Op1             { op1 :: Opr1, opr :: Expr }
             | Array           { list :: [Expr] }
-            | UnionTrying     { union :: Expr, tag :: Name }
-            | UnionUsing      { union :: Expr, tag :: Name }
+            | UnionTrying     { union :: Expr, tag :: U.Name }
+            | UnionUsing      { union :: Expr, tag :: U.Name }
             | New             { typeName :: Type }
             | Delete          { ptrExpr :: Expr }
-            | ArrayIndexing   { index :: Expr, arrId :: Name}
+            | ArrayIndexing   { index :: Expr, arrId :: U.Name}
             deriving(Eq)
 
 -- Program data type     
@@ -264,7 +262,7 @@ identShowExpr ident (Assign nm val) = "\n" ++
   ++ identShowExpr (ident + 2) val
 
 identShowExpr ident (StructAssign var tag_ val) = "\n" ++
-  replicate ident ' ' ++ "Struct Assignment: '" ++ var ++ "' with tag '" ++ tag_ ++ "' <-\n"
+  replicate ident ' ' ++ "Struct Assignment: '" ++ show var ++ "' with tag '" ++ tag_ ++ "' <-\n"
   ++ identShowExpr (ident + 2) val 
 
 identShowExpr ident (StructAccess stru tag_) = "\n" ++
@@ -360,8 +358,7 @@ identShowExpr ident (ArrayIndexing exp_ arrNm) = "\n" ++
   replicate ident ' ' ++ "Access Array: "++ arrNm ++", at position:\n"
   ++ identShowExpr (ident + 2) exp_
 
-
-identShowField :: Int -> (Name, Type) -> String
+identShowField :: Int -> (U.Name, Type) -> String
 identShowField ident (name, t) = "\n" ++
   replicate ident ' ' ++ "field:" ++ name ++ "->\n"
   ++ identShowType (ident + 2) t
@@ -370,8 +367,8 @@ identShowDeclaration :: Int -> Declaration -> String
 
 identShowDeclaration ident (Variable name varT initV isCst) = "\n" ++
   replicate ident ' ' ++ "Declaration of variable '" ++ name ++ "'\n"
-  ++ replicate ident ' ' ++ "is Constant: " ++ (show isCst) ++ "\n"
-  ++ (case initV of
+  ++ replicate ident ' ' ++ "is Constant: " ++ show isCst ++ "\n"
+  ++ (case initV of 
     (Just v) ->
       replicate ident ' ' ++ "with a value of: \n"
       ++ identShowExpr (ident + 2) v
