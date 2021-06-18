@@ -12,20 +12,26 @@ import qualified Control.Monad     as M
 import Data.Maybe(isNothing)
 -----------------------------------------------------------------
 
+type ErrorLog = [E.Error]
+
 -- | State used to simulate an imperative process of type checking 
-type LangBenderState a = RWS.RWST () (IO ()) AnalysisState a
+type AnalyzerState = RWS.RWST () ErrorLog AnalysisState IO
 
 -- | State of current analysis 
 data AnalysisState = State {
-    errors :: [E.Error],
-    symTable :: ST.SymTable
+    symTable :: ST.SymTable,
+    ast :: AST.Program 
 }
 
-addError :: E.Error -> AnalysisState -> AnalysisState
-addError e st@State{errors = es} =  st{errors = e:es}
+-- | Add error to state of RWST
+addError :: E.Error -> AnalyzerState ()
+addError e = RWS.tell [e]
+
+addStaticError :: E.StaticError -> AnalyzerState ()
+addStaticError = addError . E.StaticError  
 
 -- | Function to check if every name used is in the current scope
-namesAnalysis :: AST.Program -> LangBenderState IO ()
+namesAnalysis :: AST.Program -> AnalyzerState ()
 namesAnalysis p@AST.Program{AST.decls=ds} = do
 
     M.forM_ ds checkDecls
@@ -33,7 +39,7 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
 
     where
         -- | Add declarations to symbol table and check if they´re correct
-        checkDecls :: AST.Declaration -> LangBenderState IO ()
+        checkDecls :: AST.Declaration -> AnalyzerState ()
 
         -- Check Variable Declaration 
         checkDecls AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = ival, AST.isConst = const} = do
@@ -44,7 +50,7 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
             case t of
                 Just (AST.CustomType id) -> do
                     case ST.findSymbol id st of
-                        Nothing -> addError . E.StaticError . E.SymbolNotInScope $ id
+                        Nothing ->  addError . E.StaticError . E.SymbolNotInScope $ id
 
 
             -- Create a new symbol
@@ -55,12 +61,7 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
             M.forM_ ival checkExpr
 
             -- Add new variable to symbol table 
-            let mbSt = ST.insertSymbol newSym st
-
-            -- Check if could add variable:
-            case mbSt of
-                Nothing -> addError . E.StaticError . E.SymbolRedefinition $ sid
-                Just st -> RWS.put currSt{symTable=st}
+            tryAddSymbol newSym
 
         -- Check reference Declaration 
         checkDecls AST.Reference{ AST.decName=sid, AST.refName = refId } = do
@@ -85,20 +86,69 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
                 newSym = ST.Symbol {ST.identifier=sid, ST.symType=newType, ST.scope=0, ST.enrtyType=Nothing}
 
             -- try to add symbol 
-            case ST.insertSymbol newSym st of 
-                Nothing  -> addError . E.StaticError . E.SymbolRedefinition $ sid
-                Just st' -> RWS.put currSt{symTable=st'}
+            tryAddSymbol newSym
 
             return ()
             -- Add current symbol definition to ast
 
+        -- Check union definition 
+        checkDecls AST.Union {AST.decName=_decName, AST.fields=_fields} = do
+            -- Get current state:
+            st@State{symTable=symTb} <- RWS.get
 
+            -- Create new symbol 
+            --  Check that all types are valid 
+            M.forM_ (map snd _fields) checkType
 
-        checkExpr :: AST.Expr -> LangBenderState IO ()
+            --  Create symbol type
+            let symType = ST.UnionType {ST.fields=_fields}
+            --  Create Symbol itself 
+                symbol = ST.Symbol { ST.identifier=_decName, ST.symType=symType, ST.scope=0, ST.enrtyType=Nothing }
+
+            -- check if add symbol is possible 
+            tryAddSymbol symbol
+            
+        -- Check Struct definition 
+        checkDecls AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
+            -- Get current state:
+            st@State{symTable=symTb} <- RWS.get
+
+            -- Create new symbol 
+            --  Check that all types are valid 
+            M.forM_ (map snd _fields) checkType
+
+            --  Create symbol type
+            let symType = ST.StructType {ST.fields=_fields}
+            --  Create Symbol itself 
+                symbol = ST.Symbol { ST.identifier=_decName, ST.symType=symType, ST.scope=0, ST.enrtyType=Nothing }
+
+            -- check if add symbol is possible 
+            tryAddSymbol symbol
+
+        checkExpr :: AST.Expr -> AnalyzerState ()
         checkExpr _ = undefined
 
-        addError :: E.Error -> LangBenderState IO ()
-        addError e = do
-            st@State{errors = es} <- RWS.get
-            RWS.put st{errors = e:es}
+-- | Checks if a given type is a valid one 
+checkType :: AST.Type -> AnalyzerState ()
+checkType AST.CustomType {AST.tName=_tName} = do
+    st@State{symTable=symTb} <- RWS.get 
 
+    -- try to find symbol
+    let symbol =  ST.findSymbol _tName symTb 
+
+    -- Check if symbol was correct 
+    case symbol of 
+        Nothing -> addStaticError $ E.SymbolNotInScope { E.symName=_tName}
+        Just ST.Symbol { ST.symType= ST.Type{} } -> return ()
+        _  -> addStaticError $ E.NotValidType{E.nonTypeName = _tName}   
+
+    return ()
+
+-- | Try add symbol. If possible, add it, otherwise write proper errors
+tryAddSymbol :: ST.Symbol -> AnalyzerState ()
+tryAddSymbol s@ST.Symbol {ST.identifier=_identifier} = do
+    -- get current state
+    currSt@State{symTable=st} <- RWS.get 
+    case ST.insertSymbol s st of 
+        Nothing -> addStaticError $ E.SymbolRedefinition _identifier -- if could not add, it's because of symbol redefinition
+        Just st' -> RWS.put currSt{symTable = st'}                   -- update state
