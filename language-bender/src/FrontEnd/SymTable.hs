@@ -30,7 +30,7 @@ type Dictionary = M.Map Identifier [Symbol]
 
 -- | Symbol Type with its corresponding data
 data SymType   
-    = Variable      { varType ::  Maybe AST.Type, initVal :: Maybe AST.Expr }
+    = Variable      { varType ::  Maybe AST.Type, initVal :: Maybe AST.Expr, isConst :: Bool }
     | Constant      { consType ::  AST.Type, consInitVal :: AST.Expr }
     | Type          { unType :: AST.Type}
     | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
