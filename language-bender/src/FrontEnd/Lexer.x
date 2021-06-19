@@ -138,7 +138,7 @@ tokens :-
 <0>     \,                                               { pushTK TKcomma }
 <0>     \:                                               { pushTK TKcolon }
 <0>     \.\-                                             { pushTK TKbeginBlock }
-<0>     \-\.                                             { pushTK TKendBlock }
+<0>     \-\.                                             { pushTKendDot }
 <0>     \.                                               { pushTK TKdot }
 <0>     \~                                               { pushTK TKunit }
 <0>     \(                                               { pushTK TKopenParent }   
@@ -314,6 +314,12 @@ getLitStr = getAtr literalString
 setLitStr :: String -> Alex ()
 setLitStr str = Alex $ \s@AlexState{alex_ust=ust}
     -> Right (s{ alex_ust = (alex_ust s){literalString = str} }, ())
+
+pushTKendDot :: AlexAction AlexUserState
+pushTKendDot ( (AlexPn _ l c ) , _ , _ , _ ) _ = do
+    addToken (Token (Position l c) TKendBlock)
+    addToken (Token (Position l c) TKdot)
+    alexMonadScan
 
 -- manage error in the state
 

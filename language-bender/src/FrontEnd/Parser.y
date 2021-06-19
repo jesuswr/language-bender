@@ -101,8 +101,7 @@ import qualified FrontEnd.Errors  as E
     string              { TK.Token _ (TK.TKstring $$) }
     id                  { TK.Token _ (TK.TKid _) }
  
---%right ')' otherwise
-%right colon otherwise dotOtherwise of endBlock
+%right colon otherwise dotOtherwise of
 %left unit quotmark_s 
 
 %right toBeContinued burst return 
@@ -117,7 +116,6 @@ import qualified FrontEnd.Errors  as E
 %left '*' '/' '%'
 
 %right not
---%right colon
 %right techniqueFrom
 
 
@@ -130,8 +128,8 @@ Program         :: { AST.Program }
 
 -- Program as declaration list
 Declarations    :: { [AST.Declaration] }
-    : Declaration                                       { [$1] }
-    | Declarations Declaration                          { $2:$1 }
+    : Declaration dot                                   { [$1] }
+    | Declarations Declaration dot                      { $2:$1 }
 
 Declaration     :: { AST.Declaration }
     : element id compoundBy StructIdDecls               { AST.Struct ((TK.name . TK.tktype) $2) (reverse $4) }
@@ -186,19 +184,25 @@ VarDecl         :: { AST.Declaration }
 
     -- >> Expressions --------------------------------------------------------------------------
 
-Expr            :: { AST.Expr } 
-    : char                                              { AST.ConstChar $1 }
-    | '(' Expr ')'                                      { $2 }
+Expr            :: { AST.Expr }  
+    : '(' Expr ')'                                      { $2 }
     | id                                                { AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) }
     | ExprBlock                                         { $1 }
     | id Assign                                         { AST.Assign ((TK.name . TK.tktype) $1) $2 }
+    
     | Expr quotmark_s id Assign                         { AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 }
     | using Expr quotmark_s id skill                    { AST.StructAccess $2 ((TK.name . TK.tktype) $4) }
+    | learning Type control using
+        ExprList rightNow                               { AST.ConstStruct $2 (reverse $5) }
+    
+    | trying Expr quotmark_s id technique               { AST.UnionTrying $2 ((TK.name . TK.tktype) $4) }
+    | using Expr quotmark_s id technique                { AST.UnionUsing $2 ((TK.name . TK.tktype) $4) }
+    | learning Type quotmark_s id 
+        techniqueFrom Expr                              { AST.ConstUnion $2 ((TK.name . TK.tktype) $4) $6}
+    
     | opening Expr of id chakrasFrom 
         Expr to Expr colon Expr                         { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
     | while Expr doing colon Expr                       { AST.While $2 $5 }
-    | trying Expr quotmark_s id technique               { AST.UnionTrying $2 ((TK.name . TK.tktype) $4) }
-    | using Expr quotmark_s id technique                { AST.UnionUsing $2 ((TK.name . TK.tktype) $4) }
     | if  Expr colon Expr otherwise Expr                { AST.If $2 $4 $6 }
     | if  Expr colon Expr dotOtherwise Expr             { AST.If $2 $4 $6 }
     | if  Expr colon Expr                               { AST.If $2 $4 AST.ConstUnit }
@@ -216,12 +220,14 @@ Expr            :: { AST.Expr }
     | born Type member                                  { AST.New $2 }
     | Expr died                                         { AST.Delete $1 }
     | disciple Expr of Expr                             { AST.ArrayIndexing $2 $4 }
+    | masterOf ExprList rightNow                        { AST.Array (reverse $2) }
 
     -- >> Const Values --------------------------------------------------------------------------------
     | int                                               { AST.ConstInt $1 }
     | float                                             { AST.ConstFloat $1 }
     | true                                              { AST.ConstTrue }
     | false                                             { AST.ConstFalse }
+    | char                                              { AST.ConstChar $1 }
     | string                                            { AST.ConstString $1 }
     | null                                              { AST.ConstNull }
 
@@ -262,20 +268,17 @@ Exprs           ::  { AST.Expr }
     -- >> Assigment ---------------------------------------------------------------------------------------
 Assign          :: { AST.Expr }
     : is Expr                                           { $2 } 
-    | is AssignStruct                                   { $2 }
-    | is AssignUnion                                    { $2 }
-    | is AssignArray                                    { $2 }
+    -- | is AssignStruct                                   { $2 }
+    -- | is AssignUnion                                    { $2 }
 
-AssignStruct    :: { AST.Expr }
-    : learning Type control using
-        ExprList rightNow                               { AST.ConstStruct $2 (reverse $5) }
+-- AssignStruct    :: { AST.Expr }
+--     : learning Type control using
+--         ExprList rightNow                               { AST.ConstStruct $2 (reverse $5) }
 
-AssignUnion     :: { AST.Expr }
-    : learning Type quotmark_s id 
-        techniqueFrom Expr                              { AST.ConstUnion $2 ((TK.name . TK.tktype) $4) $6}
+-- AssignUnion     :: { AST.Expr }
+--     : learning Type quotmark_s id 
+--         techniqueFrom Expr                              { AST.ConstUnion $2 ((TK.name . TK.tktype) $4) $6}
 
-AssignArray     :: { AST.Expr }
-    : masterOf ExprList rightNow                        { AST.Array (reverse $2) }
 
 -- < Expression block Grammar > --------------------------------------------------------------------------  
 ExprBlock       ::  { AST.Expr }
@@ -285,14 +288,10 @@ ExprBlock       ::  { AST.Expr }
 ExprSeq         ::  { [AST.Expr] }
     : LastInBlock                                       { [$1] }
     | Seq LastInBlock                                   { $2:$1 }
-    | Seq beginBlock ExprSeq endBlock LastInBlock       { $5:($3 ++ $1) }
-    | Seq beginBlock endBlock LastInBlock               { $4:$1 }
 
 Seq             :: { [AST.Expr] }
     : Exprs Dots                                        { [$1] }
     | Seq Exprs Dots                                    { $2:$1 }
-    | Seq beginBlock ExprSeq endBlock Exprs Dots        { $5:($3 ++ $1) }
-    | Seq beginBlock endBlock Exprs Dots                { $4:$1 }
     | Dots                                              { [] }
     
 LastInBlock     :: { AST.Expr }

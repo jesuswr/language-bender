@@ -190,30 +190,30 @@
 --     	i is i and then 1.
 -- -.
 
-book whatIf:
-.-
-	if C0:
-		5.   -- ahora deja porner punto aqui
-	otherwise
-		.- 6 . 7 -.
-	.  -- punto de mas necesario, como lo quito?
-	8 .
-	if C1:
-		if C2:
-			something  -- tambien puedes no ponerlo
-		otherwise
-			something_else.
+-- book whatIf:
+-- .-
+-- 	if C0:
+-- 		5.   -- ahora deja porner punto aqui
+-- 	otherwise
+-- 		.- 6 . 7 -.
+-- 	--.  -- punto de mas necesario, como lo quito?
+-- 	8 .
+-- 	if C1:
+-- 		if C2:
+-- 			something  -- tambien puedes no ponerlo
+-- 		otherwise
+-- 			something_else.
 
-	bender xd is while C3 doing:
-	.-
-		bender lol is 
-			if E:
-				burst ~
-			otherwise
-				xxd
-	-.
+-- 	bender xd is while C3 doing:
+-- 	.-
+-- 		bender lol is 
+-- 			if E:
+-- 				burst ~
+-- 			otherwise
+-- 				xxd
+-- 	-.
 
--.
+-- -.
 
 -- book break:
 -- .-
@@ -234,3 +234,9 @@ book whatIf:
 --     -- and they scape together. So
 --     this story comes to an end ~
 -- -.
+
+book arrays:
+.-
+	master of -1, -2, 3, -4 right now.
+	disciple 0 of master of -1, -2, -3, 4 right now.
+-.

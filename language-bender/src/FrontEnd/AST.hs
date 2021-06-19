@@ -174,7 +174,7 @@ identShowFuncArg :: Int -> FuncArg -> String
 identShowFuncArg ident (FuncArg nm t def) = "\n" ++
   replicate ident ' ' ++ "Func Arg: " ++ nm ++ " of type:\n"
   ++ identShowType (ident + 2) t 
-  ++ (case def of
+  ++ "\n" ++ (case def of
     Nothing -> ""
     (Just exp_) ->
       replicate ident ' ' ++ "with default value:\n" 
@@ -200,7 +200,7 @@ identShowType ident (TBool) = "\n" ++
 identShowType ident (TArray arrt sz) = "\n" ++
   replicate ident ' ' ++ "Type: Array of size:\n"
   ++ identShowExpr (ident + 2) sz 
-  ++ replicate ident ' ' ++ "Of type:\n"
+  ++ "\n" ++ replicate ident ' ' ++ "Of type:\n"
   ++ identShowType (ident + 2) arrt
 
 identShowType ident (TPtr t) = "\n" ++
@@ -235,7 +235,7 @@ identShowExpr ident (ConstFloat f) = "\n" ++
 identShowExpr ident (ConstStruct t exps) = "\n" ++
   replicate ident ' ' ++ "Literal Struct:\n"
   ++ identShowType (ident + 2) t 
-  ++ replicate ident ' ' ++ "with fields:\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with fields:\n"
   ++ concatMap (identShowExpr (ident + 2)) exps 
 
 identShowExpr ident ConstTrue = "\n" ++
@@ -247,9 +247,10 @@ identShowExpr ident ConstFalse = "\n" ++
 identShowExpr ident (ConstUnion t tag_ val) = "\n" ++
   replicate ident ' ' ++ "Literal Union:\n"
   ++ identShowType (ident + 2) t 
-  ++ replicate ident ' ' ++ "with tag: " ++ tag_ ++ "\n"
-  ++ replicate ident ' ' ++ "with value:\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with tag: " ++ tag_ ++ "\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with value:\n"
   ++ identShowExpr (ident + 2) val 
+
 identShowExpr ident ConstUnit = "\n" ++
   replicate ident ' ' ++ "Unit ()\n"
 
@@ -263,43 +264,45 @@ identShowExpr ident (Assign nm val) = "\n" ++
   replicate ident ' ' ++ "Assignment: " ++ nm ++ " <- \n"
   ++ identShowExpr (ident + 2) val
 
-identShowExpr ident (StructAssign var tag_ val) = "\n" ++
-  replicate ident ' ' ++ "Struct Assignment: '" ++ show var ++ "' with tag '" ++ tag_ ++ "' <-\n"
+identShowExpr ident (StructAssign stru tag_ val) = "\n" ++
+  replicate ident ' ' ++ "Struct Assignment: \n"
+  ++ identShowExpr (ident + 2) stru
+  ++ "\n" ++ replicate ident ' ' ++ "With tag '" ++ tag_ ++ "' <-\n"
   ++ identShowExpr (ident + 2) val 
 
 identShowExpr ident (StructAccess stru tag_) = "\n" ++
   replicate ident ' ' ++ "Struct Access: \n"
   ++ identShowExpr (ident + 2) stru
-  ++ replicate ident ' ' ++ " with tag '" ++ tag_ ++ "'\n"
+  ++ "\n" ++ replicate ident ' ' ++ " with tag '" ++ tag_ ++ "'\n"
 
 identShowExpr ident (FunCall fnm args_) = "\n" ++
   replicate ident ' ' ++ "Function/Procedure call: " ++ fnm ++ "\n"
-  ++ replicate ident ' ' ++ "with arguments:\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with arguments:\n"
   ++ concatMap (identShowExpr (ident + 2)) args_ 
 
 identShowExpr ident (For it step_ start_ end_ bodyExp) = "\n" ++
   replicate ident ' ' ++ "For loop with iteration variable: " ++ it ++ "\n"
-  ++ replicate ident ' ' ++ "with step of:\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with step of:\n"
   ++ identShowExpr (ident + 2) step_ 
-  ++ replicate ident ' ' ++ "with start:\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with start:\n"
   ++ identShowExpr (ident + 2) start_ 
-  ++ replicate ident ' ' ++ "with end:\n" 
+  ++ "\n" ++ replicate ident ' ' ++ "with end:\n" 
   ++ identShowExpr (ident + 2) end_ 
-  ++ replicate ident ' ' ++ "with body:\n" 
+  ++ "\n" ++ replicate ident ' ' ++ "with body:\n" 
   ++ identShowExpr (ident + 2) bodyExp
 
 identShowExpr ident (While condition bodyExp) = "\n" ++
   replicate ident ' ' ++ "While loop with condition:\n"
   ++ identShowExpr (ident + 2) condition
-  ++ replicate ident ' ' ++ "with body:\n" 
+  ++ "\n" ++ replicate ident ' ' ++ "with body:\n" 
   ++ identShowExpr (ident + 2) bodyExp
 
 identShowExpr ident (If condition exp1 exp2) = "\n" ++
   replicate ident ' ' ++ "'If' with condition:\n"
   ++ identShowExpr (ident + 2) condition
-  ++ replicate ident ' ' ++ "with first expression:\n" 
+  ++ "\n" ++ replicate ident ' ' ++ "with first expression:\n" 
   ++ identShowExpr (ident + 2) exp1
-  ++ replicate ident ' ' ++ "with second expression:\n" 
+  ++ "\n" ++ replicate ident ' ' ++ "with second expression:\n" 
   ++ identShowExpr (ident + 2) exp2
 
 identShowExpr ident (ExprBlock exps) =
@@ -323,15 +326,15 @@ identShowExpr ident (Declaration decl_) = "\n" ++
 identShowExpr ident (Op2 op lhs rhs) = "\n" ++
   replicate ident ' ' ++ "Binary Operator:\n"
   ++ identShowOpr2 (ident + 2) op
-  ++ replicate ident ' ' ++ "with left hand side:\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with left hand side:\n"
   ++ identShowExpr (ident + 2) lhs 
-  ++ replicate ident ' ' ++ "with right hand side:\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with right hand side:\n"
   ++ identShowExpr (ident + 2) rhs
 
 identShowExpr ident (Op1 op opr_) = "\n" ++
   replicate ident ' ' ++ "Unary Operator:\n"
   ++ identShowOpr1 (ident + 2) op
-  ++ replicate ident ' ' ++ "with operand:\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with operand:\n"
   ++ identShowExpr (ident + 2) opr_ 
 
 identShowExpr ident (Array l) = "\n" ++
@@ -341,12 +344,12 @@ identShowExpr ident (Array l) = "\n" ++
 identShowExpr ident (UnionTrying u tag_) = "\n" ++
   replicate ident ' ' ++  "Check Union: \n"
   ++ identShowExpr (ident + 2) u
-  ++ replicate ident ' ' ++ "with tag '" ++ tag_ ++ "'\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with tag '" ++ tag_ ++ "'\n"
 
 identShowExpr ident (UnionUsing u tag_) = "\n" ++
   replicate ident ' ' ++  "Access Union: \n"
   ++ identShowExpr (ident + 2) u
-  ++ replicate ident ' ' ++ "with tag '" ++ tag_ ++ "'\n"
+  ++ "\n" ++ replicate ident ' ' ++ "with tag '" ++ tag_ ++ "'\n"
 
 identShowExpr ident (New t) = "\n" ++
   replicate ident ' ' ++ "New statement with type:\n"
@@ -357,7 +360,9 @@ identShowExpr ident (Delete pt) = "\n" ++
   ++ identShowExpr (ident + 2) pt
 
 identShowExpr ident (ArrayIndexing exp_ arrNm) = "\n" ++
-  replicate ident ' ' ++ "Access Array: "++ show arrNm ++", at position:\n"
+  replicate ident ' ' ++ "Access Array: "
+  ++ identShowExpr (ident + 2) arrNm ++ "\n"
+  ++ "\n" ++ replicate ident ' ' ++"At position:\n"
   ++ identShowExpr (ident + 2) exp_
 
 identShowField :: Int -> (U.Name, Type) -> String
@@ -372,12 +377,12 @@ identShowDeclaration ident (Variable name varT initV isCst) = "\n" ++
   ++ replicate ident ' ' ++ "is Constant: " ++ show isCst ++ "\n"
   ++ (case initV of 
     (Just v) ->
-      replicate ident ' ' ++ "with a value of: \n"
+      "\n" ++ replicate ident ' ' ++ "with a value of: \n"
       ++ identShowExpr (ident + 2) v
     Nothing  -> "")
   ++ (case varT of
     (Just t) ->
-      replicate ident ' ' ++ "Of type:\n"
+      "\n" ++ replicate ident ' ' ++ "Of type:\n"
       ++ identShowType (ident + 2) t
     Nothing  -> "")
   
@@ -388,12 +393,12 @@ identShowDeclaration ident (Reference name refNm) = "\n" ++
 
 identShowDeclaration ident (Union name fs) = "\n" ++
   replicate ident ' ' ++ "Declaration of Union '" ++ name ++ "'\n"
-  ++ replicate ident ' ' ++ "with fields: \n"
+  ++ "\n" ++ replicate ident ' ' ++ "with fields: \n"
   ++ concatMap (identShowField (ident + 2)) fs
 
 identShowDeclaration ident (Struct name fs) = 
   replicate ident ' ' ++ "Declaration of Struct '" ++ name ++ "'\n"
-  ++ replicate ident ' ' ++ "with fields: \n"
+  ++ "\n" ++ replicate ident ' ' ++ "with fields: \n"
   ++ concatMap (identShowField (ident + 2)) fs
 
 identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
@@ -402,22 +407,22 @@ identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
       replicate ident ' ' ++ "Declaration of Procedure '" ++ name ++ "'\n"
       ++ replicate ident ' ' ++ "with parameters: \n"
       ++ concatMap (identShowFuncArg (ident + 2)) param
-      ++ replicate ident ' ' ++ "with body:\n"
+      ++ "\n" ++ replicate ident ' ' ++ "with body:\n"
       ++ identShowExpr (ident + 2) bodyExp
     (Just t)->
       replicate ident ' ' ++ "Declaration of Function '" ++ name ++ "'\n"
       ++ replicate ident ' ' ++ "with return type:\n"
       ++ identShowType (ident + 2) t ++ "\n"
-      ++ replicate ident ' ' ++ "with parameters: \n"
+      ++ "\n" ++ replicate ident ' ' ++ "with parameters: \n"
       ++ concatMap (identShowFuncArg (ident + 2)) param
-      ++ replicate ident ' ' ++ "with body:\n"
+      ++ "\n" ++ replicate ident ' ' ++ "with body:\n"
       ++ identShowExpr (ident + 2) bodyExp
     Nothing -> 
       replicate ident ' ' ++ "Declaration of Function '" ++ name ++ "'\n"
       ++ replicate ident ' ' ++ "with return type: Inferred\n"
       ++ replicate ident ' ' ++ "with parameters: \n"
       ++ concatMap (identShowFuncArg (ident + 2)) param
-      ++ replicate ident ' ' ++ "with body:\n"
+      ++ "\n" ++ replicate ident ' ' ++ "with body:\n"
       ++ identShowExpr (ident + 2) bodyExp
 
 
