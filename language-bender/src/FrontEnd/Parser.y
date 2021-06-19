@@ -103,7 +103,7 @@ import qualified FrontEnd.Errors  as E
  
 --%right ')' otherwise
 %right colon otherwise dotOtherwise of
-%left unit
+%left unit quotmark_s
 
 %right toBeContinued burst return 
 %left died
@@ -190,7 +190,7 @@ Expr            :: { AST.Expr }
     | id                                                { AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) }
     | ExprBlock                                         { $1 }
     | id Assign                                         { AST.Assign ((TK.name . TK.tktype) $1) $2 }
-    | id quotmark_s id Assign                           { AST.StructAssign ((TK.name . TK.tktype) $1) ((TK.name . TK.tktype) $3) $4 }
+    | Expr quotmark_s id Assign                           { AST.StructAssign ((TK.name . TK.tktype) $1) ((TK.name . TK.tktype) $3) $4 }
     | using Expr quotmark_s id skill                    { AST.StructAccess $2 ((TK.name . TK.tktype) $4) }
     | opening Expr of id chakrasFrom 
         Expr to Expr colon Expr                         { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
