@@ -198,11 +198,133 @@ namesAnalysis p@AST.Program{AST.decls=ds} = do
             -- check symbol definition 
             mbSym <- checkSymbolDefined _fname
 
-            --case mbSym of 
-            --    Nothing 
-            -- @TODO todavia hay que terminar de escribir el checkeo de funciones
-            undefined
+            -- Check if symbol is a valid function 
+            case mbSym of 
+                Just sym -> M.unless (ST.isFunction sym || ST.isProc sym) . addStaticError $ 
+                    SE.NotAValidFunction {
+                        SE.symName=_fname, 
+                        SE.actualSymType=ST.symType sym
+                    }
 
+            -- check args expressions            
+            M.forM_ _actualArgs checkExpr
+
+        --  Check for
+        checkExpr AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody} = do
+
+            -- check start, step & end expressions
+            checkExpr _start
+
+            checkExpr _step
+
+            checkExpr _end
+
+            -- push a new scope for iteration variable declaration 
+            pushEmptyScope  -- iterator variable declaration
+
+            -- create symbol for iterator variable 
+            let iter = ST.Symbol {
+                                ST.identifier=_iteratorName, 
+                                ST.symType= ST.Variable { 
+                                    ST.varType=Just AST.TInt, 
+                                    ST.initVal=Just _start
+                                    }, 
+                                ST.scope=0, 
+                                ST.enrtyType=Nothing
+                            }
+
+            -- add symbol. Its name it's trivially valid since we push an empty scope before 
+            -- adding it, so there's no symbol redefinition
+            tryAddSymbol iter
+
+            pushEmptyScope  -- body scope
+
+            checkExpr _cicBody -- check body
+
+            popEmptyScope   -- body scope
+
+            popEmptyScope   -- iterator variable declaration
+
+        --  Check While
+        checkExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody} = do
+            -- check condition expression
+            checkExpr _cond
+
+            -- check body
+            pushEmptyScope          -- body scope
+
+            -- check body expression
+            checkExpr _cicBody
+
+            popEmptyScope           -- body scope
+
+        --  Check if conditional expression
+        checkExpr AST.If {AST.cond=_cond, AST.accExpr=_accExpr, AST.failExpr=_failExpr} = do
+
+            -- check boolean condition
+            checkExpr _cond
+
+            -- push an empty scope for each different body
+
+            -- check accepted body
+            pushEmptyScope  -- acc body scope
+
+            checkExpr _accExpr
+
+            popEmptyScope   -- acc body scope
+
+            -- check failed body
+            pushEmptyScope  -- acc body scope
+
+            checkExpr _failExpr
+
+            popEmptyScope   -- acc body scope
+
+        --  Check expression block 
+        checkExpr AST.ExprBlock {AST.exprs=_exprs} = do
+
+            -- push scope for this block
+            pushEmptyScope -- body scope
+
+            M.forM_ _exprs checkExpr
+
+            popEmptyScope  -- body scope
+
+        --  Check return 
+        checkExpr AST.Return {AST.expr=_expr} = checkExpr _expr
+
+        --  Check break 
+        checkExpr AST.Break {AST.expr=_expr} = checkExpr _expr
+
+        --  Check continue 
+        checkExpr AST.Continue {AST.expr=_expr} = checkExpr _expr
+
+        --  Check Declarations
+        checkExpr AST.Declaration {AST.decl=_decl} = checkDecls _decl
+
+        --  Check Binary Operation
+        checkExpr AST.Op2 {AST.opr1=_opr1, AST.opr2=_opr2} = checkExpr _opr1 >> checkExpr _opr2
+
+        --  Check Unary Operation
+        checkExpr AST.Op1 {AST.opr=_opr} = checkExpr _opr
+
+        --  Check Array Literal Expression
+        checkExpr AST.Array {AST.list=_list} = M.forM_ _list checkExpr
+
+        --  Check Union type guessing
+        checkExpr AST.UnionTrying {AST.union=_union} = checkExpr _union
+
+        --  Check Union access 
+        checkExpr AST.UnionUsing {AST.union=_union} = checkExpr _union
+
+        --  Check New Expression
+        checkExpr AST.New {AST.typeName=_typeName} = checkType _typeName
+
+        --  Check Delete
+        checkExpr AST.Delete {AST.ptrExpr=_ptrExpr} = checkExpr _ptrExpr
+
+        --  Check array index access
+        --checkExpr AST.ArrayIndexing {index=_index, arrId=_arrId} = 
 
         checkExpr _ = undefined
 

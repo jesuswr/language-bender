@@ -149,3 +149,12 @@ isVariable _ = False
 isReference :: Symbol -> Bool
 isReference Symbol {symType=Reference{}} = True
 isReference _ = False
+
+-- | Tells if it's function 
+isFunction :: Symbol -> Bool 
+isFunction Symbol {symType=Function{}} = True
+
+-- | Tells if it's function 
+isProc :: Symbol -> Bool 
+isProc Symbol {symType=Procedure{}} = True
+

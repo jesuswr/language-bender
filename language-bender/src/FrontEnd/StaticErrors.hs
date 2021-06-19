@@ -12,4 +12,5 @@ data StaticError = SymbolNotInScope { symName :: U.Name }
                  | ReferencingNonVariable { symName :: U.Name } 
                  | NotValidType  { nonTypeName :: U.Name }
                  | NotAValidVariable { symName :: U.Name, actualSymType :: ST.SymType }
+                 | NotAValidFunction { symName :: U.Name, actualSymType :: ST.SymType  }
                  deriving(Eq, Show)  

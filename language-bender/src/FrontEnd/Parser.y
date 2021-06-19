@@ -102,7 +102,7 @@ import qualified FrontEnd.Errors  as E
     id                  { TK.Token _ (TK.TKid _) }
  
 --%right ')' otherwise
-%right colon otherwise dotOtherwise
+%right colon otherwise dotOtherwise of
 %left unit
 
 %right toBeContinued burst return 
@@ -213,7 +213,7 @@ Expr            :: { AST.Expr }
 
     | born Type member                                  { AST.New $2 }
     | Expr died                                         { AST.Delete $1 }
-    | disciple Expr of id                               { AST.ArrayIndexing $2 ((TK.name . TK.tktype) $4) }
+    | disciple Expr of Expr                             { AST.ArrayIndexing $2 ((TK.name . TK.tktype) $4) }
 
     -- >> Const Values --------------------------------------------------------------------------------
     | int                                               { AST.ConstInt $1 }

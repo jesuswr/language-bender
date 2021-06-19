@@ -7,7 +7,7 @@ module FrontEnd.AST where
 import qualified FrontEnd.Utils as U
 
 
--- Type Definition
+-- | Type Definition
 data Type = TFloat
           | TInt 
           | TChar 
@@ -22,7 +22,7 @@ data Type = TFloat
 
 data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq)
 
--- Declaration of new things
+-- | Declaration of new things
 data Declaration    = Variable  { decName :: U.Name, varType ::  Maybe Type, initVal :: Maybe Expr, isConst :: Bool }
                     | Reference { decName :: U.Name, refName :: U.Name }
                     | Union     { decName :: U.Name, fields :: [(U.Name, Type)] }
@@ -31,6 +31,7 @@ data Declaration    = Variable  { decName :: U.Name, varType ::  Maybe Type, ini
                     deriving(Eq)
 
 
+-- | Binary Operators
 data Opr2 = Sum
           | Sub
           | Mult
@@ -46,12 +47,13 @@ data Opr2 = Sum
           | Or
           deriving(Eq)
 
+-- | Unary operators
 data Opr1 = Negation
           | Negative
           | UnitOperator
           deriving(Eq)
 
--- Possible expressions. Remember, everything its an expression
+-- | Possible expressions. Remember, everything its an expression
 data Expr   = ConstChar       { cVal :: String}
             | ConstString     { sVal :: String}
             | ConstInt        { iVal :: Int }
@@ -82,10 +84,10 @@ data Expr   = ConstChar       { cVal :: String}
             | UnionUsing      { union :: Expr, tag :: U.Name }
             | New             { typeName :: Type }
             | Delete          { ptrExpr :: Expr }
-            | ArrayIndexing   { index :: Expr, arrId :: U.Name}
+            | ArrayIndexing   { index :: Expr, expr :: Expr}
             deriving(Eq)
 
--- Program data type     
+-- | Program data type     
 newtype Program = Program{ decls :: [Declaration] } deriving(Eq)
 
 
@@ -355,7 +357,7 @@ identShowExpr ident (Delete pt) = "\n" ++
   ++ identShowExpr (ident + 2) pt
 
 identShowExpr ident (ArrayIndexing exp_ arrNm) = "\n" ++
-  replicate ident ' ' ++ "Access Array: "++ arrNm ++", at position:\n"
+  replicate ident ' ' ++ "Access Array: "++ show arrNm ++", at position:\n"
   ++ identShowExpr (ident + 2) exp_
 
 identShowField :: Int -> (U.Name, Type) -> String
