@@ -312,9 +312,6 @@ Type            :: { AST.Type }
     | Type nation Expr year                             { AST.TArray $1 $3}
     | Type art                                          { AST.TPtr $1 }
 
--- < Expression > ---------------------------------------------------------------------------
-
-
 
 {
 
