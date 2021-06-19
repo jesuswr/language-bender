@@ -6,6 +6,7 @@ import qualified FrontEnd.StaticErrors  as SE
 import qualified FrontEnd.AST           as AST
 import qualified FrontEnd.SymTable      as ST
 import qualified FrontEnd.Utils         as U
+import qualified FrontEnd.Parser        as P
 
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
@@ -24,6 +25,15 @@ data AnalysisState = State {
     symTable :: ST.SymTable,
     ast :: AST.Program
 }
+
+startingState :: AST.Program  -> AnalysisState 
+startingState = State ST.newTable  
+
+analyzeProgram :: AST.Program -> IO ErrorLog
+analyzeProgram p = do
+    (_, _, e) <- RWS.runRWST (namesAnalysis p) () (startingState p)
+
+    return e
 
 -- | Add error to state of RWST
 addStaticError :: SE.StaticError -> AnalyzerState ()
