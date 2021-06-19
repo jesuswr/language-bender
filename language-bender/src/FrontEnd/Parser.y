@@ -102,8 +102,8 @@ import qualified FrontEnd.Errors  as E
     id                  { TK.Token _ (TK.TKid _) }
  
 --%right ')' otherwise
-%right colon otherwise dotOtherwise of
-%left unit quotmark_s
+%right colon otherwise dotOtherwise of endBlock
+%left unit quotmark_s 
 
 %right toBeContinued burst return 
 %left died
@@ -184,13 +184,15 @@ VarDecl         :: { AST.Declaration }
     | bender id is reincarnationOf id                   { AST.Reference ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $5) }
     
 
+    -- >> Expressions --------------------------------------------------------------------------
+
 Expr            :: { AST.Expr } 
     : char                                              { AST.ConstChar $1 }
     | '(' Expr ')'                                      { $2 }
     | id                                                { AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) }
     | ExprBlock                                         { $1 }
     | id Assign                                         { AST.Assign ((TK.name . TK.tktype) $1) $2 }
-    | Expr quotmark_s id Assign                           { AST.StructAssign ((TK.name . TK.tktype) $1) ((TK.name . TK.tktype) $3) $4 }
+    | Expr quotmark_s id Assign                         { AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 }
     | using Expr quotmark_s id skill                    { AST.StructAccess $2 ((TK.name . TK.tktype) $4) }
     | opening Expr of id chakrasFrom 
         Expr to Expr colon Expr                         { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
@@ -213,7 +215,7 @@ Expr            :: { AST.Expr }
 
     | born Type member                                  { AST.New $2 }
     | Expr died                                         { AST.Delete $1 }
-    | disciple Expr of Expr                             { AST.ArrayIndexing $2 ((TK.name . TK.tktype) $4) }
+    | disciple Expr of Expr                             { AST.ArrayIndexing $2 $4 }
 
     -- >> Const Values --------------------------------------------------------------------------------
     | int                                               { AST.ConstInt $1 }
@@ -283,10 +285,14 @@ ExprBlock       ::  { AST.Expr }
 ExprSeq         ::  { [AST.Expr] }
     : LastInBlock                                       { [$1] }
     | Seq LastInBlock                                   { $2:$1 }
+    | Seq beginBlock ExprSeq endBlock LastInBlock       { $5:($3 ++ $1) }
+    | Seq beginBlock endBlock LastInBlock               { $4:$1 }
 
 Seq             :: { [AST.Expr] }
     : Exprs Dots                                        { [$1] }
     | Seq Exprs Dots                                    { $2:$1 }
+    | Seq beginBlock ExprSeq endBlock Exprs Dots        { $5:($3 ++ $1) }
+    | Seq beginBlock endBlock Exprs Dots                { $4:$1 }
     | Dots                                              { [] }
     
 LastInBlock     :: { AST.Expr }
