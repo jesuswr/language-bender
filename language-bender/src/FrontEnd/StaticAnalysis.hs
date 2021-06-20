@@ -29,11 +29,11 @@ data AnalysisState = State {
 startingState :: AST.Program  -> AnalysisState 
 startingState = State ST.newTable  
 
-analyzeProgram :: AST.Program -> IO ErrorLog
+analyzeProgram :: AST.Program -> IO (AnalysisState, ErrorLog)
 analyzeProgram p = do
-    (_, _, e) <- RWS.runRWST (namesAnalysis p) () (startingState p)
+    (_, s, e) <- RWS.runRWST (namesAnalysis p) () (startingState p)
 
-    return e
+    return (s, e)
 
 -- | Add error to state of RWST
 addStaticError :: SE.StaticError -> AnalyzerState ()
@@ -119,7 +119,11 @@ checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
 
     -- check valid return type if needed 
-    case _retType of Just t -> checkType t
+    M.when (_retType /= Nothing) $ do
+        let Just t = _retType
+        checkType t
+
+    --case _retType of Just t -> checkType t
 
     -- Function to check a single function argument 
     let checkFArg :: AST.FuncArg -> AnalyzerState ()
@@ -320,7 +324,7 @@ checkExpr AST.Delete {AST.ptrExpr=_ptrExpr} = checkExpr _ptrExpr
 --  Check array index access
 checkExpr AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = checkExpr _index >> checkExpr _expr
 
-checkExpr _ = undefined
+checkExpr _ = return ()
 
 -- | Checks if a given type is a valid one 
 checkType :: AST.Type -> AnalyzerState ()

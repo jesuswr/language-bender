@@ -84,7 +84,7 @@ stCurrScope = head . stScopeStk
 insertSymbol :: Symbol 
              -> SymTable
              -> Maybe SymTable
-insertSymbol s st = Nothing
+insertSymbol s st = res
     where
         -- aux data
         symId = identifier s                -- Symbol Name
@@ -104,7 +104,7 @@ insertSymbol s st = Nothing
 
 
         res = case maybeExisting of 
-            Nothing     -> Nothing
+            Nothing     -> Just newSt
             Just sym    -> if scope sym == currScope -- could not insert symbol if already in current scope 
                                 then Nothing 
                                 else Just newSt
