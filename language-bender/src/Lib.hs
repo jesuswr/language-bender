@@ -38,7 +38,7 @@ langBender = do
                 let lexerErrors = fst lexerResult
                 let tokens = snd lexerResult
 
-                CM.when (not $ null lexerErrors) $ do
+                CM.unless (null lexerErrors) $ do
                     putStrLn "~ Lexer Errors ~\n"
                     mapM_ print lexerErrors
                     putStrLn "\n"
