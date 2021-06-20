@@ -133,6 +133,7 @@ tokens :-
                 -- literals
 <0>     @float                                           { pushFloat }
 <0>     @int                                             { pushInt }
+<0>     \-                                               { pushTK TKbut }
                 
                 -- special characters
 <0>     \,                                               { pushTK TKcomma }

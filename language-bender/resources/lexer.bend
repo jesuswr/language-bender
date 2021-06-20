@@ -235,7 +235,7 @@
 --     this story comes to an end ~
 -- -.
 
-book arrays:
+book a:
 .-
 	master of -1, -2, 3, -4 right now.
 	disciple 0 of master of -1, -2, -3, 4 right now.

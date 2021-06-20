@@ -8,6 +8,7 @@ import              FrontEnd.CommandLine
 import              FrontEnd.Lexer
 import              FrontEnd.Parser
 import              FrontEnd.Errors
+import              FrontEnd.StaticAnalysis as SE
 import qualified    Utils.Constants
 import qualified    Control.Monad as CM
 
@@ -58,8 +59,17 @@ langBender = do
 
                         if justPar opts then return ()
                             else do
-                                putStrLn "not implemented"
-                                return ()
+                                
+                                (symT, stErr) <- SE.analyzeProgram ast
+
+                                CM.when(not $ null stErr) $ do
+                                    putStrLn "~ Static Errors ~"
+                                    print stErr
+
+                                CM.when(null stErr) $ do
+                                    putStrLn "~ Symbol Table ~"
+                                    print "ststst"
+
 
 
 
