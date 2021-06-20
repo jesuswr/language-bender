@@ -320,7 +320,8 @@ checkExpr AST.Delete {AST.ptrExpr=_ptrExpr} = checkExpr _ptrExpr
 --  Check array index access
 checkExpr AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = checkExpr _index >> checkExpr _expr
 
-checkExpr _ = undefined
+-- Const  expressions
+checkExpr _ = return ()
 
 -- | Checks if a given type is a valid one 
 checkType :: AST.Type -> AnalyzerState ()
