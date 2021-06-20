@@ -11,7 +11,7 @@ import qualified FrontEnd.Parser        as P
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
-import Data.Maybe(isNothing, maybe, fromMaybe)
+import Data.Maybe(isNothing, maybe, fromMaybe, isJust)
 
 -----------------------------------------------------------------
 
@@ -26,13 +26,12 @@ data AnalysisState = State {
     ast :: AST.Program
 }
 
-startingState :: AST.Program  -> AnalysisState 
-startingState = State ST.newTable  
+startingState :: AST.Program  -> AnalysisState
+startingState = State ST.newTable
 
 analyzeProgram :: AST.Program -> IO (AnalysisState, ErrorLog)
 analyzeProgram p = do
     (_, s, e) <- RWS.runRWST (namesAnalysis p) () (startingState p)
-
     return (s, e)
 
 -- | Add error to state of RWST
@@ -49,14 +48,17 @@ checkDecls :: AST.Declaration -> AnalyzerState ()
 
 -- Check Variable Declaration 
 checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = ival, AST.isConst = const} = do
+
+    RWS.lift . print $ "checking declaration of " ++ sid
+
     -- Get current state
     currSt@State{symTable = st} <- RWS.get
 
     -- check if type of variable is currently defined when it's customType 
-    case t of Just t' -> checkType t'
+    M.forM_ t checkType
 
     -- Create a new symbol
-    let newSym = declToSym v 
+    let newSym = declToSym v
 
     -- Check expression if necessary
     M.forM_ ival checkExpr
@@ -111,7 +113,7 @@ checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 
     --  Create symbol 
     let symbol = declToSym s
-        
+
     -- check if add symbol is possible 
     tryAddSymbol symbol
 
@@ -119,7 +121,7 @@ checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
 
     -- check valid return type if needed 
-    M.when (_retType /= Nothing) $ do
+    M.when (isJust _retType) $ do
         let Just t = _retType
         checkType t
 
@@ -170,7 +172,7 @@ checkExpr :: AST.Expr -> AnalyzerState ()
 
 -- Check Id expression:
 checkExpr AST.Id {AST.name=_name, AST.position=_position} = checkIdIsVarOrReference _name
-    
+
 -- Check assign expression 
 checkExpr AST.Assign {AST.variable=_variable, AST.value=_value} = do
     -- check if left hand corresponds to a variable or reference name
@@ -187,19 +189,19 @@ checkExpr AST.StructAssign {AST.struct =_struct, AST.value=_value} = do
 
 -- Check struct access
 checkExpr AST.StructAccess {AST.struct =_struct} = do
-    checkExpr _struct 
+    checkExpr _struct
 
 -- Check Function Call
 checkExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
-    
+
     -- check symbol definition 
     mbSym <- checkSymbolDefined _fname
 
     -- Check if symbol is a valid function 
-    case mbSym of 
-        Just sym -> M.unless (ST.isFunction sym || ST.isProc sym) . addStaticError $ 
+    case mbSym of
+        Just sym -> M.unless (ST.isFunction sym || ST.isProc sym) . addStaticError $
             SE.NotAValidFunction {
-                SE.symName=_fname, 
+                SE.symName=_fname,
                 SE.actualSymType=ST.symType sym
             }
 
@@ -221,13 +223,13 @@ checkExpr AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_st
 
     -- create symbol for iterator variable 
     let iter = ST.Symbol {
-                        ST.identifier=_iteratorName, 
-                        ST.symType= ST.Variable { 
-                            ST.varType=Just AST.TInt, 
+                        ST.identifier=_iteratorName,
+                        ST.symType= ST.Variable {
+                            ST.varType=Just AST.TInt,
                             ST.initVal=Just _start,
                             ST.isConst = False
-                            }, 
-                        ST.scope=0, 
+                            },
+                        ST.scope=0,
                         ST.enrtyType=Nothing
                     }
 
@@ -343,19 +345,19 @@ checkType AST.CustomType {AST.tName=_tName} = do -- When it is a custom type
 checkType ptr = checkType . AST.ptrType $ ptr
 
 -- | Generate a symbol from an AST declaration
-declToSym :: AST.Declaration -> ST.Symbol 
+declToSym :: AST.Declaration -> ST.Symbol
 declToSym decl = ST.Symbol {
-                    ST.identifier=AST.decName decl, 
-                    ST.symType=declToSymType decl, 
-                    ST.scope=0, 
+                    ST.identifier=AST.decName decl,
+                    ST.symType=declToSymType decl,
+                    ST.scope=0,
                     ST.enrtyType=Nothing
                 }
     where
         declToSymType :: AST.Declaration -> ST.SymType
-        declToSymType AST.Variable {AST.varType=_varType, AST.initVal=_initVal, AST.isConst=_isConst} = 
+        declToSymType AST.Variable {AST.varType=_varType, AST.initVal=_initVal, AST.isConst=_isConst} =
             ST.Variable {
-                ST.varType=_varType, 
-                ST.initVal=_initVal, 
+                ST.varType=_varType,
+                ST.initVal=_initVal,
                 ST.isConst=_isConst
             }
 
@@ -365,10 +367,10 @@ declToSym decl = ST.Symbol {
 
         declToSym AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields}
 
-        declToSym AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body} = 
+        declToSym AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body} =
             ST.Function {
-                ST.args=_args, 
-                ST.retType=fromMaybe AST.TUnit  _retType, 
+                ST.args=_args,
+                ST.retType=fromMaybe AST.TUnit  _retType,
                 ST.body=_body
             }
 
@@ -412,9 +414,8 @@ checkSymbolDefined name = do
 checkIdIsVarOrReference :: U.Name -> AnalyzerState ()
 checkIdIsVarOrReference name = do -- Check that given name is a valid one and it is a variable
             mbSym <- checkSymbolDefined name
-
             -- Raise invalid symbol if this symbol is not a variable nor a reference
             case mbSym of
-                Just sym -> M.unless ( ST.isVariable  sym || ST.isReference  sym) $ 
+                Just sym -> M.unless ( ST.isVariable  sym || ST.isReference  sym) $
                             addStaticError SE.NotAValidVariable {SE.symName=name, SE.actualSymType=ST.symType sym}
                 Nothing  -> addStaticError SE.SymbolNotInScope {SE.symName=name}

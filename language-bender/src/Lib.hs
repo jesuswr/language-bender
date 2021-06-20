@@ -57,18 +57,17 @@ langBender = do
                             putStrLn "~ Abstract Syntax Tree ~\n"
                             print ast
 
-                        if justPar opts then return ()
+                            (symT, stErr) <- SE.analyzeProgram ast
+
+                            CM.unless (null stErr) $ do
+                                putStrLn "~ Static Errors ~"
+                                print stErr
+
+                        if justPar opts 
+                            then return ()
                             else do
-                                
-                                (symT, stErr) <- SE.analyzeProgram ast
-
-                                CM.when(not $ null stErr) $ do
-                                    putStrLn "~ Static Errors ~"
-                                    print stErr
-
-                                CM.when(null stErr) $ do
-                                    putStrLn "~ Symbol Table ~"
-                                    print "ststst"
+                                putStrLn "~ Symbol Table ~"
+                                print "ststst"
 
 
 
