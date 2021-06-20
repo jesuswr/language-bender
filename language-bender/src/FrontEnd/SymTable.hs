@@ -102,7 +102,6 @@ insertSymbol s st = res
 
         newSt = st{stDict=newSymDict}
 
-
         res = case maybeExisting of 
             Nothing     -> Just newSt
             Just sym    -> if scope sym == currScope -- could not insert symbol if already in current scope 

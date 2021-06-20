@@ -49,8 +49,6 @@ checkDecls :: AST.Declaration -> AnalyzerState ()
 -- Check Variable Declaration 
 checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = ival, AST.isConst = const} = do
 
-    RWS.lift . print $ "checking declaration of " ++ sid
-
     -- Get current state
     currSt@State{symTable = st} <- RWS.get
 
@@ -354,20 +352,21 @@ declToSym decl = ST.Symbol {
                 }
     where
         declToSymType :: AST.Declaration -> ST.SymType
-        declToSymType AST.Variable {AST.varType=_varType, AST.initVal=_initVal, AST.isConst=_isConst} =
+        declToSymType AST.Variable {AST.decName = _, AST.varType=_varType, AST.initVal=_initVal, AST.isConst=_isConst} = 
             ST.Variable {
-                ST.varType=_varType,
-                ST.initVal=_initVal,
+                ST.varType=_varType, 
+                ST.initVal=_initVal, 
                 ST.isConst=_isConst
             }
+            
+        declToSymType AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=Nothing}
 
-        declToSym AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=Nothing}
 
-        declToSym AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields}
+        declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields}
 
-        declToSym AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields}
+        declToSymType AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields}
 
-        declToSym AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body} =
+        declToSymType AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body} =
             ST.Function {
                 ST.args=_args,
                 ST.retType=fromMaybe AST.TUnit  _retType,
@@ -379,6 +378,7 @@ tryAddSymbol :: ST.Symbol -> AnalyzerState ()
 tryAddSymbol s@ST.Symbol {ST.identifier=_identifier} = do
     -- get current state
     currSt@State{symTable=st} <- RWS.get
+
     case ST.insertSymbol s st of
         Nothing -> addStaticError $ SE.SymbolRedefinition _identifier -- if could not add, it's because of symbol redefinition
         Just st' -> RWS.put currSt{symTable = st'}                   -- update state
@@ -413,9 +413,10 @@ checkSymbolDefined name = do
 
 checkIdIsVarOrReference :: U.Name -> AnalyzerState ()
 checkIdIsVarOrReference name = do -- Check that given name is a valid one and it is a variable
+
             mbSym <- checkSymbolDefined name
             -- Raise invalid symbol if this symbol is not a variable nor a reference
             case mbSym of
                 Just sym -> M.unless ( ST.isVariable  sym || ST.isReference  sym) $
                             addStaticError SE.NotAValidVariable {SE.symName=name, SE.actualSymType=ST.symType sym}
-                Nothing  -> addStaticError SE.SymbolNotInScope {SE.symName=name}
+                _        -> return ()
