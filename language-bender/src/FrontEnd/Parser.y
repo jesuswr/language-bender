@@ -206,6 +206,9 @@ Expr            :: { AST.Expr }
     | if  Expr colon Expr otherwise Expr                { AST.If $2 $4 $6 }
     | if  Expr colon Expr dotOtherwise Expr             { AST.If $2 $4 $6 }
     | if  Expr colon Expr                               { AST.If $2 $4 AST.ConstUnit }
+    | if  Expr dot colon Expr otherwise Expr            { AST.If $2 $5 $7 }
+    | if  Expr dot colon Expr dotOtherwise Expr         { AST.If $2 $5 $7 }
+    | if  Expr dot colon Expr                           { AST.If $2 $5 AST.ConstUnit }
    
     | in id bookWith ExprList elipsis                   { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
     | in id bookWith elipsis                            { AST.FunCall ((TK.name . TK.tktype) $2) [] }

@@ -28,9 +28,9 @@ $ascii_str = [\0-\127] # [\"\\]
 @float = $digits+\.$digits+
 @comments = \-\-.*
 @linebreaks = \n+\r?\r+\n?
-@wn = [\ \n \r]
-@avatarIntro = Water\.@wn+Earth\.@wn+Fire\.@wn+Air\.@wn+Long@wn+ago\,@wn+the@wn+four@wn+nations@wn+lived@wn+together@wn+in@wn+harmony\.@wn+Then\,@wn+everything@wn+changed@wn+when@wn+the@wn+Fire@wn+Nation@wn+attacked\.@wn+Only@wn+the@wn+Avatar\,@wn+master@wn+of@wn+all@wn+four@wn+elements\,@wn+could@wn+stop@wn+them
-@w = \ +
+@wn = [\ \n \t \r]
+@w = (@wn | @comments\n)+
+@avatarIntro = Water@w*\.@w Earth@w*\.@w Fire@w*\.@w Air@w*\.@w Long@w ago@w*\,@w the@w four@w nations@w lived@w together@w in@w harmony@w*\.@w Then@w*\,@w everything@w changed@w when@w the@w Fire@w Nation@w attacked@w*\.@w Only@w the@w Avatar@w*\,@w master@w of@w all@w four@w elements@w*\,@w could@w stop@w them@w*\.
 
 tokens :-
 
@@ -125,7 +125,7 @@ tokens :-
 
                 -- conditionals
 <0>     if                                               { pushTK TKif }
-<0>     \. ([\ \n \t \r] | @comments)* otherwise         { pushTK TKdotOtherwise} 
+<0>     \. @w otherwise                                  { pushTK TKdotOtherwise} 
 <0>     otherwise                                        { pushTK TKotherwise }
 
                 -- other syntax is WIP
@@ -139,12 +139,13 @@ tokens :-
 <0>     \,                                               { pushTK TKcomma }
 <0>     \:                                               { pushTK TKcolon }
 <0>     \.\-                                             { pushTK TKbeginBlock }
-<0>     \-\.                                             { pushTKendDot }
+<0>     \-\.                                             { pushTKlist [TKendBlock, TKdot] }
 <0>     \.                                               { pushTK TKdot }
 <0>     \~                                               { pushTK TKunit }
 <0>     \(                                               { pushTK TKopenParent }   
 <0>     \)                                               { pushTK TKcloseParent }
-<0>     \.\.\.                                           { pushTKelipsisDot }
+<0>     \.\.\.                                           { pushTKlist [TKelipsis, TKdot] }
+<0>     \.\-\-\.                                         { pushTKlist [TKbeginBlock, TKendBlock, TKdot] }
 
                 -- function calls
 <0>     in                                               { pushTK TKin }
@@ -172,10 +173,10 @@ tokens :-
 
                 -- control flow
 
-<0>     to @w be continued                               { pushTK TKtoBeContinued }
+<0>     to @w be @w continued                            { pushTK TKtoBeContinued }
 <0>     burst                                            { pushTK TKburst }
 <0>     this @w story @w comes @w to @w an @w end        { pushTK TKreturn }
-<0>     to @w be continued @w \~                         { pushTK TKtoBeContinuedUnit }
+<0>     to @w be @w continued @w \~                      { pushTK TKtoBeContinuedUnit }
 <0>     burst @w \~                                      { pushTK TKburstUnit }
 <0>     this @w story @w comes @w to @w an @w end @w \~  { pushTK TKreturnUnit }
 
@@ -267,6 +268,13 @@ pushTK tok ( (AlexPn _ l c ) , _ , _ , _ ) len = do
     addToken (Token (Position l c) tok)
     alexMonadScan
 
+pushTKlist :: [TokenType] ->  AlexAction AlexUserState
+pushTKlist toks ( (AlexPn _ l c ) , _ , _ , _ ) _ = do
+    mapM_ (pushTK') toks
+    alexMonadScan
+  where
+    pushTK' tok = addToken (Token (Position l c) tok)
+
 pushInt :: AlexAction AlexUserState
 pushInt ( (AlexPn _ l c ) , _ , _ , str ) len = do 
     addToken ( Token (Position l c) $ TKint ( read $ take len str :: Int) )
@@ -315,18 +323,6 @@ getLitStr = getAtr literalString
 setLitStr :: String -> Alex ()
 setLitStr str = Alex $ \s@AlexState{alex_ust=ust}
     -> Right (s{ alex_ust = (alex_ust s){literalString = str} }, ())
-
-pushTKendDot :: AlexAction AlexUserState
-pushTKendDot ( (AlexPn _ l c ) , _ , _ , _ ) _ = do
-    addToken (Token (Position l c) TKendBlock)
-    addToken (Token (Position l c) TKdot)
-    alexMonadScan
-
-pushTKelipsisDot :: AlexAction AlexUserState
-pushTKelipsisDot ( (AlexPn _ l c ) , _ , _ , _ ) _ = do
-    addToken (Token (Position l c) TKelipsis)
-    addToken (Token (Position l c) TKdot)
-    alexMonadScan
 
 -- manage error in the state
 

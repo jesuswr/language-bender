@@ -11,7 +11,7 @@ import qualified FrontEnd.Parser        as P
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
-import Data.Maybe(isNothing, maybe, fromMaybe, isJust)
+import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 
 -----------------------------------------------------------------
 
@@ -75,6 +75,7 @@ checkDecls AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     case refSym of
         Nothing -> addStaticError . SE.SymbolNotInScope $ refId
         Just ST.Symbol{ST.symType = ST.Variable{}} -> return ()
+        Just ST.Symbol{ST.symType = ST.Reference{}} -> return ()
         _       -> addStaticError . SE.ReferencingNonVariable $ refId
 
     -- Get reference type:
@@ -129,7 +130,7 @@ checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retTyp
     let checkFArg :: AST.FuncArg -> AnalyzerState ()
         checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
                         checkType _argType -- check argument type 
-                        case _defaultVal of Just expr -> checkExpr expr -- check expression validity
+                        M.when (isJust _defaultVal) $ checkExpr (fromJust _defaultVal) -- check expression validity
 
     -- check arguments
     M.forM_ _args checkFArg
