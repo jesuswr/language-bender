@@ -144,7 +144,7 @@ tokens :-
 <0>     \~                                               { pushTK TKunit }
 <0>     \(                                               { pushTK TKopenParent }   
 <0>     \)                                               { pushTK TKcloseParent }
-<0>     \.\.\.                                           { pushTK TKelipsis }
+<0>     \.\.\.                                           { pushTKelipsisDot }
 
                 -- function calls
 <0>     in                                               { pushTK TKin }
@@ -319,6 +319,12 @@ setLitStr str = Alex $ \s@AlexState{alex_ust=ust}
 pushTKendDot :: AlexAction AlexUserState
 pushTKendDot ( (AlexPn _ l c ) , _ , _ , _ ) _ = do
     addToken (Token (Position l c) TKendBlock)
+    addToken (Token (Position l c) TKdot)
+    alexMonadScan
+
+pushTKelipsisDot :: AlexAction AlexUserState
+pushTKelipsisDot ( (AlexPn _ l c ) , _ , _ , _ ) _ = do
+    addToken (Token (Position l c) TKelipsis)
     addToken (Token (Position l c) TKdot)
     alexMonadScan
 

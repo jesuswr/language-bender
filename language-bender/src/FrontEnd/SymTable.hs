@@ -55,6 +55,13 @@ data SymTable = SymTable
     , stNextScope :: Int                -- ^ current scope 
     } deriving (Eq, Show)
 
+-- < Show instance > --------------------------------------------
+
+-- instance Show SymTable where
+--     show = printSymTable
+
+-- printSymTable :: SymTable -> String
+-- printSymTable (SymTable dict ) = "oli"
 
 -- < Utility Functions > ----------------------------------------
 
@@ -141,19 +148,30 @@ findSymbol' id st f = res
 
 -- | Tells if a symbol is a variable or not:
 isVariable :: Symbol -> Bool 
-isVariable Symbol{symType = Variable{}} = True
+isVariable Symbol {symType = Variable{}} = True
 isVariable _ = False 
 
 -- | Tells if a symbol is a reference or not
 isReference :: Symbol -> Bool
-isReference Symbol {symType=Reference{}} = True
+isReference Symbol {symType = Reference{}} = True
 isReference _ = False
 
--- | Tells if it's function 
+-- | Tells if it's function or not:
 isFunction :: Symbol -> Bool 
-isFunction Symbol {symType=Function{}} = True
+isFunction Symbol {symType = Function{}} = True
+isFunction _ = False
 
--- | Tells if it's function 
+-- | Tells if it's procedure or not:
 isProc :: Symbol -> Bool 
-isProc Symbol {symType=Procedure{}} = True
+isProc Symbol {symType = Procedure{}} = True
+isProc _ = False
 
+-- | Tells if it's struct or not:
+isStruct :: Symbol -> Bool
+isStruct Symbol {symType = StructType{}} = True
+isStruct _ = False
+
+-- | Tells if it's union or not:
+isUnion :: Symbol -> Bool
+isUnion Symbol {symType = UnionType{}} = True
+isUnion _ = False

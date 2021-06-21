@@ -48,7 +48,10 @@ langBender = do
                     mapM_ print tokens
                     putStrLn "\n"
 
-                if justLex opts then return ()
+                CM.when (null tokens) $ do
+                    putStrLn "No token was found.\nAn executable will not be generated\n"
+
+                if (justLex opts || null tokens) then return ()
                     else do
 
                         let ast = parseTokens tokens
@@ -57,17 +60,17 @@ langBender = do
                             putStrLn "~ Abstract Syntax Tree ~\n"
                             print ast
 
-                            (symT, stErr) <- SE.analyzeProgram ast
+                        ((SE.State symT _), stErr) <- SE.analyzeProgram ast
 
-                            CM.unless (null stErr) $ do
-                                putStrLn "~ Static Errors ~"
-                                print stErr
+                        CM.unless (null stErr) $ do
+                            putStrLn "~ Static Errors ~"
+                            print stErr
 
                         if justPar opts 
                             then return ()
                             else do
                                 putStrLn "~ Symbol Table ~"
-                                print "ststst"
+                                print symT
 
 
 

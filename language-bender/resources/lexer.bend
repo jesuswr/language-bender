@@ -235,8 +235,25 @@
 --     this story comes to an end ~
 -- -.
 
-book a:
+-- book a:
+-- .-
+-- 	master of -1, -2, 3, -4 right now.
+-- 	disciple 0 of master of -1, -2, -3, 4 right now.
+-- -.
+
+-- book litStru:
+-- .-
+-- 	element ola is compound by first skill of air, id1 skill of water.
+-- 	learning ola control using 1, 2 right now.
+-- 	using  learning ola control using 1, 2 right now 's first skill 
+-- -.
+
+book xd: 23.
+
+book litUnion:
 .-
-	master of -1, -2, 3, -4 right now.
-	disciple 0 of master of -1, -2, -3, 4 right now.
+	in xd book with ...
+	energy ole allows first technique of fire bending, second technique of air bending.
+	learning ole 's second technique from 42.
+	using  learning ole 's second technique from 42  's second technique
 -.

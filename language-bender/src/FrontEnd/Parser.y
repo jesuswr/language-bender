@@ -192,13 +192,13 @@ Expr            :: { AST.Expr }
     
     | Expr quotmark_s id Assign                         { AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 }
     | using Expr quotmark_s id skill                    { AST.StructAccess $2 ((TK.name . TK.tktype) $4) }
-    | learning Type control using
-        ExprList rightNow                               { AST.ConstStruct $2 (reverse $5) }
+    | learning id control using
+        ExprList rightNow                               { AST.ConstStruct ((TK.name . TK.tktype) $2) (reverse $5) }
     
     | trying Expr quotmark_s id technique               { AST.UnionTrying $2 ((TK.name . TK.tktype) $4) }
     | using Expr quotmark_s id technique                { AST.UnionUsing $2 ((TK.name . TK.tktype) $4) }
-    | learning Type quotmark_s id 
-        techniqueFrom Expr                              { AST.ConstUnion $2 ((TK.name . TK.tktype) $4) $6}
+    | learning id quotmark_s id 
+        techniqueFrom Expr                              { AST.ConstUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6}
     
     | opening Expr of id chakrasFrom 
         Expr to Expr colon Expr                         { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
@@ -268,16 +268,6 @@ Exprs           ::  { AST.Expr }
     -- >> Assigment ---------------------------------------------------------------------------------------
 Assign          :: { AST.Expr }
     : is Expr                                           { $2 } 
-    -- | is AssignStruct                                   { $2 }
-    -- | is AssignUnion                                    { $2 }
-
--- AssignStruct    :: { AST.Expr }
---     : learning Type control using
---         ExprList rightNow                               { AST.ConstStruct $2 (reverse $5) }
-
--- AssignUnion     :: { AST.Expr }
---     : learning Type quotmark_s id 
---         techniqueFrom Expr                              { AST.ConstUnion $2 ((TK.name . TK.tktype) $4) $6}
 
 
 -- < Expression block Grammar > --------------------------------------------------------------------------  
@@ -320,7 +310,9 @@ Type            :: { AST.Type }
 
 {
 
+-- Error function
 parseError :: [TK.Token] -> a
-parseError ls = error $ "por " ++ show ls
+parseError []       = error "[Error]: Parse error after the end of file.\n"
+parseError (tk:tks) = error $ "[Error]: Parse error at: " ++ (show tk) ++ "\n"
 
 }

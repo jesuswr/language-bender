@@ -202,6 +202,7 @@ checkExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
                 SE.symName=_fname,
                 SE.actualSymType=ST.symType sym
             }
+        _ -> return ()
 
     -- check args expressions            
     M.forM_ _actualArgs checkExpr
@@ -324,6 +325,42 @@ checkExpr AST.Delete {AST.ptrExpr=_ptrExpr} = checkExpr _ptrExpr
 --  Check array index access
 checkExpr AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = checkExpr _index >> checkExpr _expr
 
+-- Check Struct Literal
+checkExpr AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
+
+    -- Check struct name of literal struct
+    mbSym <- checkSymbolDefined _structName
+    
+    -- Check if symbol is a valid struct name 
+    case mbSym of
+        Just sym -> M.unless (ST.isStruct sym) . addStaticError $
+            SE.NotAValidStruct {
+                SE.symName=_structName,
+                SE.actualSymType=ST.symType sym
+            }
+        _ -> return ()
+
+    -- Check list of expressions
+    M.forM_ _list checkExpr
+
+-- Check Union Literal
+checkExpr AST.ConstUnion {AST.unionName=_unionName, AST.value=_value} = do
+
+    -- Check union name of literal union
+    mbSym <- checkSymbolDefined _unionName
+
+     -- Check if symbol is a valid union name 
+    case mbSym of
+        Just sym -> M.unless (ST.isUnion sym) . addStaticError $
+            SE.NotAValidUnion {
+                SE.symName=_unionName,
+                SE.actualSymType=ST.symType sym
+            }
+        _ -> return ()
+
+    -- Check value expression
+    checkExpr _value
+
 checkExpr _ = return ()
 
 -- | Checks if a given type is a valid one 
@@ -340,7 +377,19 @@ checkType AST.CustomType {AST.tName=_tName} = do -- When it is a custom type
         Just ST.Symbol { ST.symType= ST.Type{} } -> return ()
         _  -> addStaticError $ SE.NotValidType{SE.nonTypeName = _tName}
 
-checkType ptr = checkType . AST.ptrType $ ptr
+checkType (AST.TArray t sz) = do
+
+    -- check type of array elements
+    checkType t
+
+    -- check size expression
+    checkExpr sz
+
+checkType (AST.TPtr t) = checkType t
+
+checkType (AST.TReference t) = checkType t
+
+checkType _ = return ()
 
 -- | Generate a symbol from an AST declaration
 declToSym :: AST.Declaration -> ST.Symbol

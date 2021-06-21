@@ -58,10 +58,10 @@ data Expr   = ConstChar       { cVal :: String}
             | ConstString     { sVal :: String}
             | ConstInt        { iVal :: Int }
             | ConstFloat      { fVal :: Float }
-            | ConstStruct     { structType :: Type, list :: [Expr] }
+            | ConstStruct     { structName :: U.Name, list :: [Expr] }
             | ConstTrue 
             | ConstFalse
-            | ConstUnion      { unionType :: Type, tag :: U.Name, value :: Expr }
+            | ConstUnion      { unionName :: U.Name, tag :: U.Name, value :: Expr }
             | ConstUnit
             | ConstNull
             | Id              { name :: U.Name, position :: U.Position}
@@ -232,10 +232,9 @@ identShowExpr ident (ConstInt n) = "\n" ++
 identShowExpr ident (ConstFloat f) = "\n" ++
   replicate ident ' ' ++ "Literal Float: '" ++ (show f) ++ "'\n"
 
-identShowExpr ident (ConstStruct t exps) = "\n" ++
-  replicate ident ' ' ++ "Literal Struct:\n"
-  ++ identShowType (ident + 2) t 
-  ++ "\n" ++ replicate ident ' ' ++ "with fields:\n"
+identShowExpr ident (ConstStruct stru_id exps) = "\n" ++
+  replicate ident ' ' ++ "Literal Struct: '"++ stru_id ++ "'\n"
+  ++ replicate ident ' ' ++ "with fields:\n"
   ++ concatMap (identShowExpr (ident + 2)) exps 
 
 identShowExpr ident ConstTrue = "\n" ++
@@ -244,10 +243,9 @@ identShowExpr ident ConstTrue = "\n" ++
 identShowExpr ident ConstFalse = "\n" ++
   replicate ident ' ' ++ "Literal Bool: False\n"
 
-identShowExpr ident (ConstUnion t tag_ val) = "\n" ++
-  replicate ident ' ' ++ "Literal Union:\n"
-  ++ identShowType (ident + 2) t 
-  ++ "\n" ++ replicate ident ' ' ++ "with tag: " ++ tag_ ++ "\n"
+identShowExpr ident (ConstUnion union_id tag_ val) = "\n" ++
+  replicate ident ' ' ++ "Literal Union: '" ++ union_id ++ "'\n"
+  ++ replicate ident ' ' ++ "with tag: " ++ tag_ ++ "\n"
   ++ "\n" ++ replicate ident ' ' ++ "with value:\n"
   ++ identShowExpr (ident + 2) val 
 
