@@ -47,6 +47,9 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -W
+    - -Wall
+    - -fwarn-incomplete-patterns
     dependencies:
     - language-bender
 
