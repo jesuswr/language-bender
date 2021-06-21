@@ -4,14 +4,16 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 
-name:           doe-lang
+name:           language-bender
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/doe-lang#readme>
-homepage:       https://github.com/githubuser/doe-lang#readme
-bug-reports:    https://github.com/githubuser/doe-lang/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2021 Author name here
+description:    Please see the README on GitHub at <https://github.com/jesuswr/Doe-Lang>
+homepage:       https://github.com/jesuswr/Doe-Lang#readme
+bug-reports:    https://github.com/jesuswr/Doe-Lang/issues
+author:         Jesús Wahrman,
+                Neil Villamizar,
+                Luis Diaz
+maintainer:     ldiazn98@gmail.com
+copyright:      2021 Jesús Wahrman
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -21,18 +23,24 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/doe-lang
+  location: https://github.com/jesuswr/Doe-Lang
 
 library
   exposed-modules:
+      FrontEnd.AST
       FrontEnd.CommandLine
       FrontEnd.Errors
       FrontEnd.Lexer
+      FrontEnd.Parser
+      FrontEnd.StaticAnalysis
+      FrontEnd.StaticErrors
+      FrontEnd.SymTable
       FrontEnd.Tokens
       FrontEnd.Utils
       Lib
+      Utils.Constants
   other-modules:
-      Paths_doe_lang
+      Paths_language_bender
   hs-source-dirs:
       src
   build-tools:
@@ -43,41 +51,47 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , containers >=0.6.2.1
     , directory
     , extra
     , hspec
+    , mtl
   default-language: Haskell2010
 
-executable langBender
+executable lbend
   main-is: Main.hs
   other-modules:
-      Paths_doe_lang
+      Paths_language_bender
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -W -Wall -fwarn-incomplete-patterns
   build-depends:
       array
     , base >=4.7 && <5
+    , containers >=0.6.2.1
     , directory
-    , doe-lang
     , extra
     , hspec
+    , language-bender
+    , mtl
   default-language: Haskell2010
 
 test-suite lang-bender-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      FrontEnd.LexerSpec
-      Paths_doe_lang
+      FrontEnd.SymTableSpec
+      Paths_language_bender
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array
     , base >=4.7 && <5
+    , containers >=0.6.2.1
     , directory
-    , doe-lang
     , extra
     , hspec
+    , language-bender
+    , mtl
   default-language: Haskell2010

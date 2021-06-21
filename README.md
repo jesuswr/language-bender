@@ -1,6 +1,13 @@
-# Doe-Lang
+ </p align="center">
+<img src="https://github.com/jesuswr/language-bender/blob/develop/avatarcover.jpg" />
 
-**Doe-Lang** es un lenguaje de programación imperativo no orientado a objetos, cuya temática no ha sido definida aun, para la cadena de electivas de área Lenguajes de Programación II y III (CI-4721, CI-4722).  
+<p align="center">
+
+# Language Bender
+
+![ok](https://img.shields.io/badge/made-with%20love-green)
+
+**Language Bender** es un lenguaje de programación imperativo no orientado a objetos, basado en *Avatar The Last Airbender*, para la cadena de electivas de área Lenguajes de Programación II y III (CI-4721, CI-4722).  
  
 ## Autores:
 - Luis Diaz 15-10420 
