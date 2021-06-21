@@ -55,14 +55,6 @@ data SymTable = SymTable
     , stNextScope :: Int                -- ^ current scope 
     } deriving (Eq)
 
--- < Show instance > --------------------------------------------
-
--- instance Show SymTable where
---     show = printSymTable
-
--- printSymTable :: SymTable -> String
--- printSymTable (SymTable dict ) = "oli"
-
 -- < Utility Functions > ----------------------------------------
 
 -- | Create a new empty table
