@@ -53,7 +53,7 @@ data SymTable = SymTable
     { stDict :: Dictionary              -- ^ dict of valid symbols
     , stScopeStk :: ScopeStack          -- ^ stack of scopes
     , stNextScope :: Int                -- ^ current scope 
-    } deriving (Eq, Show)
+    } deriving (Eq)
 
 -- < Show instance > --------------------------------------------
 
@@ -175,3 +175,29 @@ isStruct _ = False
 isUnion :: Symbol -> Bool
 isUnion Symbol {symType = UnionType{}} = True
 isUnion _ = False
+
+
+
+-- < Pretty Printing > --------------------------------------------
+
+instance Show SymTable where 
+
+    show SymTable {stDict=_stDict, stScopeStk=_stScopeStk, stNextScope=_stNextScope} = 
+        "Next Scope: " ++ show _stNextScope ++ 
+        "\nScope Stack: \n" ++ _printScopeStack _stScopeStk ++ 
+        "\nSymbol Map:\n" ++ _printStDict _stDict
+
+
+-- | Print scope stack 
+_printScopeStack :: ScopeStack -> String
+_printScopeStack (top:stk) =  unlines $ ("\tCurrent Scope: " ++ show top) : ["\t\t- " ++ show i | i <- stk] 
+_printScopeStack [] = "\tNo Scope to print"
+
+-- | Print Name Dictionary
+_printStDict :: Dictionary -> String 
+_printStDict dict =  
+    unlines [ "\t- Related Symbols for name: " ++ name ++ "\n" ++
+                unlines ["\t\t" ++ show sym | sym <- symList]
+
+                | (name, symList) <-  M.toList dict
+            ]
