@@ -18,9 +18,9 @@ data Type = TFloat
           | TUnit 
           | TReference { refType :: Type }
           | CustomType { tName :: U.Name }
-          deriving(Eq)
+          deriving(Eq, Show)
 
-data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq)
+data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq, Show)
 
 -- | Declaration of new things
 data Declaration    = Variable  { decName :: U.Name, varType ::  Maybe Type, initVal :: Maybe Expr, isConst :: Bool }
@@ -28,7 +28,7 @@ data Declaration    = Variable  { decName :: U.Name, varType ::  Maybe Type, ini
                     | Union     { decName :: U.Name, fields :: [(U.Name, Type)] }
                     | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] }
                     | Func      { decName :: U.Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
-                    deriving(Eq)
+                    deriving(Eq, Show)
 
 
 -- | Binary Operators
@@ -45,13 +45,13 @@ data Opr2 = Sum
           | NotEq
           | And
           | Or
-          deriving(Eq)
+          deriving(Eq, Show)
 
 -- | Unary operators
 data Opr1 = Negation
           | Negative
           | UnitOperator
-          deriving(Eq)
+          deriving(Eq, Show)
 
 -- | Possible expressions. Remember, everything its an expression
 data Expr   = ConstChar       { cVal :: String}
@@ -85,7 +85,7 @@ data Expr   = ConstChar       { cVal :: String}
             | New             { typeName :: Type }
             | Delete          { ptrExpr :: Expr }
             | ArrayIndexing   { index :: Expr, expr :: Expr}
-            deriving(Eq)
+            deriving(Eq, Show)
 
 -- | Program data type     
 newtype Program = Program{ decls :: [Declaration] } deriving(Eq)
@@ -96,23 +96,23 @@ newtype Program = Program{ decls :: [Declaration] } deriving(Eq)
 instance Show Program where
   show = identShowProgram
 
-instance Show Expr where
-  show = identShowExpr 0
+-- instance Show Expr where
+--   show = identShowExpr 0
 
-instance Show Opr1 where
-  show = identShowOpr1 0
+-- instance Show Opr1 where
+--   show = identShowOpr1 0
 
-instance Show Opr2 where
-  show = identShowOpr2 0
+-- instance Show Opr2 where
+--   show = identShowOpr2 0
 
-instance Show Declaration where
-  show = identShowDeclaration 0
+-- instance Show Declaration where
+--   show = identShowDeclaration 0
 
-instance Show FuncArg where
-  show = identShowFuncArg 0
+-- instance Show FuncArg where
+--   show = identShowFuncArg 0
 
-instance Show Type where
-  show = identShowType 0
+-- instance Show Type where
+--   show = identShowType 0
 
 -----------------------------------------
 

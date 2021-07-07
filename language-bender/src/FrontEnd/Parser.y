@@ -11,6 +11,7 @@ import qualified FrontEnd.Errors  as E
 %name parseTokens
 %tokentype { TK.Token }
 %error { parseError }
+%monad { <type> }
 
 %token
     bender              { TK.Token _ TK.TKbender }
@@ -115,7 +116,7 @@ import qualified FrontEnd.Errors  as E
 %left '+' '-'
 %left '*' '/' '%'
 
-%right not
+%right not NEG
 %right techniqueFrom
 
 
@@ -252,7 +253,7 @@ Expr            :: { AST.Expr }
 
     -- >> Unary Expressions ------------------------------------------------------------------------------
     | not Expr                                          { AST.Op1 AST.Negation $2 }
-    | '-' Expr                                          { AST.Op1 AST.Negative $2 }
+    | '-' Expr %prec NEG                                { AST.Op1 AST.Negative $2 }
     | Expr unit                                         { AST.Op1 AST.UnitOperator $1 }
 
     -- >> Control Flow -----------------------------------------------------------------------------------
