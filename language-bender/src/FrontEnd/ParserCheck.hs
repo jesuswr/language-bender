@@ -15,7 +15,7 @@ import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
 import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 
------------------------------------------------------------------
+-- ---------------------------------------------------------------
 -- >> data ------------------------------------------------------
 
 type ErrorLog = [SE.StaticError]
@@ -29,7 +29,7 @@ data ParsingState = State {
     ast :: AST.Program
 }
 
----------------------------------------------------------------------
+-- -------------------------------------------------------------------
 -- >> Commons -------------------------------------------------------
 
 startingState :: AST.Program  -> ParsingState
@@ -48,7 +48,7 @@ addStaticError e = RWS.tell [e]
 -- namesAnalysis :: AST.Program -> ParserState ()
 -- namesAnalysis p@AST.Program{AST.decls=ds} = M.forM_ ds checkDecls
 
-----------------------------------------------------------------------
+-- --------------------------------------------------------------------
 -- >> PreParser ------------------------------------------------------
 
 preCheckDecls :: AST.Declaration -> ParserState ()
@@ -60,17 +60,6 @@ preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_ret
         let Just t = _retType
         checkType t
 
-    --case _retType of Just t -> checkType t
-
-    -- Function to check a single function argument 
-    let checkFArg :: AST.FuncArg -> ParserState ()
-        checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
-                        checkType _argType -- check argument type 
-                        M.when (isJust _defaultVal) $ checkExpr (fromJust _defaultVal) -- check expression validity
-
-    -- check arguments
-    M.forM_ _args checkFArg
-
     -- Create a new symbol for this function 
     let symbol  = declToSym f
 
@@ -80,6 +69,16 @@ preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_ret
 
 checkFunArgs :: [AST.FuncArg] -> ParserState [AST.FuncArg]
 checkFunArgs _args = do
+
+	-- Function to check a single function argument 
+    let checkFArg :: AST.FuncArg -> ParserState ()
+        checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
+                        checkType _argType -- check argument type 
+                        --M.when (isJust _defaultVal) $ checkExpr (fromJust _defaultVal) -- check expression validity
+
+    -- check arguments
+    M.forM_ _args checkFArg
+
 	-- try add arguments as variables
     let variables = [
                 ST.Symbol {
@@ -97,7 +96,7 @@ checkFunArgs _args = do
 
 
 
-----------------------------------------------------------------------
+-- --------------------------------------------------------------------
 -- >> Parser ---------------------------------------------------------
 
 -- | Add declarations to symbol table and check if they´re correct
