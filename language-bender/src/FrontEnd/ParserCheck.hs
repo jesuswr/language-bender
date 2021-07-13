@@ -32,6 +32,9 @@ data ParsingState = State {
 -- -------------------------------------------------------------------
 -- >> Commons -------------------------------------------------------
 
+unPack :: ParserState a -> a
+unPack (RWS.RWST _ _ _ _ r) = r
+
 startingState :: AST.Program  -> ParsingState
 startingState = State ST.newTable
 
