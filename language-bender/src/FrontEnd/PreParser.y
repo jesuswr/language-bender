@@ -150,19 +150,19 @@ Declaration    -- :: { () }--{ AST.Declaration }
     | ProcDecl                                          { }
 
 ProcDecl        :: { () }-- { AST.Declaration }
-    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope              {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (unPack $ reverse $5) (Just AST.TUnit) ConstUnit }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope              {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (Just AST.TUnit) ConstUnit }
     | travel id PushScope colon PushScope Exprs PopScope PopScope                             {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) ConstUnit }
 
 FuncDecl        :: { () }-- { AST.Declaration }
-    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope        {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (unPack $ reverse $7) (Just $4) ConstUnit }
+    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope        {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) (Just $4) ConstUnit }
     | book id of Type PushScope colon PushScope Exprs PopScope PopScope                      {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) ConstUnit }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope                {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (unPack $ reverse $5) Nothing ConstUnit }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope                {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) Nothing ConstUnit }
     | book id PushScope colon PushScope Exprs PopScope PopScope                              {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] Nothing ConstUnit }
 
 FuncArg         :: { [AST.FuncArg] }
-    : FuncDefArgDecl                                    {% P.checkFunArgs $1 }
-    | FuncArgDecl                                       {% P.checkFunArgs $1 }
-    | FuncArgDecl comma FuncDefArgDecl                  {% P.checkFunArgs ($3 ++ $1) }
+    : FuncDefArgDecl                                    {% P.preCheckFunArgs $1 }
+    | FuncArgDecl                                       {% P.preCheckFunArgs $1 }
+    | FuncArgDecl comma FuncDefArgDecl                  {% P.preCheckFunArgs ($3 ++ $1) }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : Type bender id Assign                             { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Nothing)] }
@@ -212,14 +212,14 @@ Expr            --:: { AST.Expr }
         techniqueFrom Expr                              {}-- { AST.ConstUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6}
     
     | opening Expr of id chakrasFrom 
-        Expr to Expr colon Expr                         {}-- { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
-    | while Expr doing colon Expr                       {}-- { AST.While $2 $5 }
-    | if  Expr colon Expr otherwise Expr                {}-- { AST.If $2 $4 $6 }
-    | if  Expr colon Expr dotOtherwise Expr             {}-- { AST.If $2 $4 $6 }
-    | if  Expr colon Expr                               {}-- { AST.If $2 $4 AST.ConstUnit }
-    | if  Expr dot colon Expr otherwise Expr            {}-- { AST.If $2 $5 $7 }
-    | if  Expr dot colon Expr dotOtherwise Expr         {}-- { AST.If $2 $5 $7 }
-    | if  Expr dot colon Expr                           {}-- { AST.If $2 $5 AST.ConstUnit }
+        Expr to Expr colon PushScope PushScope Expr PopScope PopScope       {}-- { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
+    | while Expr doing colon PushScope Expr PopScope              {}-- { AST.While $2 $5 }
+    | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope   {}-- { AST.If $2 $4 $6 }
+    | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope             {}-- { AST.If $2 $4 $6 }
+    | if  Expr colon PushScope Expr PopScope                              {}-- { AST.If $2 $4 AST.ConstUnit }
+    | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope     {}-- { AST.If $2 $5 $7 }
+    | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope  {}-- { AST.If $2 $5 $7 }
+    | if  Expr dot colon PushScope Expr PopScope                          {}-- { AST.If $2 $5 AST.ConstUnit }
    
     | in id bookWith ExprList elipsis                   {}-- { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
     | in id bookWith elipsis                            {}-- { AST.FunCall ((TK.name . TK.tktype) $2) [] }
@@ -332,7 +332,7 @@ PopScope
 {
 
 -- Error function
-parseError :: [TK.Token] -> a
+-- parseError :: [TK.Token] -> a
 parseError []       = error "[Error]: Parse error after the end of file.\n"
 parseError (tk:tks) = error $ "[Error]: Parse error at: " ++ (show tk) ++ "\n"
 

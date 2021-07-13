@@ -70,8 +70,8 @@ preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_ret
     tryAddSymbol symbol
 
 
-checkFunArgs :: [AST.FuncArg] -> ParserState [AST.FuncArg]
-checkFunArgs _args = do
+preCheckFunArgs :: [AST.FuncArg] -> ParserState [AST.FuncArg]
+preCheckFunArgs _args = do
 
 	-- Function to check a single function argument 
     let checkFArg :: AST.FuncArg -> ParserState ()
