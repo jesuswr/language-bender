@@ -17,6 +17,8 @@ data StaticError = SymbolNotInScope         { symName :: U.Name }
                  | NotAValidStruct          { symName :: U.Name, actualSymType :: ST.SymType }
                  | NotAValidUnion           { symName :: U.Name, actualSymType :: ST.SymType }
                  | DuplicateNamesInCompound { symName :: U.Name  }
+                 | UnexpectedEOF
+                 | ParseError 
                  | UnmatchingTypes          { expectedTypes :: [AST.Type], actualType :: AST.Type }
                  | AssignToConst            { symName :: U.Name  } -- you can't assign to const initialized variables
 --                 | TypeError {typeError :: TypeError}

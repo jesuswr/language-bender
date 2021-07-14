@@ -2,6 +2,7 @@
 # Language Bender
 
 **Language Bender** es un lenguaje de programación imperativo no orientado a objetos, basado en Avatar The Last Airbender, para la cadena de electivas de área Lenguajes de Programación II y III (CI-4721, CI-4722).  
+
  
 ## Autores:
 - Luis Diaz 15-10420 
@@ -96,10 +97,14 @@ bender <id> of <element> nation since <size> years is master of <exp0>, <exp1>, 
 ```
 Los arreglos soportan indexación, es la única operación que soportan:
 ```
-bender toph of earth nation since 42 years is master of aang, aang_jr, aang_jr_jr right now.
-disciple <index> of toph -- ^ evalua al elemento <index> del arreglo toph. 
+disciple <index_exp> of <array_exp> -- ^ evalua al elemento <index_exp> del arreglo <array_exp>. 
 ```
-Para acceder al elemento `<index>` del arreglo `toph` es necesario que `<index>` esté en el rango `[0,Size)`. De lo contrario, es un error de ejecución
+Ejemplo:
+```
+bender toph of earth nation since 3 years is master of aang, aang_jr, aang_jr_jr right now.
+disciple 1 of toph -- ^ evalua al elemento en la posición 1 del arreglo toph. 
+```
+Para acceder al elemento `<index_exp>` del arreglo `<array_exp>` es necesario que `<index_exp>` esté en el rango `[0,Size)`. De lo contrario, es un error de ejecución.
 
 #### Struct
 tipo producto o record. Para declarar un nuevo struct:
@@ -116,9 +121,9 @@ Para acceder a un atributo `<tag>` de un struct `<struct_exp>`, usamos:
 ```
 using <struct_exp>'s <tag> skill
 ```
-Para modificar un atributo `<tag>` de un struct `<var_id>`, usamos:
+Para modificar un atributo `<tag>` de un struct `<struct_exp>`, usamos:
 ```
-<var_id>'s <tag> is <expr>
+<struct_exp>'s <tag> is <expr>
 ```
 
 Ejemplos: 

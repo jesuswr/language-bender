@@ -135,7 +135,7 @@ Only the Avatar, master of all four elements, could stop them.
 --       if in error book with ... : 
 --           burst ~
 --       otherwise 
---           in f travel with ...
+--           in f travel with ....
            
 --     bender aang is reincarnation of roku.
 --     bender korra is reincarnation of aang.
@@ -207,6 +207,7 @@ Only the Avatar, master of all four elements, could stop them.
 -- 	bender C0 of fire.
 -- 	bender C1 of fire.
 -- 	bender C2 of fire.
+-- 	--bender C2 of fire.
 -- 	bender C3 of fire.
 -- 	bender something is "something".
 -- 	bender something_else is   "something
@@ -215,7 +216,7 @@ Only the Avatar, master of all four elements, could stop them.
 -- 	if C0:
 -- 		5.   -- deja porner punto aqui
 -- 	otherwise
--- 		.- 6 . 7 -.
+-- 		.- 6 . 7 -. 
 	 
 -- 	8 .
 -- 	if C1:
@@ -246,13 +247,6 @@ Only the Avatar, master of all four elements, could stop them.
 -- 	-.
 -- -.
 
--- travel sea_odyssey made by air bender aang, water bender katara : 
--- .-
---     aang -- got lost at sea,
---     and then katara. -- but she found him
---     -- and they scape together. So
---     this story comes to an end ~
--- -.
 
 -- book a:
 -- .-
@@ -267,14 +261,14 @@ Only the Avatar, master of all four elements, could stop them.
 -- 	using  learning ola control using 1, 2 right now 's first skill 
 -- -.
 
--- book xd: 23.
---
+--book xd: 23.
+
 -- book litUnion:
 -- .-
--- 	in xd book with ...
+-- 	in xd book with ....
 -- 	energy ole allows first technique of fire bending, second technique of air bending.
--- 	learning ole 's second technique from 42.
--- 	using  learning ole 's second technique from 42  's second technique
+-- 	learning ole's second technique from 42.
+-- 	using  learning ole's second technique from 42's second technique
 -- -.
 
 
@@ -294,3 +288,37 @@ Only the Avatar, master of all four elements, could stop them.
 -- 		of air bending
 -- 	.
 -- -.
+
+
+-- travel sea_odyssey made by air bender aang, water bender katara : 
+-- .-
+--     aang -- got lost at sea,
+--     and then katara. -- but she found him
+--     -- and they scape together. So
+--     this story comes to an end ~
+-- -.
+
+
+
+-- book fibonacci of air about air bender n:
+-- .-
+-- 	if n is equal to 0:
+-- 		this story comes to an end 0 ~ .
+-- 	if n is equal to 1:
+-- 		this story comes to an end 1 ~ .
+
+-- 	this story comes to an end
+-- 		in fibonacci book with n but 1 ... 
+-- 		and then 
+-- 		in fibonacci book with n but 2 ...
+-- -.
+
+-- travel main:
+-- .-
+-- 	in fibonacci book with 42 ...
+-- -.
+
+
+-- book ola:
+-- .-
+-- 	.--.

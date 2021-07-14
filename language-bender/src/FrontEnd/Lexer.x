@@ -144,7 +144,7 @@ tokens :-
 <0>     \~                                               { pushTK TKunit }
 <0>     \(                                               { pushTK TKopenParent }   
 <0>     \)                                               { pushTK TKcloseParent }
-<0>     \.\.\.                                           { pushTKlist [TKelipsis, TKdot] }
+<0>     \.\.\.                                           { pushTK TKelipsis }
 <0>     \.\-\-\.                                         { pushTKlist [TKbeginBlock, TKendBlock, TKdot] }
 
                 -- function calls
