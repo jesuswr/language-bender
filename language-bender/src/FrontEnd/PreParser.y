@@ -333,7 +333,7 @@ PopScope
 
 -- Error function
 -- parseError :: [TK.Token] -> a
-parseError []       = error "[Error]: Parse error after the end of file.\n"
-parseError (tk:tks) = error $ "[Error]: Parse error at: " ++ (show tk) ++ "\n"
+parseError []       = addStaticError UnexpectedEOF -- "[Error]: Parse error after the end of file.\n"
+parseError (tk:tks) = addStaticError ParseError --error $ "[Error]: Parse error at: " ++ (show tk) ++ "\n"
 
 }

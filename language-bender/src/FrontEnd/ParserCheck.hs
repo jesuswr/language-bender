@@ -32,8 +32,8 @@ data ParsingState = State {
 -- -------------------------------------------------------------------
 -- >> Commons -------------------------------------------------------
 
-unPack :: ParserState a -> a
-unPack (RWS.RWST _ _ _ _ r) = r
+--unPack :: ParserState a -> a
+--unPack (RWS.RWST _ _ _ _ r) = r
 
 startingState :: AST.Program  -> ParsingState
 startingState = State ST.newTable
@@ -102,14 +102,42 @@ preCheckFunArgs _args = do
 -- --------------------------------------------------------------------
 -- >> Parser ---------------------------------------------------------
 
+
+-- checkFunArgs :: [AST.FuncArg] -> ParserState [AST.FuncArg]
+-- checkFunArgs _args = do
+
+--     -- Function to check a single function argument 
+--     let checkFArg :: AST.FuncArg -> ParserState ()
+--         checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
+--                         checkType _argType -- check argument type 
+--                         M.when (isJust _defaultVal) $ checkExpr (fromJust _defaultVal) -- check expression validity
+
+--     -- check arguments
+--     M.forM_ _args checkFArg
+
+--     try add arguments as variables
+--     let variables = [
+--                 ST.Symbol {
+--                     ST.identifier=_argName,
+--                     ST.symType= ST.Variable{ST.varType= Just _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
+--                     ST.scope=0,
+--                     ST.enrtyType=Nothing
+--                 }
+--                 | (AST.FuncArg _argName _argType _defaultVal) <- _args
+--             ]
+
+--     M.forM_ variables tryAddSymbol -- CAMBIAR POR REEMPLAZAR
+
+--     return _args
+
 -- | Add declarations to symbol table and check if they´re correct
-checkDecls :: AST.Declaration -> ParserState ()
+checkDecls :: AST.Declaration -> ParserState AST.Declaration
 
 -- Check Variable Declaration 
 checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = ival, AST.isConst = const} = do
 
     -- Get current state
-    currSt@State{symTable = st} <- RWS.get
+    --currSt@State{symTable = st} <- RWS.get
 
     -- check if type of variable is currently defined when it's customType 
     M.forM_ t checkType
@@ -118,13 +146,15 @@ checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = iv
     let newSym = declToSym v
 
     -- Check expression if necessary
-    M.forM_ ival checkExpr
+    --M.forM_ ival checkExpr
 
     -- Add new variable to symbol table 
     tryAddSymbol newSym
 
+    return v
+
 -- Check reference Declaration 
-checkDecls AST.Reference{ AST.decName=sid, AST.refName = refId } = do
+checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     -- Get current state
     currSt@State{symTable = st} <- RWS.get
 
@@ -149,6 +179,8 @@ checkDecls AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     -- try to add symbol 
     tryAddSymbol newSym
 
+    return r
+
 -- Check union definition 
 checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
 
@@ -162,6 +194,8 @@ checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
     -- check if add symbol is possible 
     tryAddSymbol symbol
 
+    return u
+
 -- Check Struct definition 
 checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 
@@ -174,6 +208,8 @@ checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 
     -- check if add symbol is possible 
     tryAddSymbol symbol
+
+    return s
 
 -- Check function declaration
 checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
@@ -225,32 +261,39 @@ checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retTyp
 
     popEmptyScope   -- argument scope
 
+    return f
+
 -- | Check if a given expression uses valid names only
-checkExpr :: AST.Expr -> ParserState ()
+checkExpr :: AST.Expr -> ParserState AST.Expr
 
 -- Check Id expression:
-checkExpr AST.Id {AST.name=_name, AST.position=_position} = checkIdIsVarOrReference _name
+checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
+    checkIdIsVarOrReference _name
+    return i
 
 -- Check assign expression 
-checkExpr AST.Assign {AST.variable=_variable, AST.value=_value} = do
+checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
     -- check if left hand corresponds to a variable or reference name
     checkIdIsVarOrReference _variable
     -- Check right side 
-    checkExpr _value
+    --checkExpr _value
+    return a
 
 -- Check assign to struct
-checkExpr AST.StructAssign {AST.struct =_struct, AST.value=_value} = do
+checkExpr s@AST.StructAssign {AST.struct =_struct, AST.value=_value} = do
     -- check that given symbol is valid expression  
-    checkExpr _struct
+    --checkExpr _struct
     -- check right hand value
-    checkExpr _value
+    --checkExpr _value
+    return s
 
 -- Check struct access
-checkExpr AST.StructAccess {AST.struct =_struct} = do
-    checkExpr _struct
+checkExpr s@AST.StructAccess {AST.struct =_struct} = do
+    --checkExpr _struct
+    return s
 
 -- Check Function Call
-checkExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
+checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
 
     -- check symbol definition 
     mbSym <- checkSymbolDefined _fname
@@ -265,20 +308,21 @@ checkExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
         _ -> return ()
 
     -- check args expressions            
-    M.forM_ _actualArgs checkExpr
+    --M.forM_ _actualArgs checkExpr
+    return f
 
 --  Check for
-checkExpr AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody} = do
+checkExpr f@AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody} = do
 
     -- check start, step & end expressions
-    checkExpr _start
+    --checkExpr _start
 
-    checkExpr _step
+    --checkExpr _step
 
-    checkExpr _end
+    --checkExpr _end
 
     -- push a new scope for iteration variable declaration 
-    pushEmptyScope  -- iterator variable declaration
+    --pushEmptyScope  -- iterator variable declaration
 
     -- create symbol for iterator variable 
     let iter = ST.Symbol {
@@ -296,97 +340,126 @@ checkExpr AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_st
     -- adding it, so there's no symbol redefinition
     tryAddSymbol iter
 
-    pushEmptyScope  -- body scope
+    --pushEmptyScope  -- body scope
 
-    checkExpr _cicBody -- check body
+    --checkExpr _cicBody -- check body
 
-    popEmptyScope   -- body scope
+    --popEmptyScope   -- body scope
 
-    popEmptyScope   -- iterator variable declaration
+    --popEmptyScope   -- iterator variable declaration
+    return f
 
 --  Check While
-checkExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody} = do
+checkExpr w@AST.While {AST.cond=_cond, AST.cicBody=_cicBody} = do
     -- check condition expression
-    checkExpr _cond
+    --checkExpr _cond
 
     -- check body
-    pushEmptyScope          -- body scope
+    --pushEmptyScope          -- body scope
 
     -- check body expression
-    checkExpr _cicBody
+    --checkExpr _cicBody
 
-    popEmptyScope           -- body scope
+    --popEmptyScope           -- body scope
+    return w
 
 --  Check if conditional expression
-checkExpr AST.If {AST.cond=_cond, AST.accExpr=_accExpr, AST.failExpr=_failExpr} = do
+checkExpr i@AST.If {AST.cond=_cond, AST.accExpr=_accExpr, AST.failExpr=_failExpr} = do
 
     -- check boolean condition
-    checkExpr _cond
+    --checkExpr _cond
 
     -- push an empty scope for each different body
 
     -- check accepted body
-    pushEmptyScope  -- acc body scope
+    --pushEmptyScope  -- acc body scope
 
-    checkExpr _accExpr
+    --checkExpr _accExpr
 
-    popEmptyScope   -- acc body scope
+    --popEmptyScope   -- acc body scope
 
     -- check failed body
-    pushEmptyScope  -- acc body scope
+    --pushEmptyScope  -- acc body scope
 
-    checkExpr _failExpr
+    --checkExpr _failExpr
 
-    popEmptyScope   -- acc body scope
+    --popEmptyScope   -- acc body scope
+    return i
 
 --  Check expression block 
-checkExpr AST.ExprBlock {AST.exprs=_exprs} = do
+checkExpr e@AST.ExprBlock {AST.exprs=_exprs} = do
 
     -- push scope for this block
-    pushEmptyScope -- body scope
+    --pushEmptyScope -- body scope
 
-    M.forM_ _exprs checkExpr
+    --M.forM_ _exprs checkExpr
 
-    popEmptyScope  -- body scope
+    --popEmptyScope  -- body scope
+    return e
 
 --  Check return 
-checkExpr AST.Return {AST.expr=_expr} = checkExpr _expr
+checkExpr r@AST.Return {AST.expr=_expr} = do
+    --checkExpr _expr
+    return r
 
 --  Check break 
-checkExpr AST.Break {AST.expr=_expr} = checkExpr _expr
+checkExpr b@AST.Break {AST.expr=_expr} = do
+    --checkExpr _expr
+    return b
 
 --  Check continue 
-checkExpr AST.Continue {AST.expr=_expr} = checkExpr _expr
+checkExpr c@AST.Continue {AST.expr=_expr} = do
+    --checkExpr _expr
+    return c
 
 --  Check Declarations
-checkExpr AST.Declaration {AST.decl=_decl} = checkDecls _decl
+checkExpr d@AST.Declaration {AST.decl=_decl} = do
+    --checkDecls _decl
+    return d
 
 --  Check Binary Operation
-checkExpr AST.Op2 {AST.opr1=_opr1, AST.opr2=_opr2} = checkExpr _opr1 >> checkExpr _opr2
+checkExpr o@AST.Op2 {AST.opr1=_opr1, AST.opr2=_opr2} = do
+    --checkExpr _opr1
+    --checkExpr _opr2
+    return o
 
 --  Check Unary Operation
-checkExpr AST.Op1 {AST.opr=_opr} = checkExpr _opr
+checkExpr 0@AST.Op1 {AST.opr=_opr} = do
+    --checkExpr _opr
+    return o
 
 --  Check Array Literal Expression
-checkExpr AST.Array {AST.list=_list} = M.forM_ _list checkExpr
+checkExpr a@AST.Array {AST.list=_list} = do
+    --M.forM_ _list checkExpr
+    return a
 
 --  Check Union type guessing
-checkExpr AST.UnionTrying {AST.union=_union} = checkExpr _union
+checkExpr u@AST.UnionTrying {AST.union=_union} = do
+    --checkExpr _union
+    return u
 
 --  Check Union access 
-checkExpr AST.UnionUsing {AST.union=_union} = checkExpr _union
+checkExpr u@AST.UnionUsing {AST.union=_union} = do
+    --checkExpr _union
+    return u
 
 --  Check New Expression
-checkExpr AST.New {AST.typeName=_typeName} = checkType _typeName
+checkExpr n@AST.New {AST.typeName=_typeName} = do
+    --checkType _typeName
+    return n
 
 --  Check Delete
-checkExpr AST.Delete {AST.ptrExpr=_ptrExpr} = checkExpr _ptrExpr
+checkExpr d@AST.Delete {AST.ptrExpr=_ptrExpr} = do
+    --checkExpr _ptrExpr
+    return d
 
 --  Check array index access
-checkExpr AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = checkExpr _index >> checkExpr _expr
+checkExpr a@AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = do
+    --checkExpr _index >> checkExpr _expr
+    return a
 
 -- Check Struct Literal
-checkExpr AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
+checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
 
     -- Check struct name of literal struct
     mbSym <- checkSymbolDefined _structName
@@ -401,10 +474,11 @@ checkExpr AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
         _ -> return ()
 
     -- Check list of expressions
-    M.forM_ _list checkExpr
+    --M.forM_ _list checkExpr
+    return c
 
 -- Check Union Literal
-checkExpr AST.ConstUnion {AST.unionName=_unionName, AST.value=_value} = do
+checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value} = do
 
     -- Check union name of literal union
     mbSym <- checkSymbolDefined _unionName
@@ -419,9 +493,10 @@ checkExpr AST.ConstUnion {AST.unionName=_unionName, AST.value=_value} = do
         _ -> return ()
 
     -- Check value expression
-    checkExpr _value
+    --checkExpr _value
+    return c
 
-checkExpr _ = return ()
+checkExpr x = return x
 
 -- | Checks if a given type is a valid one 
 checkType :: AST.Type -> ParserState ()
