@@ -18,18 +18,18 @@ data Type = TFloat
           | TUnit 
           | TReference { refType :: Type }
           | CustomType { tName :: U.Name }
+          | TypeError
           deriving(Eq)
 
 data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq)
 
 -- | Declaration of new things
-data Declaration    = Variable  { decName :: U.Name, varType ::  Maybe Type, initVal :: Maybe Expr, isConst :: Bool }
+data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal :: Maybe Expr, isConst :: Bool }
                     | Reference { decName :: U.Name, refName :: U.Name }
                     | Union     { decName :: U.Name, fields :: [(U.Name, Type)] }
                     | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] }
-                    | Func      { decName :: U.Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
+                    | Func      { decName :: U.Name, args :: [FuncArg], retType :: Type , body :: Expr }
                     deriving(Eq)
-
 
 -- | Binary Operators
 data Opr2 = Sum
@@ -58,9 +58,9 @@ data Expr   = ConstChar       { cVal :: String}
             | ConstString     { sVal :: String}
             | ConstInt        { iVal :: Int }
             | ConstFloat      { fVal :: Float }
-            | ConstStruct     { structName :: U.Name, list :: [Expr] }
             | ConstTrue 
             | ConstFalse
+            | ConstStruct     { structName :: U.Name, list :: [Expr] }
             | ConstUnion      { unionName :: U.Name, tag :: U.Name, value :: Expr }
             | ConstUnit
             | ConstNull
