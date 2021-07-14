@@ -2,15 +2,26 @@
 
 module FrontEnd.Parser where
 
+-- <Language Bender Imports> ------------------------------------
+import qualified FrontEnd.ParserCheck as P
 import qualified FrontEnd.Tokens as TK
 import qualified FrontEnd.AST    as AST
+import qualified FrontEnd.SymTable      as ST
+import qualified FrontEnd.Utils         as U
 import qualified FrontEnd.Errors  as E
+import qualified FrontEnd.StaticErrors  as SE
+
+-- <Utility Data types> -----------------------------------------
+import qualified Control.Monad.RWS as RWS
+import qualified Control.Monad     as M
+import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 
 }
 
 %name parseTokens
 %tokentype { TK.Token }
 %error { parseError }
+%monad { P.ParserState }
 
 %token
     bender              { TK.Token _ TK.TKbender }
@@ -115,7 +126,7 @@ import qualified FrontEnd.Errors  as E
 %left '+' '-'
 %left '*' '/' '%'
 
-%right not
+%right not NEG
 %right techniqueFrom
 
 
@@ -124,34 +135,34 @@ import qualified FrontEnd.Errors  as E
 
 -- Source Symbol
 Program         :: { AST.Program }
-    : Declarations                                      { AST.Program (reverse $1) }
+    : Declarations                                      {% AST.Program (reverse $1) }
 
 -- Program as declaration list
 Declarations    :: { [AST.Declaration] }
-    : Declaration dot                                   { [$1] }
-    | Declarations Declaration dot                      { $2:$1 }
+    : Declaration dot                                   {% [$1] }
+    | Declarations Declaration dot                      {% $2:$1 }
 
 Declaration     :: { AST.Declaration }
-    : element id compoundBy StructIdDecls               { AST.Struct ((TK.name . TK.tktype) $2) (reverse $4) }
-    | energy id allows UnionIdDecls                     { AST.Union  ((TK.name . TK.tktype) $2) (reverse $4) }
-    | VarDecl                                           { $1 }
-    | FuncDecl                                          { $1 }
-    | ProcDecl                                          { $1 }
+    : element id compoundBy StructIdDecls               {% P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $4) }
+    | energy id allows UnionIdDecls                     {% P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2) (reverse $4) }
+    | VarDecl                                           {% $1 }
+    | FuncDecl                                          {% $1 }
+    | ProcDecl                                          {% $1 }
 
 ProcDecl        :: { AST.Declaration }
-    : travel id madeBy FuncArg colon Exprs              { AST.Func ((TK.name . TK.tktype) $2) (reverse $4) (Just AST.TUnit) $6 }
-    | travel id colon Exprs                             { AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) $4 }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope             -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (Just AST.TUnit) $8 }
+    | travel id PushScope colon PushScope Exprs PopScope PopScope                          -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) $6 }
 
 FuncDecl        :: { AST.Declaration }
-    : book id of Type about FuncArg colon Exprs         { AST.Func ((TK.name . TK.tktype) $2) (reverse $6) (Just $4) $8 }
-    | book id of Type colon Exprs                       { AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) $6 }
-    | book id about FuncArg colon Exprs                 { AST.Func ((TK.name . TK.tktype) $2) (reverse $4) Nothing $6 }
-    | book id colon Exprs                               { AST.Func ((TK.name . TK.tktype) $2) [] Nothing $4 }
+    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope         -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) (reverse $7) (Just $4) $10 }
+    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                    -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) $8 }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope               -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) (reverse $5) Nothing $8 }
+    | book id PushScope colon PushScope Exprs PopScope PopScope                          -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) [] Nothing $6 }
 
 FuncArg         :: { [AST.FuncArg] }
-    : FuncDefArgDecl                                    { $1 }
-    | FuncArgDecl                                       { $1 }
-    | FuncArgDecl comma FuncDefArgDecl                  { $3 ++ $1 }
+    : FuncDefArgDecl                                    { $1 }-- {% P.checkFunArgs $1 }
+    | FuncArgDecl                                       { $1 }-- {% P.checkFunArgs $1 }
+    | FuncArgDecl comma FuncDefArgDecl                  { $3 ++ $1 }-- {% P.checkFunArgs ($3 ++ $1) }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : Type bender id Assign                             { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Just $4)] }
@@ -174,41 +185,41 @@ UnionIdDecls    :: { [(String, AST.Type)] }
     | UnionIdDecls comma id techniqueOf Type bending    { (((TK.name . TK.tktype) $3), $5):$1 }
 
 VarDecl         :: { AST.Declaration }
-    : bender id of Type                                 { AST.Variable ((TK.name . TK.tktype) $2) (Just $4) Nothing False } -- @TODO AÑADIR EL RESTO DE DECLARACIONES
-    | bender id of Type Assign                          { AST.Variable ((TK.name . TK.tktype) $2) (Just $4) (Just $5) False }
-    | bender id Assign                                  { AST.Variable ((TK.name . TK.tktype) $2) Nothing (Just $3) False }
-    | eternal bender id of Type Assign                  { AST.Variable ((TK.name . TK.tktype) $3) (Just $5) (Just $6) True }
-    | eternal bender id Assign                          { AST.Variable ((TK.name . TK.tktype) $3) Nothing (Just $4) True }
-    | bender id is reincarnationOf id                   { AST.Reference ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $5) }
+    : bender id of Type                                 {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) (Just $4) Nothing False }
+    | bender id of Type Assign                          {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) (Just $4) (Just $5) False }
+    | bender id Assign                                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) Nothing (Just $3) False }
+    | eternal bender id of Type Assign                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) (Just $5) (Just $6) True }
+    | eternal bender id Assign                          {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) Nothing (Just $4) True }
+    | bender id is reincarnationOf id                   {% P.checkDecls $ AST.Reference ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $5) }
     
 
     -- >> Expressions --------------------------------------------------------------------------
 
 Expr            :: { AST.Expr }  
-    : '(' Expr ')'                                      { $2 }
-    | id                                                { AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) }
-    | ExprBlock                                         { $1 }
-    | id Assign                                         { AST.Assign ((TK.name . TK.tktype) $1) $2 }
+    : '(' Expr ')'                                      {% $2 }
+    | id                                                {% P.checkExpr $ AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) }
+    | ExprBlock                                         {% $1 }
+    | id Assign                                         {% P.checkExpr $ AST.Assign ((TK.name . TK.tktype) $1) $2 }
     
-    | Expr quotmark_s id Assign                         { AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 }
-    | using Expr quotmark_s id skill                    { AST.StructAccess $2 ((TK.name . TK.tktype) $4) }
+    | Expr quotmark_s id Assign                         {% P.checkExpr $ AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 }
+    | using Expr quotmark_s id skill                    {% P.checkExpr $ AST.StructAccess $2 ((TK.name . TK.tktype) $4) }
     | learning id control using
-        ExprList rightNow                               { AST.ConstStruct ((TK.name . TK.tktype) $2) (reverse $5) }
+        ExprList rightNow                               {% P.checkExpr $ AST.ConstStruct ((TK.name . TK.tktype) $2) (reverse $5) }
     
-    | trying Expr quotmark_s id technique               { AST.UnionTrying $2 ((TK.name . TK.tktype) $4) }
-    | using Expr quotmark_s id technique                { AST.UnionUsing $2 ((TK.name . TK.tktype) $4) }
+    | trying Expr quotmark_s id technique               {% P.checkExpr $ AST.UnionTrying $2 ((TK.name . TK.tktype) $4) }
+    | using Expr quotmark_s id technique                {% P.checkExpr $ AST.UnionUsing $2 ((TK.name . TK.tktype) $4) }
     | learning id quotmark_s id 
-        techniqueFrom Expr                              { AST.ConstUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6}
+        techniqueFrom Expr                              {% P.checkExpr $ AST.ConstUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6}
     
     | opening Expr of id chakrasFrom 
-        Expr to Expr colon Expr                         { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
-    | while Expr doing colon Expr                       { AST.While $2 $5 }
-    | if  Expr colon Expr otherwise Expr                { AST.If $2 $4 $6 }
-    | if  Expr colon Expr dotOtherwise Expr             { AST.If $2 $4 $6 }
-    | if  Expr colon Expr                               { AST.If $2 $4 AST.ConstUnit }
-    | if  Expr dot colon Expr otherwise Expr            { AST.If $2 $5 $7 }
-    | if  Expr dot colon Expr dotOtherwise Expr         { AST.If $2 $5 $7 }
-    | if  Expr dot colon Expr                           { AST.If $2 $5 AST.ConstUnit }
+        Expr to Expr colon PushScope PushScope Expr PopScope PopScope      { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
+    | while Expr doing colon PushScope Expr PopScope                       { AST.While $2 $5 }
+    | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope                { AST.If $2 $4 $6 }
+    | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope             { AST.If $2 $4 $6 }
+    | if  Expr colon PushScope Expr PopScope                               { AST.If $2 $4 AST.ConstUnit }
+    | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope            { AST.If $2 $5 $7 }
+    | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope         { AST.If $2 $5 $7 }
+    | if  Expr dot colon PushScope Expr PopScope                           { AST.If $2 $5 AST.ConstUnit }
    
     | in id bookWith ExprList elipsis                   { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
     | in id bookWith elipsis                            { AST.FunCall ((TK.name . TK.tktype) $2) [] }
@@ -252,7 +263,7 @@ Expr            :: { AST.Expr }
 
     -- >> Unary Expressions ------------------------------------------------------------------------------
     | not Expr                                          { AST.Op1 AST.Negation $2 }
-    | '-' Expr                                          { AST.Op1 AST.Negative $2 }
+    | '-' Expr %prec NEG                                { AST.Op1 AST.Negative $2 }
     | Expr unit                                         { AST.Op1 AST.UnitOperator $1 }
 
     -- >> Control Flow -----------------------------------------------------------------------------------
@@ -275,8 +286,8 @@ Assign          :: { AST.Expr }
 
 -- < Expression block Grammar > --------------------------------------------------------------------------  
 ExprBlock       ::  { AST.Expr }
-    : beginBlock ExprSeq endBlock                       { AST.ExprBlock (reverse $2) }
-    | beginBlock endBlock                               { AST.ExprBlock [] }
+    : beginBlock PushScope ExprSeq PopScope endBlock    { AST.ExprBlock (reverse $2) }
+    | beginBlock PushScope PopScope endBlock            { AST.ExprBlock [] }
 
 ExprSeq         ::  { [AST.Expr] }
     : LastInBlock                                       { [$1] }
@@ -311,11 +322,20 @@ Type            :: { AST.Type }
     | Type art                                          { AST.TPtr $1 }
 
 
+    -- >> Auxiliar Rules ----------------------------------------------------------------------------
+
+PushScope 
+    : {- empty -}                                       {% P.pushEmptyScope }
+
+PopScope
+    : {- empty -}                                       {% P.popEmptyScope }
+
+
 {
 
 -- Error function
-parseError :: [TK.Token] -> a
-parseError []       = error "[Error]: Parse error after the end of file.\n"
-parseError (tk:tks) = error $ "[Error]: Parse error at: " ++ (show tk) ++ "\n"
+-- parseError :: [TK.Token] -> a
+parseError []       = addStaticError UnexpectedEOF -- "[Error]: Parse error after the end of file.\n"
+parseError (tk:tks) = addStaticError ParseError --error $ "[Error]: Parse error at: " ++ (show tk) ++ "\n"
 
 }

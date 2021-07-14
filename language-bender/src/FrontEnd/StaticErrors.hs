@@ -15,4 +15,6 @@ data StaticError = SymbolNotInScope { symName :: U.Name }
                  | NotAValidFunction { symName :: U.Name, actualSymType :: ST.SymType  }
                  | NotAValidStruct { symName :: U.Name, actualSymType :: ST.SymType }
                  | NotAValidUnion { symName :: U.Name, actualSymType :: ST.SymType }
+                 | UnexpectedEOF
+                 | ParseError  
                  deriving(Eq, Show)  
