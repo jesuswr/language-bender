@@ -44,7 +44,7 @@ instance Show LexerError where
 
     show InvalidStrChar{char=c} = "Invalid character '" ++ c ++ "' found in string."
 
-    show UnexpectedEOF = "Unexpected EOF: string is not closed."
+    show FrontEnd.Errors.UnexpectedEOF = "Unexpected EOF: string is not closed."
 
 instance Show CliError where
     

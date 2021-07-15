@@ -146,35 +146,41 @@ Declaration     :: { AST.Declaration }
     : element id compoundBy StructIdDecls               {% P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $4) }
     | energy id allows UnionIdDecls                     {% P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2) (reverse $4) }
     | VarDecl                                           {% $1 }
-    | FuncDecl                                          {% $1 }
-    | ProcDecl                                          {% $1 }
+    | FuncDecl                                          {% P.checkDecls $1 }
+    | ProcDecl                                          {% P.checkDecls $1 }
 
 ProcDecl        :: { AST.Declaration }
-    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope             -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (Just AST.TUnit) $8 }
-    | travel id PushScope colon PushScope Exprs PopScope PopScope                          -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) $6 }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope            { AST.Func ((TK.name . TK.tktype) $2 $8) (reverse $5) (Just AST.TUnit) $8 }
+    | travel id PushScope colon PushScope Exprs PopScope PopScope                           { AST.Func ((TK.name . TK.tktype) $2 $6) [] (Just AST.TUnit) $6 }
 
 FuncDecl        :: { AST.Declaration }
-    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope         -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) (reverse $7) (Just $4) $10 }
-    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                    -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) $8 }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope               -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) (reverse $5) Nothing $8 }
-    | book id PushScope colon PushScope Exprs PopScope PopScope                          -- modificar ST { AST.Func ((TK.name . TK.tktype) $2) [] Nothing $6 }
+    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope       { AST.Func ((TK.name . TK.tktype) $2 $10) (reverse $7) (Just $4) $10 }
+    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                     { AST.Func ((TK.name . TK.tktype) $2 $8) [] (Just $4) $8 }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope               { AST.Func ((TK.name . TK.tktype) $2 $8) (reverse $5) Nothing $8 }
+    | book id PushScope colon PushScope Exprs PopScope PopScope                             { AST.Func ((TK.name . TK.tktype) $2 $6) [] Nothing $6 }
 
 FuncArg         :: { [AST.FuncArg] }
-    : FuncDefArgDecl                                    { $1 }-- {% P.checkFunArgs $1 }
-    | FuncArgDecl                                       { $1 }-- {% P.checkFunArgs $1 }
+    : FuncDefArgDecl                                    { $1 }
+    | FuncArgDecl                                       { $1 }
     | FuncArgDecl comma FuncDefArgDecl                  { $3 ++ $1 }-- {% P.checkFunArgs ($3 ++ $1) }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
-    : Type bender id Assign                             { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Just $4)] }
-    | Type '&' bender id Assign                         { [AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) (Just $5)] }
+    : SingleDefArgDecl                                  {% P.checkFunArg $1 }
     | FuncDefArgDecl comma Type bender id Assign        { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Just $6)):$1 }
     | FuncDefArgDecl comma Type '&' bender id Assign    { (AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Just $7)):$1 }
 
+SingleDefArgDecl :: { AST.FuncArg }
+    : Type bender id Assign                             { AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Just $4) }
+    | Type '&' bender id Assign                         { AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) (Just $5) }
+
 FuncArgDecl     :: { [AST.FuncArg] }
-    : Type bender id                                    { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing] }
-    | Type '&' bender id                                { [AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing] }
+    : SingleFuncArgDecl                                 {% P.checkFunArg $1 }
     | FuncArgDecl comma Type bender id                  { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing):$1 }
     | FuncArgDecl comma Type '&' bender id              { (AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing):$1 }
+
+SingleFuncArgDecl :: { AST.FuncArg }
+    : Type bender id                                    { AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing }
+    | Type '&' bender id                                { AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing }
 
 StructIdDecls   :: { [(String, AST.Type)] }
     : id skillOf Type                                   { [(((TK.name . TK.tktype) $1), $3)] }

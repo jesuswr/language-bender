@@ -73,7 +73,7 @@ preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_ret
 preCheckFunArgs :: [AST.FuncArg] -> ParserState [AST.FuncArg]
 preCheckFunArgs _args = do
 
-	-- Function to check a single function argument 
+    -- Function to check a single function argument 
     let checkFArg :: AST.FuncArg -> ParserState ()
         checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
                         checkType _argType -- check argument type 
@@ -82,11 +82,11 @@ preCheckFunArgs _args = do
     -- check arguments
     M.forM_ _args checkFArg
 
-	-- try add arguments as variables
+    -- try add arguments as variables
     let variables = [
                 ST.Symbol {
                     ST.identifier=_argName,
-                    ST.symType= ST.Variable{ST.varType= Just _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
+                    ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
                     ST.scope=0,
                     ST.enrtyType=Nothing
                 }
@@ -103,32 +103,14 @@ preCheckFunArgs _args = do
 -- >> Parser ---------------------------------------------------------
 
 
--- checkFunArgs :: [AST.FuncArg] -> ParserState [AST.FuncArg]
--- checkFunArgs _args = do
-
---     -- Function to check a single function argument 
---     let checkFArg :: AST.FuncArg -> ParserState ()
---         checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
---                         checkType _argType -- check argument type 
---                         M.when (isJust _defaultVal) $ checkExpr (fromJust _defaultVal) -- check expression validity
-
---     -- check arguments
---     M.forM_ _args checkFArg
-
---     try add arguments as variables
---     let variables = [
---                 ST.Symbol {
---                     ST.identifier=_argName,
---                     ST.symType= ST.Variable{ST.varType= Just _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
---                     ST.scope=0,
---                     ST.enrtyType=Nothing
---                 }
---                 | (AST.FuncArg _argName _argType _defaultVal) <- _args
---             ]
-
---     M.forM_ variables tryAddSymbol -- CAMBIAR POR REEMPLAZAR
-
---     return _args
+checkFunArg :: AST.FuncArg -> ParserState AST.FuncArg
+checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = let sym = ST.Symbol {
+                                                        ST.identifier=_argName,
+                                                        ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
+                                                        ST.scope=0,
+                                                        ST.enrtyType=Nothing
+                                                    }
+                                            in tryAddSymbol sym >> return arg
 
 -- | Add declarations to symbol table and check if they´re correct
 checkDecls :: AST.Declaration -> ParserState AST.Declaration
@@ -136,17 +118,8 @@ checkDecls :: AST.Declaration -> ParserState AST.Declaration
 -- Check Variable Declaration 
 checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = ival, AST.isConst = const} = do
 
-    -- Get current state
-    --currSt@State{symTable = st} <- RWS.get
-
-    -- check if type of variable is currently defined when it's customType 
-    M.forM_ t checkType
-
     -- Create a new symbol
     let newSym = declToSym v
-
-    -- Check expression if necessary
-    --M.forM_ ival checkExpr
 
     -- Add new variable to symbol table 
     tryAddSymbol newSym
@@ -170,7 +143,7 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     -- Get reference type:
     let refType = case refSym of
             Just ST.Symbol{ST.symType = ST.Variable{ST.varType=t}} -> t
-            Nothing -> Nothing
+            _ -> AST.TypeError 
 
         newType = ST.Reference refId refType
     -- create new symbol 
@@ -214,52 +187,13 @@ checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 -- Check function declaration
 checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
 
-    -- check valid return type if needed 
-    M.when (isJust _retType) $ do
-        let Just t = _retType
-        checkType t
-
-    --case _retType of Just t -> checkType t
-
-    -- Function to check a single function argument 
-    let checkFArg :: AST.FuncArg -> ParserState ()
-        checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
-                        checkType _argType -- check argument type 
-                        M.when (isJust _defaultVal) $ checkExpr (fromJust _defaultVal) -- check expression validity
-
-    -- check arguments
-    M.forM_ _args checkFArg
-
     -- Create a new symbol for this function 
     let symbol  = declToSym f
 
+    -- TODO  hay que ver si el tipo del body matchea a la firma de la funcion
+
     -- try to add function symbol 
     tryAddSymbol symbol
-
-    -- Push an empty scope 
-    pushEmptyScope  -- argument scope
-
-    -- try add arguments as variables
-    let variables = [
-                ST.Symbol {
-                    ST.identifier=_argName,
-                    ST.symType= ST.Variable{ST.varType= Just _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
-                    ST.scope=0,
-                    ST.enrtyType=Nothing
-                }
-                | (AST.FuncArg _argName _argType _defaultVal) <- _args
-            ]
-
-    M.forM_ variables tryAddSymbol
-
-    -- push body scope, and check body 
-    pushEmptyScope  -- body scope
-
-    checkExpr _body
-
-    popEmptyScope   -- body scope
-
-    popEmptyScope   -- argument scope
 
     return f
 
@@ -328,7 +262,7 @@ checkExpr f@AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_
     let iter = ST.Symbol {
                         ST.identifier=_iteratorName,
                         ST.symType= ST.Variable {
-                            ST.varType=Just AST.TInt,
+                            ST.varType=AST.TInt,
                             ST.initVal=Just _start,
                             ST.isConst = False
                             },
@@ -424,7 +358,7 @@ checkExpr o@AST.Op2 {AST.opr1=_opr1, AST.opr2=_opr2} = do
     return o
 
 --  Check Unary Operation
-checkExpr 0@AST.Op1 {AST.opr=_opr} = do
+checkExpr o@AST.Op1 {AST.opr=_opr} = do
     --checkExpr _opr
     return o
 
@@ -516,9 +450,7 @@ checkType (AST.TArray t sz) = do
 
     -- check type of array elements
     checkType t
-
-    -- check size expression
-    checkExpr sz
+    -- TODO  check that size of array is int
 
 checkType (AST.TPtr t) = checkType t
 
@@ -543,7 +475,7 @@ declToSym decl = ST.Symbol {
                 ST.isConst=_isConst
             }
             
-        declToSymType AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=Nothing}
+        declToSymType AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=undefined}
 
 
         declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields}

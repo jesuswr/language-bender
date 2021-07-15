@@ -378,12 +378,8 @@ identShowDeclaration ident (Variable name varT initV isCst) = "\n" ++
       "\n" ++ replicate ident ' ' ++ "with a value of: \n"
       ++ identShowExpr (ident + 2) v
     Nothing  -> "")
-  ++ (case varT of
-    (Just t) ->
-      "\n" ++ replicate ident ' ' ++ "Of type:\n"
-      ++ identShowType (ident + 2) t
-    Nothing  -> "")
-  
+  ++  "\n" ++ replicate ident ' ' ++ "Of type:\n"
+      ++ identShowType (ident + 2) varT
 
 identShowDeclaration ident (Reference name refNm) = "\n" ++
   replicate ident ' ' ++ "Declaration of Reference with name '" 
