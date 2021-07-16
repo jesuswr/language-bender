@@ -150,14 +150,14 @@ Declaration    -- :: { () }--{ AST.Declaration }
     | ProcDecl                                          { }
 
 ProcDecl        :: { () }-- { AST.Declaration }
-    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope              {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (Just AST.TUnit) ConstUnit }
-    | travel id PushScope colon PushScope Exprs PopScope PopScope                             {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) ConstUnit }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (Just AST.TUnit) AST.ConstUnit }
+    | travel id PushScope colon PushScope Exprs PopScope PopScope                             {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) AST.ConstUnit }
 
 FuncDecl        :: { () }-- { AST.Declaration }
-    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope        {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) (Just $4) ConstUnit }
-    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                      {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) ConstUnit }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope                {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) Nothing ConstUnit }
-    | book id PushScope colon PushScope Exprs PopScope PopScope                              {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] Nothing ConstUnit }
+    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope        {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) (Just $4) AST.ConstUnit }
+    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                      {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) AST.ConstUnit }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope                {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) Nothing AST.ConstUnit }
+    | book id PushScope colon PushScope Exprs PopScope PopScope                              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] Nothing AST.ConstUnit }
 
 FuncArg         :: { [AST.FuncArg] }
     : FuncDefArgDecl                                    {% P.preCheckFunArgs $1 }
@@ -216,10 +216,10 @@ Expr            --:: { AST.Expr }
     | while Expr doing colon PushScope Expr PopScope              {}-- { AST.While $2 $5 }
     | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope   {}-- { AST.If $2 $4 $6 }
     | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope             {}-- { AST.If $2 $4 $6 }
-    | if  Expr colon PushScope Expr PopScope                              {}-- { AST.If $2 $4 AST.ConstUnit }
+    | if  Expr colon PushScope Expr PopScope                              {}-- { AST.If $2 $4 AST.AST.ConstUnit }
     | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope     {}-- { AST.If $2 $5 $7 }
     | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope  {}-- { AST.If $2 $5 $7 }
-    | if  Expr dot colon PushScope Expr PopScope                          {}-- { AST.If $2 $5 AST.ConstUnit }
+    | if  Expr dot colon PushScope Expr PopScope                          {}-- { AST.If $2 $5 AST.AST.ConstUnit }
    
     | in id bookWith ExprList elipsis                   {}-- { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
     | in id bookWith elipsis                            {}-- { AST.FunCall ((TK.name . TK.tktype) $2) [] }
@@ -270,9 +270,9 @@ Expr            --:: { AST.Expr }
     | toBeContinued Expr                                {}-- { AST.Continue  $2 }
     | burst Expr                                        {}-- { AST.Break     $2 }
     | return Expr                                       {}-- { AST.Return    $2 }
-    | toBeContinuedUnit                                 {}-- { AST.Continue  AST.ConstUnit }
-    | burstUnit                                         {}-- { AST.Break     AST.ConstUnit }
-    | returnUnit                                        {}-- { AST.Return    AST.ConstUnit }
+    | toBeContinuedUnit                                 {}-- { AST.Continue  AST.AST.ConstUnit }
+    | burstUnit                                         {}-- { AST.Break     AST.AST.ConstUnit }
+    | returnUnit                                        {}-- { AST.Return    AST.AST.ConstUnit }
     
     -- >> Evaluable and none evaluable expressions > -----------------------------------------------------
 Exprs           --::  { AST.Expr }
@@ -318,7 +318,7 @@ Type            :: { AST.Type }
     | metal                                             { AST.TString }   
     | fire                                              { AST.TBool }
     | id                                                { AST.CustomType ((TK.name . TK.tktype) $1) }
-    | Type nation Expr year                             { AST.TArray $1 $3}
+    | Type nation Expr year                             { AST.TArray $1 (AST.ConstInt 0)}
     | Type art                                          { AST.TPtr $1 }
 
     -- >> Auxiliar Rules ----------------------------------------------------------------------------
@@ -333,7 +333,7 @@ PopScope
 
 -- Error function
 -- parseError :: [TK.Token] -> a
-parseError []       = addStaticError UnexpectedEOF -- "[Error]: Parse error after the end of file.\n"
-parseError (tk:tks) = addStaticError ParseError --error $ "[Error]: Parse error at: " ++ (show tk) ++ "\n"
+parseError []       = P.addStaticError SE.UnexpectedEOF >> (fail . show) SE.UnexpectedEOF 
+parseError (tk:tks) = P.addStaticError SE.ParseError    >> (fail . show) SE.ParseError
 
 }

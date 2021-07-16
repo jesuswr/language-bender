@@ -8,7 +8,6 @@ import qualified FrontEnd.StaticErrors  as SE
 import qualified FrontEnd.AST           as AST
 import qualified FrontEnd.SymTable      as ST
 import qualified FrontEnd.Utils         as U
-import qualified FrontEnd.Parser        as P
 
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
@@ -24,10 +23,7 @@ type ErrorLog = [SE.StaticError]
 type ParserState = RWS.RWST () ErrorLog ParsingState IO
 
 -- | State of current analysis 
-data ParsingState = State {
-    symTable :: ST.SymTable,
-    ast :: AST.Program
-}
+newtype ParsingState = State { symTable :: ST.SymTable }
 
 -- -------------------------------------------------------------------
 -- >> Commons -------------------------------------------------------
@@ -35,7 +31,7 @@ data ParsingState = State {
 --unPack :: ParserState a -> a
 --unPack (RWS.RWST _ _ _ _ r) = r
 
-startingState :: AST.Program  -> ParsingState
+startingState :: ParsingState
 startingState = State ST.newTable
 
 -- parseProgram :: AST.Program -> IO (ParsingState, ErrorLog)
@@ -61,7 +57,7 @@ preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_ret
     -- check valid return type if needed 
     M.when (isJust _retType) $ do
         let Just t = _retType
-        checkType t
+        M.void $ checkType t
 
     -- Create a new symbol for this function 
     let symbol  = declToSym f
@@ -76,7 +72,7 @@ preCheckFunArgs _args = do
     -- Function to check a single function argument 
     let checkFArg :: AST.FuncArg -> ParserState ()
         checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
-                        checkType _argType -- check argument type 
+                        M.void $ checkType _argType -- check argument type 
                         --M.when (isJust _defaultVal) $ checkExpr (fromJust _defaultVal) -- check expression validity
 
     -- check arguments
@@ -433,8 +429,8 @@ checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value} = do
 checkExpr x = return x
 
 -- | Checks if a given type is a valid one 
-checkType :: AST.Type -> ParserState ()
-checkType AST.CustomType {AST.tName=_tName} = do -- When it is a custom type
+checkType :: AST.Type -> ParserState AST.Type
+checkType t@AST.CustomType {AST.tName=_tName} = do -- When it is a custom type
     st@State{symTable=symTb} <- RWS.get
 
     -- try to find symbol
@@ -446,6 +442,8 @@ checkType AST.CustomType {AST.tName=_tName} = do -- When it is a custom type
         Just ST.Symbol { ST.symType= ST.Type{} } -> return ()
         _  -> addStaticError $ SE.NotValidType{SE.nonTypeName = _tName}
 
+    return t
+
 checkType (AST.TArray t sz) = do
 
     -- check type of array elements
@@ -456,7 +454,7 @@ checkType (AST.TPtr t) = checkType t
 
 checkType (AST.TReference t) = checkType t
 
-checkType _ = return ()
+checkType x = return x
 
 -- | Generate a symbol from an AST declaration
 declToSym :: AST.Declaration -> ST.Symbol
