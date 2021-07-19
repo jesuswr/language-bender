@@ -169,6 +169,15 @@ isUnion Symbol {symType = UnionType{}} = True
 isUnion _ = False
 
 
+getIdType :: U.Name -> SymType -> AST.Type
+getIdType _ Variable{varType = t} = t
+getIdType _ Constant{consType = t} = t
+getIdType _ Type{unType = t} = t
+getIdType _ Procedure{} = AST.TUnit
+getIdType _ Function{retType = t} = t
+getIdType _ Reference{refType = t} = t
+getIdType nm _ = AST.CustomType{AST.tName=nm}
+
 
 -- < Pretty Printing > --------------------------------------------
 

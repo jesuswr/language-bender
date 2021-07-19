@@ -54,37 +54,37 @@ data Opr1 = Negation
           deriving(Eq, Show)
 
 -- | Possible expressions. Remember, everything its an expression
-data Expr   = ConstChar       { cVal :: String}
-            | ConstString     { sVal :: String}
-            | ConstInt        { iVal :: Int }
-            | ConstFloat      { fVal :: Float }
-            | ConstTrue 
-            | ConstFalse
-            | ConstStruct     { structName :: U.Name, list :: [Expr] }
-            | ConstUnion      { unionName :: U.Name, tag :: U.Name, value :: Expr }
-            | ConstUnit
-            | ConstNull
-            | Id              { name :: U.Name, position :: U.Position}
-            | Assign          { variable :: U.Name, value :: Expr}
-            | StructAssign    { struct :: Expr, tag :: U.Name, value :: Expr}
-            | StructAccess    { struct :: Expr, tag :: U.Name }
-            | FunCall         { fname :: U.Name, actualArgs :: [Expr]}
-            | For             { iteratorName :: U.Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr }
-            | While           { cond :: Expr, cicBody :: Expr}
-            | If              { cond :: Expr, accExpr :: Expr, failExpr :: Expr }
-            | ExprBlock       { exprs :: [Expr] }
-            | Return          { expr :: Expr }
-            | Break           { expr :: Expr }
-            | Continue        { expr :: Expr }
-            | Declaration     { decl :: Declaration }
-            | Op2             { op2 :: Opr2, opr1 :: Expr, opr2 :: Expr }
-            | Op1             { op1 :: Opr1, opr :: Expr }
-            | Array           { list :: [Expr] }
-            | UnionTrying     { union :: Expr, tag :: U.Name }
-            | UnionUsing      { union :: Expr, tag :: U.Name }
-            | New             { typeName :: Type }
-            | Delete          { ptrExpr :: Expr }
-            | ArrayIndexing   { index :: Expr, expr :: Expr}
+data Expr   = ConstChar       { cVal :: String, expType :: Type }
+            | ConstString     { sVal :: String, expType :: Type }
+            | ConstInt        { iVal :: Int,expType :: Type }
+            | ConstFloat      { fVal :: Float, expType :: Type }
+            | ConstTrue       { expType :: Type }
+            | ConstFalse      { expType :: Type }
+            | ConstStruct     { structName :: U.Name, list :: [Expr], expType :: Type }
+            | ConstUnion      { unionName :: U.Name, tag :: U.Name, value :: Expr, expType :: Type }
+            | ConstUnit       { expType :: Type }
+            | ConstNull       { expType :: Type }
+            | Id              { name :: U.Name, position :: U.Position, expType :: Type}
+            | Assign          { variable :: U.Name, value :: Expr, expType :: Type}
+            | StructAssign    { struct :: Expr, tag :: U.Name, value :: Expr, expType :: Type}
+            | StructAccess    { struct :: Expr, tag :: U.Name, expType :: Type }
+            | FunCall         { fname :: U.Name, actualArgs :: [Expr], expType :: Type}
+            | For             { iteratorName :: U.Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr, expType :: Type }
+            | While           { cond :: Expr, cicBody :: Expr, expType :: Type}
+            | If              { cond :: Expr, accExpr :: Expr, failExpr :: Expr, expType :: Type }
+            | ExprBlock       { exprs :: [Expr], expType :: Type }
+            | Return          { expr :: Expr, expType :: Type }
+            | Break           { expr :: Expr, expType :: Type }
+            | Continue        { expr :: Expr, expType :: Type }
+            | Declaration     { decl :: Declaration, expType :: Type }
+            | Op2             { op2 :: Opr2, opr1 :: Expr, opr2 :: Expr, expType :: Type }
+            | Op1             { op1 :: Opr1, opr :: Expr, expType :: Type }
+            | Array           { list :: [Expr], expType :: Type }
+            | UnionTrying     { union :: Expr, tag :: U.Name, expType :: Type }
+            | UnionUsing      { union :: Expr, tag :: U.Name, expType :: Type }
+            | New             { typeName :: Type, expType :: Type }
+            | Delete          { ptrExpr :: Expr, expType :: Type }
+            | ArrayIndexing   { index :: Expr, expr :: Expr, expType :: Type }
             deriving(Eq, Show)
 
 -- | Program data type     
@@ -116,7 +116,7 @@ instance Show Program where
 
 -----------------------------------------
 
-
+{-
 identShowOpr1 :: Int -> Opr1 -> String
 
 identShowOpr1 ident Negation = 
@@ -423,4 +423,5 @@ identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
 identShowProgram :: Program -> String
 identShowProgram program = --"~  AST  ~\n"
   concatMap (identShowDeclaration 2) (decls program)
-
+-}
+identShowProgram p = " * programa besho * "

@@ -203,7 +203,7 @@ VarDecl         :: { AST.Declaration }
 
 Expr            :: { AST.Expr }  
     : '(' Expr ')'                                      { $2 }
-    | id                                                {% P.checkExpr $ AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) }
+    | id                                                {% P.checkExpr $ AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) AST.TypeError }
 --    | ExprBlock                                         {% $1 }
 --    | id Assign                                         {% P.checkExpr $ AST.Assign ((TK.name . TK.tktype) $1) $2 }
 --    
@@ -243,13 +243,13 @@ Expr            :: { AST.Expr }
 --    | masterOf ExprList rightNow                        { AST.Array (reverse $2) }
 --
     -- >> Const Values --------------------------------------------------------------------------------
-    | int                                               { AST.ConstInt $1 }
-    | float                                             { AST.ConstFloat $1 }
-    | true                                              { AST.ConstTrue }
-    | false                                             { AST.ConstFalse }
-    | char                                              { AST.ConstChar $1 }
-    | string                                            { AST.ConstString $1 }
-    | null                                              { AST.ConstNull }
+    | int                                               { AST.ConstInt $1 AST.TInt }
+    | float                                             { AST.ConstFloat $1 AST.TFloat }
+    | true                                              { AST.ConstTrue AST.TBool }
+    | false                                             { AST.ConstFalse AST.TBool }
+    | char                                              { AST.ConstChar $1 AST.TChar }
+    | string                                            { AST.ConstString $1 AST.TString }
+    | null                                              { AST.ConstNull AST.TUnit }
 
     -- >> Binary Expressions --------------------------------------------------------------------------
 
@@ -283,7 +283,7 @@ Expr            :: { AST.Expr }
     -- >> Evaluable and none evaluable expressions > -----------------------------------------------------
 Exprs           ::  { AST.Expr }
     : Expr                                              { $1 }
-    | Declaration                                       { AST.Declaration $1 } 
+    | Declaration                                       { AST.Declaration $1 AST.TUnit } 
 
     -- >> Assigment ---------------------------------------------------------------------------------------
 Assign          :: { AST.Expr }
@@ -344,8 +344,10 @@ PopScope
 parseError []       = P.addStaticError SE.UnexpectedEOF >> (fail . show) SE.UnexpectedEOF 
 parseError (tk:tks) = P.addStaticError SE.ParseError    >> (fail . show) SE.ParseError
 
-runParse :: [TK.Token] -> IO (P.ParsingState, P.ErrorLog)
-runParse tks = do
-    (_, s, e) <- RWS.runRWST (parseTokens tks) () P.startingState
+-- could use execRWST instead of runRWST
+runParse :: [TK.Token] -> P.ParsingState -> IO (P.ParsingState, P.ErrorLog)
+runParse tks preState = do
+    (_, s, e) <- RWS.runRWST (parseTokens tks) () preState
     return (s, e)
+
 }

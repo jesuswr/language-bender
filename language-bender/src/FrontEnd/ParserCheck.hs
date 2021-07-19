@@ -139,9 +139,16 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     -- Get reference type:
     let refType = case refSym of
             Just ST.Symbol{ST.symType = ST.Variable{ST.varType=t}} -> t
-            _ -> AST.TypeError 
+            Just ST.Symbol{ST.symType = ST.Reference{ST.refType=t}} -> t
+            _ -> AST.TypeError
 
-        newType = ST.Reference refId refType
+    -- path comprehension. As the references should be declared in correct order
+    --                     (inverse topological order), recursion is not necessary.
+        refId' = case refSym of
+            Just ST.Symbol{ST.symType = ST.Reference{ST.refName=nm}} -> nm
+            _ -> refId
+
+        newType = ST.Reference refId' refType
     -- create new symbol 
         newSym = ST.Symbol {ST.identifier=sid, ST.symType=newType, ST.scope=0, ST.enrtyType=Nothing}
 
@@ -183,23 +190,46 @@ checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 -- Check function declaration
 checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
 
-    -- Create a new symbol for this function 
-    let symbol  = declToSym f
 
-    -- TODO  hay que ver si el tipo del body matchea a la firma de la funcion
+    let bodyType = AST.expType _body
+        
+        checkFuncType (Just t)
+            | bodyType == t = Just bodyType       -- | types of firm and body are equal
+            | otherwise     = Just AST.TypeError  -- | type error
+        checkFuncType Nothing = Just bodyType     -- | Inferred type
+
+        funcType = checkFuncType _retType
+
+        f' = f{AST.retType=funcType}
+
+    -- Create a new symbol for this function 
+        symbol  = declToSym f'
 
     -- try to add function symbol 
     tryAddSymbol symbol
 
-    return f
+    return f'
 
 -- | Check if a given expression uses valid names only
 checkExpr :: AST.Expr -> ParserState AST.Expr
 
 -- Check Id expression:
 checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
+    
+    -- Get current state
+    currSt@State{symTable = st} <- RWS.get
+    
     checkIdIsVarOrReference _name
-    return i
+
+    let idSym = ST.findSymbol _name  st
+
+        idType = case idSym of 
+            Just idSym' -> ST.getIdType _name $ ST.symType idSym'
+            Nothing -> AST.TypeError
+
+        i' = i{AST.expType = idType}
+
+    return i'
 
 -- Check assign expression 
 checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
@@ -444,15 +474,25 @@ checkType t@AST.CustomType {AST.tName=_tName} = do -- When it is a custom type
 
     return t
 
-checkType (AST.TArray t sz) = do
+checkType arrType@(AST.TArray t sz) = do
 
     -- check type of array elements
     checkType t
-    -- TODO  check that size of array is int
+    
+    -- check that size of array is int
+    let sizeType = AST.expType sz
 
-checkType (AST.TPtr t) = checkType t
+    case sizeType of
+        AST.TInt -> return arrType
+        _ -> return AST.TypeError
 
-checkType (AST.TReference t) = checkType t
+checkType ptr@(AST.TPtr t) = do
+    checkType t
+    return ptr
+
+checkType ref@(AST.TReference t) = do
+    checkType t
+    return ref
 
 checkType x = return x
 

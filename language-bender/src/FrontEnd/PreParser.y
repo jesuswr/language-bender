@@ -18,7 +18,7 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 
 }
 
-%name parseTokens
+%name preParseTokens
 %tokentype { TK.Token }
 %error { parseError }
 %monad { P.ParserState }
@@ -150,14 +150,14 @@ Declaration    -- :: { () }--{ AST.Declaration }
     | ProcDecl                                          { }
 
 ProcDecl        :: { () }-- { AST.Declaration }
-    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (Just AST.TUnit) AST.ConstUnit }
-    | travel id PushScope colon PushScope Exprs PopScope PopScope                             {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) AST.ConstUnit }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (Just AST.TUnit) (AST.ConstUnit AST.TUnit) }
+    | travel id PushScope colon PushScope Exprs PopScope PopScope                             {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) (AST.ConstUnit AST.TUnit) }
 
 FuncDecl        :: { () }-- { AST.Declaration }
-    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope        {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) (Just $4) AST.ConstUnit }
-    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                      {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) AST.ConstUnit }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope                {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) Nothing AST.ConstUnit }
-    | book id PushScope colon PushScope Exprs PopScope PopScope                              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] Nothing AST.ConstUnit }
+    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope        {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) (Just $4) (AST.ConstUnit AST.TUnit) }
+    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                      {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) (AST.ConstUnit AST.TUnit) }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope                {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) Nothing (AST.ConstUnit AST.TUnit) }
+    | book id PushScope colon PushScope Exprs PopScope PopScope                              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] Nothing (AST.ConstUnit AST.TUnit) }
 
 FuncArg         :: { [AST.FuncArg] }
     : FuncDefArgDecl                                    {% P.preCheckFunArgs $1 }
@@ -216,10 +216,10 @@ Expr            --:: { AST.Expr }
     | while Expr doing colon PushScope Expr PopScope              {}-- { AST.While $2 $5 }
     | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope   {}-- { AST.If $2 $4 $6 }
     | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope             {}-- { AST.If $2 $4 $6 }
-    | if  Expr colon PushScope Expr PopScope                              {}-- { AST.If $2 $4 AST.AST.ConstUnit }
+    | if  Expr colon PushScope Expr PopScope                              {}-- { AST.If $2 $4 AST.(AST.ConstUnit AST.TUnit) }
     | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope     {}-- { AST.If $2 $5 $7 }
     | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope  {}-- { AST.If $2 $5 $7 }
-    | if  Expr dot colon PushScope Expr PopScope                          {}-- { AST.If $2 $5 AST.AST.ConstUnit }
+    | if  Expr dot colon PushScope Expr PopScope                          {}-- { AST.If $2 $5 AST.(AST.ConstUnit AST.TUnit) }
    
     | in id bookWith ExprList elipsis                   {}-- { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
     | in id bookWith elipsis                            {}-- { AST.FunCall ((TK.name . TK.tktype) $2) [] }
@@ -270,9 +270,9 @@ Expr            --:: { AST.Expr }
     | toBeContinued Expr                                {}-- { AST.Continue  $2 }
     | burst Expr                                        {}-- { AST.Break     $2 }
     | return Expr                                       {}-- { AST.Return    $2 }
-    | toBeContinuedUnit                                 {}-- { AST.Continue  AST.AST.ConstUnit }
-    | burstUnit                                         {}-- { AST.Break     AST.AST.ConstUnit }
-    | returnUnit                                        {}-- { AST.Return    AST.AST.ConstUnit }
+    | toBeContinuedUnit                                 {}-- { AST.Continue  AST.(AST.ConstUnit AST.TUnit) }
+    | burstUnit                                         {}-- { AST.Break     AST.(AST.ConstUnit AST.TUnit) }
+    | returnUnit                                        {}-- { AST.Return    AST.(AST.ConstUnit AST.TUnit) }
     
     -- >> Evaluable and none evaluable expressions > -----------------------------------------------------
 Exprs           --::  { AST.Expr }
@@ -318,7 +318,7 @@ Type            :: { AST.Type }
     | metal                                             { AST.TString }   
     | fire                                              { AST.TBool }
     | id                                                { AST.CustomType ((TK.name . TK.tktype) $1) }
-    | Type nation Expr year                             { AST.TArray $1 (AST.ConstInt 0)}
+    | Type nation Expr year                             { AST.TArray $1 (AST.ConstInt 0 AST.TInt)}
     | Type art                                          { AST.TPtr $1 }
 
     -- >> Auxiliar Rules ----------------------------------------------------------------------------
@@ -334,6 +334,13 @@ PopScope
 -- Error function
 -- parseError :: [TK.Token] -> a
 parseError []       = P.addStaticError SE.UnexpectedEOF >> (fail . show) SE.UnexpectedEOF 
-parseError (tk:tks) = P.addStaticError SE.ParseError    >> (fail . show) SE.ParseError
+parseError (tk:tks) = P.addStaticError SE.ParseError    >> (fail $ "parse error in "++ (show tk)) -- (fail . show) SE.ParseError
+
+
+-- could use execRWST instead of runRWST
+runPreParse :: [TK.Token] -> IO (P.ParsingState, P.ErrorLog)
+runPreParse tks = do
+    (_, s, e) <- RWS.runRWST (preParseTokens tks) () P.startingState
+    return (s, e)
 
 }
