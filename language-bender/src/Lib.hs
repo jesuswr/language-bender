@@ -51,7 +51,7 @@ langBender = do
                 M.when (null tokens) $ do
                     putStrLn "No token was found.\nAn executable will not be generated\n"
 
-                if (justLex opts || null tokens) then return ()
+                if justLex opts || null tokens then return ()
                     else do
 
                         putStrLn " antes del preparsing\n"
@@ -64,6 +64,15 @@ langBender = do
 
                         putStrLn " entre preparsing y parsing\n"
 
+                        -- 1) arreglar esta linea para que reinicie el siguiente scope
+                        -- 2) El parser debe ignorar redef. de funciones
+                        -- 3) el preparser debe consultar redef. de funciones
+                        -- 4) crear funcion update symbol
+                        -- 5) adaptar type checking actual al nuevo
+                        -- 6) cambiar mucho el parser (dirigido por sintaxis)
+                        -- 7) Añadir arreglos a la tabla de simbolos
+                        -- 8) reemplazar const en la symtable por variable con isConst true
+                        -- 9) añadir el tipo void para tipos que se construyen de otros tipos (ptr por ahora)
                         (parseState, parseErrors) <- P.runParse tokens preParseState
 
                         putStrLn " despues del parsing\n"

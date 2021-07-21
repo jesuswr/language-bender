@@ -13,7 +13,7 @@ import qualified FrontEnd.Utils         as U
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
 import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
-
+import Data.Functor((<&>))
 -- ---------------------------------------------------------------
 -- >> data ------------------------------------------------------
 
@@ -194,9 +194,9 @@ checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retTyp
     let bodyType = AST.expType _body
         
         checkFuncType (Just t)
-            | bodyType == t = Just bodyType       -- | types of firm and body are equal
-            | otherwise     = Just AST.TypeError  -- | type error
-        checkFuncType Nothing = Just bodyType     -- | Inferred type
+            | bodyType == t = Just bodyType       -- types of firm and body are equal
+            | otherwise     = Just AST.TypeError  -- type error
+        checkFuncType Nothing = Just bodyType     -- Inferred type
 
         funcType = checkFuncType _retType
 
@@ -206,7 +206,7 @@ checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retTyp
         symbol  = declToSym f'
 
     -- try to add function symbol 
-    tryAddSymbol symbol
+    tryAddSymbol symbol -- check if redefined
 
     return f'
 

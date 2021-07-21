@@ -664,3 +664,4 @@ _checkTypeMatch' expected exprType = do
 -- | Check if a sorted list of expression matches a sorted list of types
 _checkTypeMatchesArgs :: [[AST.Type]] -> [AST.Expr] -> AnalyzerState Bool
 _checkTypeMatchesArgs expected args = M.zipWithM _checkTypeMatch expected args <&> and
+
