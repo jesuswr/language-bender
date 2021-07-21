@@ -11,8 +11,9 @@ import qualified    FrontEnd.Parser      as P
 import              FrontEnd.Errors
 --import              FrontEnd.StaticAnalysis as SE
 import qualified    FrontEnd.ParserCheck as PC
+import qualified    FrontEnd.SymTable    as ST
 import qualified    Utils.Constants
-import qualified    Control.Monad as M
+import qualified    Control.Monad        as M
 
 langBender :: IO ()
 langBender = do
@@ -64,7 +65,6 @@ langBender = do
 
                         putStrLn " entre preparsing y parsing\n"
 
-                        -- 1) arreglar esta linea para que reinicie el siguiente scope
                         -- 2) El parser debe ignorar redef. de funciones
                         -- 3) el preparser debe consultar redef. de funciones
                         -- 4) crear funcion update symbol
@@ -73,7 +73,9 @@ langBender = do
                         -- 7) Añadir arreglos a la tabla de simbolos
                         -- 8) reemplazar const en la symtable por variable con isConst true
                         -- 9) añadir el tipo void para tipos que se construyen de otros tipos (ptr por ahora)
-                        (parseState, parseErrors) <- P.runParse tokens preParseState
+
+                        let preParseState' = preParseState{ PC.symTable = (PC.symTable preParseState){ST.stNextScope = 1} }
+                        (parseState, parseErrors) <- P.runParse tokens preParseState'
 
                         putStrLn " despues del parsing\n"
 
