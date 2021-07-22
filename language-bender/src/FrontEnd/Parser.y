@@ -204,7 +204,7 @@ VarDecl         :: { AST.Declaration }
 Expr            :: { AST.Expr }  
     : '(' Expr ')'                                      { $2 }
     | id                                                {% P.checkExpr $ AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) AST.TypeError }
---    | ExprBlock                                         {% $1 }
+    | ExprBlock                                         { $1 }
 --    | id Assign                                         {% P.checkExpr $ AST.Assign ((TK.name . TK.tktype) $1) $2 }
 --    
 --    | Expr quotmark_s id Assign                         {% P.checkExpr $ AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 }
@@ -291,27 +291,27 @@ Assign          :: { AST.Expr }
 
 
 -- < Expression block Grammar > --------------------------------------------------------------------------  
---ExprBlock       ::  { AST.Expr }
---    : beginBlock PushScope ExprSeq PopScope endBlock    { AST.ExprBlock (reverse $2) }
---    | beginBlock PushScope PopScope endBlock            { AST.ExprBlock [] }
---
---ExprSeq         ::  { [AST.Expr] }
---    : LastInBlock                                       { [$1] }
---    | Seq LastInBlock                                   { $2:$1 }
---
---Seq             :: { [AST.Expr] }
---    : Exprs Dots                                        { [$1] }
---    | Seq Exprs Dots                                    { $2:$1 }
---    | Dots                                              { [] }
---    
---LastInBlock     :: { AST.Expr }
---    : Exprs                                             { $1 }
---    | Exprs Dots                                        { $1 }
---
---Dots            :: { [AST.Expr] }
---    : dot                                               { [] }
---    | Dots dot                                          { [] }
---
+ExprBlock       ::  { AST.Expr }
+    : beginBlock PushScope ExprSeq PopScope endBlock    { AST.ExprBlock (reverse $3) (AST.expType . head $ $3)}
+    | beginBlock PushScope PopScope endBlock            { AST.ExprBlock [] AST.TUnit }
+
+ExprSeq         ::  { [AST.Expr] }
+    : LastInBlock                                       { [$1] }
+    | Seq LastInBlock                                   { $2:$1 }
+
+Seq             :: { [AST.Expr] }
+    : Exprs Dots                                        { [$1] }
+    | Seq Exprs Dots                                    { $2:$1 }
+    | Dots                                              { [] }
+    
+LastInBlock     :: { AST.Expr }
+    : Exprs                                             { $1 }
+    | Exprs Dots                                        { $1 }
+
+Dots            :: { [AST.Expr] }
+    : dot                                               { [] }
+    | Dots dot                                          { [] }
+
 --ExprList        :: { [AST.Expr] }
 --    : Expr                                              { [$1] }
 --    | ExprList comma Expr                               { $3:$1 }
@@ -342,7 +342,7 @@ PopScope
 -- Error function
 -- parseError :: [TK.Token] -> a
 parseError []       = P.addStaticError SE.UnexpectedEOF >> (fail . show) SE.UnexpectedEOF 
-parseError (tk:tks) = P.addStaticError SE.ParseError    >> (fail . show) SE.ParseError
+parseError rem@(tk:tks) = P.addStaticError (SE.ParseError rem)    >> (fail . show . SE.ParseError) rem
 
 -- could use execRWST instead of runRWST
 runParse :: [TK.Token] -> P.ParsingState -> IO (P.ParsingState, P.ErrorLog)

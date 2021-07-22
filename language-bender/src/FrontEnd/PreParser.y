@@ -334,7 +334,7 @@ PopScope
 -- Error function
 -- parseError :: [TK.Token] -> a
 parseError []       = P.addStaticError SE.UnexpectedEOF >> (fail . show) SE.UnexpectedEOF 
-parseError (tk:tks) = P.addStaticError SE.ParseError    >> (fail $ "parse error in "++ (show tk)) -- (fail . show) SE.ParseError
+parseError rem@(tk:tks) = P.addStaticError (SE.ParseError rem)    >> (fail $ "parse error in "++ (show tk)) -- (fail . show) (SE.ParseError rem)
 
 
 -- could use execRWST instead of runRWST

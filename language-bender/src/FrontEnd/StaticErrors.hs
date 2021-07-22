@@ -5,6 +5,7 @@ module FrontEnd.StaticErrors where
 import qualified FrontEnd.SymTable  as ST
 import qualified FrontEnd.Utils     as U
 import qualified FrontEnd.AST       as AST
+import qualified FrontEnd.Tokens    as T
 ---------------------------------------------------------------------------
 
 -- | Static Analysis Errors
@@ -18,7 +19,7 @@ data StaticError = SymbolNotInScope         { symName :: U.Name }
                  | NotAValidUnion           { symName :: U.Name, actualSymType :: ST.SymType }
                  | DuplicateNamesInCompound { symName :: U.Name  }
                  | UnexpectedEOF
-                 | ParseError 
+                 | ParseError               { remStream :: [T.Token] }
                  | UnmatchingTypes          { expectedTypes :: [AST.Type], actualType :: AST.Type }
                  | AssignToConst            { symName :: U.Name  } -- you can't assign to const initialized variables
 --                 | TypeError {typeError :: TypeError}
