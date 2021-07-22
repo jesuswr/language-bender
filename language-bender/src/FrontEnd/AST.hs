@@ -25,7 +25,7 @@ data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe 
 
 -- | Declaration of new things
 data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal :: Maybe Expr, isConst :: Bool }
-                    | Reference { decName :: U.Name, refName :: U.Name, refScope :: Int }
+                    | Reference { decName :: U.Name, refName :: U.Name }
                     | Union     { decName :: U.Name, fields :: [(U.Name, Type)] }
                     | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] }
                     | Func      { decName :: U.Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }

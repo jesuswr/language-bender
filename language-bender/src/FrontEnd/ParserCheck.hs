@@ -514,7 +514,7 @@ declToSym decl = ST.Symbol {
                 ST.isConst=_isConst
             }
             
-        declToSymType AST.Reference {AST.refName=_refName, AST.refScope=_refScope} = ST.Reference {ST.refName=_refName, ST.refType=AST.TypeError, ST.refScope=_refScope}
+        declToSymType AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=AST.TypeError, ST.refScope=0}
 
 
         declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields}
