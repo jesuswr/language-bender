@@ -249,7 +249,7 @@ Expr            :: { AST.Expr }
     | false                                             { AST.ConstFalse AST.TBool }
     | char                                              { AST.ConstChar $1 AST.TChar }
     | string                                            { AST.ConstString $1 AST.TString }
-    | null                                              { AST.ConstNull AST.TUnit }
+    | null                                              { AST.ConstNull (AST.TPtr AST.TVoid) }
 
     -- >> Binary Expressions --------------------------------------------------------------------------
 

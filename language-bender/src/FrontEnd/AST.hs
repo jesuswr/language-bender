@@ -19,6 +19,7 @@ data Type = TFloat
           | TReference { refType :: Type }
           | CustomType { tName :: U.Name }
           | TypeError
+          | TVoid
           deriving(Eq, Show)
 
 data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq, Show)
