@@ -31,13 +31,12 @@ type Dictionary = M.Map Identifier [Symbol]
 -- | Symbol Type with its corresponding data
 data SymType   
     = Variable      { varType ::   AST.Type, initVal :: Maybe AST.Expr, isConst :: Bool }
-    | Constant      { consType ::  AST.Type, consInitVal :: AST.Expr } -- borrar
     | Type          { unType :: AST.Type}
     | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
     | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
     | StructType    { fields :: [(U.Name, AST.Type)] }
     | UnionType     { fields :: [(U.Name, AST.Type)] }
-    | Reference     { refName :: U.Name, refType :: AST.Type } -- maybe in case we don't know its type yet, or it can't be tell 
+    | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int }
     deriving (Eq, Show)
 
 -- | Symbol Data type
@@ -171,7 +170,6 @@ isUnion _ = False
 
 getIdType :: U.Name -> SymType -> AST.Type
 getIdType _ Variable{varType = t} = t
-getIdType _ Constant{consType = t} = t
 getIdType _ Type{unType = t} = t
 getIdType _ Procedure{} = AST.TUnit
 getIdType _ Function{retType = t} = t

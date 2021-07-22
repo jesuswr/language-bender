@@ -68,10 +68,13 @@ langBender = do
                         -- 2) El parser debe ignorar redef. de funciones
                         -- 3) el preparser debe consultar redef. de funciones
                         -- 4) crear funcion update symbol
+
                         -- 5) adaptar type checking actual al nuevo
+
                         -- 6) cambiar mucho el parser (dirigido por sintaxis)
+
                         -- 7) Añadir arreglos a la tabla de simbolos
-                        -- 8) reemplazar const en la symtable por variable con isConst true
+
                         -- 9) añadir el tipo void para tipos que se construyen de otros tipos (ptr por ahora)
 
                         let preParseState' = preParseState{ PC.symTable = (PC.symTable preParseState){ST.stNextScope = 1} }

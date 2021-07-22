@@ -128,19 +128,20 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     currSt@State{symTable = st} <- RWS.get
 
     let refSym = ST.findSymbol refId  st
+        currScope = ST.stCurrScope st
 
     -- Check if referenced symbol exists and it's a variable
     case refSym of
-        Nothing -> addStaticError . SE.SymbolNotInScope $ refId
         Just ST.Symbol{ST.symType = ST.Variable{}} -> return ()
         Just ST.Symbol{ST.symType = ST.Reference{}} -> return ()
+        Nothing -> addStaticError . SE.SymbolNotInScope $ refId
         _       -> addStaticError . SE.ReferencingNonVariable $ refId
 
-    -- Get reference type:
-    let refType = case refSym of
-            Just ST.Symbol{ST.symType = ST.Variable{ST.varType=t}} -> t
-            Just ST.Symbol{ST.symType = ST.Reference{ST.refType=t}} -> t
-            _ -> AST.TypeError
+    -- Get reference type and scope:
+    let (refType, refScope) = case refSym of
+            Just ST.Symbol{ST.symType = ST.Variable{ST.varType=t}, ST.scope = scp} -> (t, scp)
+            Just ST.Symbol{ST.symType = ST.Reference{ST.refType=t, ST.refScope = scp}} -> (t, scp)
+            _ -> (AST.TypeError, 0)
 
     -- path comprehension. As the references should be declared in correct order
     --                     (inverse topological order), recursion is not necessary.
@@ -148,9 +149,9 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
             Just ST.Symbol{ST.symType = ST.Reference{ST.refName=nm}} -> nm
             _ -> refId
 
-        newType = ST.Reference refId' refType
+        newType = ST.Reference refId' refType refScope
     -- create new symbol 
-        newSym = ST.Symbol {ST.identifier=sid, ST.symType=newType, ST.scope=0, ST.enrtyType=Nothing}
+        newSym = ST.Symbol {ST.identifier=sid, ST.symType=newType, ST.scope=currScope, ST.enrtyType=Nothing}
 
     -- try to add symbol 
     tryAddSymbol newSym
@@ -513,7 +514,7 @@ declToSym decl = ST.Symbol {
                 ST.isConst=_isConst
             }
             
-        declToSymType AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=undefined}
+        declToSymType AST.Reference {AST.refName=_refName, AST.refScope=_refScope} = ST.Reference {ST.refName=_refName, ST.refType=AST.TypeError, ST.refScope=_refScope}
 
 
         declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields}
