@@ -37,7 +37,7 @@ data SymType
     | StructType    { fields :: [(U.Name, AST.Type)] }
     | UnionType     { fields :: [(U.Name, AST.Type)] }
     | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int }
-    deriving (Eq, Show)
+    deriving (Eq)
 
 -- | Symbol Data type
 data Symbol = Symbol
@@ -45,7 +45,7 @@ data Symbol = Symbol
     , symType :: SymType                -- ^ Symbol Type of the entry
     , scope :: Scope                    -- ^ current scope at insertion
     , enrtyType :: Maybe SymType        -- ^ pointer to another entry
-    } deriving (Eq, Show)
+    } deriving (Eq)
 
 -- | Symbol Table: Le Blanc - Cook based implementation 
 data SymTable = SymTable
@@ -186,6 +186,28 @@ instance Show SymTable where
         "\nScope Stack: \n" ++ _printScopeStack _stScopeStk ++ 
         "\nSymbol Map:\n" ++ _printStDict _stDict
 
+instance Show Symbol where
+    
+    show Symbol {identifier=_identifier, symType=_symType, scope=_scope, enrtyType=_enrtyType} = 
+        _identifier ++ "[" ++ show _scope ++ "] :: " ++ show _symType 
+
+instance Show SymType where
+
+    show Function {args=_args, retType=_retType} = "Func => " ++ _showSignature _args _retType
+
+    show Procedure {args=_args}                  = "Proc => " ++ _showSignature _args AST.TUnit 
+
+    show Variable {varType=_varType, initVal=_initVal, isConst=_isConst} = 
+            (if _isConst then "Const " else "") ++  "Var => " ++ show _varType ++ " = " ++ show _initVal
+
+    show Type {unType=_unType} = "Type => " ++ show _unType
+
+    show UnionType {fields=_fields}  = "Union => " ++ _showSubFields _fields
+
+    show StructType {fields=_fields} = "Struct => " ++ _showSubFields _fields
+
+    show Reference {refName=_refName, refType=_refType, refScope=_refScope} = 
+        "Reference => &(" ++ _refName ++ "[" ++ show _refScope ++ "]" ++ " :: " ++ show _refType ++ ")"
 
 -- | Print scope stack 
 _printScopeStack :: ScopeStack -> String
@@ -200,3 +222,12 @@ _printStDict dict =
 
                 | (name, symList) <-  M.toList dict
             ]
+
+-- | Return signature as str
+_showSignature :: [AST.FuncArg] -> AST.Type -> String
+_showSignature _args _retType = "(" ++ (if null _args then "" else concat ((show . head) _args : [", " ++ show arg | arg <- tail _args]))++ ") -> " ++ show _retType 
+
+-- | Return struct and union subnames as str
+_showSubFields :: [(U.Name , AST.Type)] -> String 
+_showSubFields  [] = "{}"
+_showSubFields  ((name, t):nts) = "{ " ++ name ++ " :: " ++ show t ++ concat [", " ++ name ++ " :: " ++ show t | (name, t) <- nts] ++ " }"
