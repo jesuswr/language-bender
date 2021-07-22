@@ -13,6 +13,7 @@ import qualified Control.Monad.Trans as T
 import qualified Control.Monad.RWS   as RWS
 import qualified Data.Map.Strict     as M
 import qualified Data.List           as L
+import           Data.Maybe(isNothing)
 -----------------------------------------------------------------
 
 -- <Type Definitions> ------------------------------------------
@@ -199,7 +200,8 @@ instance Show SymType where
     show Procedure {args=_args}                  = "Proc => " ++ _showSignature _args AST.TUnit 
 
     show Variable {varType=_varType, initVal=_initVal, isConst=_isConst} = 
-            (if _isConst then "Const " else "") ++  "Var => " ++ show _varType ++ " = " ++ show _initVal
+            (if _isConst then "Const " else "") ++  "Var => " ++ (init . tail . show) _varType ++ 
+            (if isNothing _initVal then "" else  " = initial value")
 
     show Type {unType=_unType} = "Type => " ++ show _unType
 

@@ -23,7 +23,7 @@ type ErrorLog = [SE.StaticError]
 type ParserState = RWS.RWST () ErrorLog ParsingState IO
 
 -- | State of current analysis 
-newtype ParsingState = State { symTable :: ST.SymTable }
+newtype ParsingState = State { symTable :: ST.SymTable } deriving(Eq, Show)
 
 -- -------------------------------------------------------------------
 -- >> Commons -------------------------------------------------------

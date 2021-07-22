@@ -94,26 +94,6 @@ langBender = do
                         putStrLn "~ Symbol Table ~"
                         print symT
 
-                        --let ast = parseTokens tokens
-
-                        -- M.when (printPar opts || justPar opts) $ do
-                        --     putStrLn "~ Abstract Syntax Tree ~\n"
-                        --     print ast
-
-                        -- ((SE.State symT _), stErr) <- SE.analyzeProgram ast
-
-                        -- M.unless (null stErr) $ do
-                        --     putStrLn "~ Static Errors ~"
-                        --     print stErr
-
-                        -- if justPar opts 
-                        --     then return ()
-                        --     else do
-                        --         putStrLn "~ Symbol Table ~"
-                        --         print symT
-
-
-
 
 
 helpMsg :: String

@@ -20,9 +20,9 @@ data Type = TFloat
           | CustomType { tName :: U.Name }
           | TypeError
           | TVoid
-          deriving(Eq, Show)
+          deriving(Eq)
 
-data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq, Show)
+data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq)
 
 -- | Declaration of new things
 data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal :: Maybe Expr, isConst :: Bool }
@@ -30,7 +30,7 @@ data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal ::
                     | Union     { decName :: U.Name, fields :: [(U.Name, Type)] }
                     | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] }
                     | Func      { decName :: U.Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
-                    deriving(Eq, Show)
+                    deriving(Eq)
 
 -- | Binary Operators
 data Opr2 = Sum
@@ -46,13 +46,13 @@ data Opr2 = Sum
           | NotEq
           | And
           | Or
-          deriving(Eq, Show)
+          deriving(Eq)
 
 -- | Unary operators
 data Opr1 = Negation
           | Negative
           | UnitOperator
-          deriving(Eq, Show)
+          deriving(Eq)
 
 -- | Possible expressions. Remember, everything its an expression
 data Expr   = ConstChar       { cVal :: String, expType :: Type }
@@ -86,7 +86,7 @@ data Expr   = ConstChar       { cVal :: String, expType :: Type }
             | New             { typeName :: Type, expType :: Type }
             | Delete          { ptrExpr :: Expr, expType :: Type }
             | ArrayIndexing   { index :: Expr, expr :: Expr, expType :: Type }
-            deriving(Eq, Show)
+            deriving(Eq)
 
 -- | Program data type     
 newtype Program = Program{ decls :: [Declaration] } deriving(Eq)
@@ -97,27 +97,27 @@ newtype Program = Program{ decls :: [Declaration] } deriving(Eq)
 instance Show Program where
   show = identShowProgram
 
--- instance Show Expr where
---   show = identShowExpr 0
+instance Show Expr where
+   show = identShowExpr 0
 
--- instance Show Opr1 where
---   show = identShowOpr1 0
+instance Show Opr1 where
+   show = identShowOpr1 0
 
--- instance Show Opr2 where
---   show = identShowOpr2 0
+instance Show Opr2 where
+   show = identShowOpr2 0
 
--- instance Show Declaration where
---   show = identShowDeclaration 0
+instance Show Declaration where
+   show = identShowDeclaration 0
 
--- instance Show FuncArg where
---   show = identShowFuncArg 0
+instance Show FuncArg where
+   show = identShowFuncArg 0
 
--- instance Show Type where
---   show = identShowType 0
+instance Show Type where
+   show = identShowType 0
 
 -----------------------------------------
 
-{-
+
 identShowOpr1 :: Int -> Opr1 -> String
 
 identShowOpr1 ident Negation = 
@@ -183,19 +183,19 @@ identShowFuncArg ident (FuncArg nm t def) = "\n" ++
 
 identShowType :: Int -> Type -> String
 
-identShowType ident (TFloat) = "\n" ++
+identShowType ident TFloat = "\n" ++
   replicate ident ' ' ++ "Type: Float\n"
 
-identShowType ident (TInt) = "\n" ++
+identShowType ident TInt = "\n" ++
   replicate ident ' ' ++ "Type: Int\n"
 
-identShowType ident (TChar) = "\n" ++
+identShowType ident TChar = "\n" ++
   replicate ident ' ' ++ "Type: Char\n"
 
-identShowType ident (TString) = "\n" ++
+identShowType ident TString = "\n" ++
   replicate ident ' ' ++ "Type: String\n"
 
-identShowType ident (TBool) = "\n" ++
+identShowType ident TBool = "\n" ++
   replicate ident ' ' ++ "Type: Bool\n"
 
 identShowType ident (TArray arrt sz) = "\n" ++
@@ -208,7 +208,7 @@ identShowType ident (TPtr t) = "\n" ++
   replicate ident ' ' ++ "Type: Pointer of:\n"
   ++ identShowType (ident + 2) t 
 
-identShowType ident (TUnit) = "\n" ++
+identShowType ident TUnit = "\n" ++
   replicate ident ' ' ++ "Type: Unit\n"
 
 identShowType ident (TReference t) = "\n" ++
@@ -221,65 +221,65 @@ identShowType ident (CustomType nm) = "\n" ++
 
 identShowExpr :: Int -> Expr -> String
 
-identShowExpr ident (ConstChar c) = "\n" ++
+identShowExpr ident (ConstChar c _) = "\n" ++
   replicate ident ' ' ++ "Literal Character: " ++ (show c) ++ "\n"
 
-identShowExpr ident (ConstString s) = "\n" ++
+identShowExpr ident (ConstString s _) = "\n" ++
   replicate ident ' ' ++ "Literal String: '" ++ s ++ "'\n"
 
-identShowExpr ident (ConstInt n) = "\n" ++
+identShowExpr ident (ConstInt n _) = "\n" ++
   replicate ident ' ' ++ "Literal Int: '" ++ (show n) ++ "'\n"
 
-identShowExpr ident (ConstFloat f) = "\n" ++
+identShowExpr ident (ConstFloat f _) = "\n" ++
   replicate ident ' ' ++ "Literal Float: '" ++ (show f) ++ "'\n"
 
-identShowExpr ident (ConstStruct stru_id exps) = "\n" ++
+identShowExpr ident (ConstStruct stru_id exps _) = "\n" ++
   replicate ident ' ' ++ "Literal Struct: '"++ stru_id ++ "'\n"
   ++ replicate ident ' ' ++ "with fields:\n"
   ++ concatMap (identShowExpr (ident + 2)) exps 
 
-identShowExpr ident ConstTrue = "\n" ++
+identShowExpr ident (ConstTrue _) = "\n" ++
   replicate ident ' ' ++ "Literal Bool: True\n"
 
-identShowExpr ident ConstFalse = "\n" ++
+identShowExpr ident (ConstFalse _) = "\n" ++
   replicate ident ' ' ++ "Literal Bool: False\n"
 
-identShowExpr ident (ConstUnion union_id tag_ val) = "\n" ++
+identShowExpr ident (ConstUnion union_id tag_ val _) = "\n" ++
   replicate ident ' ' ++ "Literal Union: '" ++ union_id ++ "'\n"
   ++ replicate ident ' ' ++ "with tag: " ++ tag_ ++ "\n"
   ++ "\n" ++ replicate ident ' ' ++ "with value:\n"
   ++ identShowExpr (ident + 2) val 
 
-identShowExpr ident ConstUnit = "\n" ++
+identShowExpr ident (ConstUnit _) = "\n" ++
   replicate ident ' ' ++ "Unit ()\n"
 
-identShowExpr ident ConstNull = "\n" ++
+identShowExpr ident (ConstNull _) = "\n" ++
   replicate ident ' ' ++ "Null\n"
 
-identShowExpr ident (Id nm pos_) = "\n" ++
+identShowExpr ident (Id nm pos_ _) = "\n" ++
   replicate ident ' ' ++ "Identifier: " ++ nm ++ "\n"
 
-identShowExpr ident (Assign nm val) = "\n" ++
+identShowExpr ident (Assign nm val _) = "\n" ++
   replicate ident ' ' ++ "Assignment: " ++ nm ++ " <- \n"
   ++ identShowExpr (ident + 2) val
 
-identShowExpr ident (StructAssign stru tag_ val) = "\n" ++
+identShowExpr ident (StructAssign stru tag_ val _) = "\n" ++
   replicate ident ' ' ++ "Struct Assignment: \n"
   ++ identShowExpr (ident + 2) stru
   ++ "\n" ++ replicate ident ' ' ++ "With tag '" ++ tag_ ++ "' <-\n"
   ++ identShowExpr (ident + 2) val 
 
-identShowExpr ident (StructAccess stru tag_) = "\n" ++
+identShowExpr ident (StructAccess stru tag_ _) = "\n" ++
   replicate ident ' ' ++ "Struct Access: \n"
   ++ identShowExpr (ident + 2) stru
   ++ "\n" ++ replicate ident ' ' ++ " with tag '" ++ tag_ ++ "'\n"
 
-identShowExpr ident (FunCall fnm args_) = "\n" ++
+identShowExpr ident (FunCall fnm args_ _) = "\n" ++
   replicate ident ' ' ++ "Function/Procedure call: " ++ fnm ++ "\n"
   ++ "\n" ++ replicate ident ' ' ++ "with arguments:\n"
   ++ concatMap (identShowExpr (ident + 2)) args_ 
 
-identShowExpr ident (For it step_ start_ end_ bodyExp) = "\n" ++
+identShowExpr ident (For it step_ start_ end_ bodyExp _) = "\n" ++
   replicate ident ' ' ++ "For loop with iteration variable: " ++ it ++ "\n"
   ++ "\n" ++ replicate ident ' ' ++ "with step of:\n"
   ++ identShowExpr (ident + 2) step_ 
@@ -290,13 +290,13 @@ identShowExpr ident (For it step_ start_ end_ bodyExp) = "\n" ++
   ++ "\n" ++ replicate ident ' ' ++ "with body:\n" 
   ++ identShowExpr (ident + 2) bodyExp
 
-identShowExpr ident (While condition bodyExp) = "\n" ++
+identShowExpr ident (While condition bodyExp _) = "\n" ++
   replicate ident ' ' ++ "While loop with condition:\n"
   ++ identShowExpr (ident + 2) condition
   ++ "\n" ++ replicate ident ' ' ++ "with body:\n" 
   ++ identShowExpr (ident + 2) bodyExp
 
-identShowExpr ident (If condition exp1 exp2) = "\n" ++
+identShowExpr ident (If condition exp1 exp2 _) = "\n" ++
   replicate ident ' ' ++ "'If' with condition:\n"
   ++ identShowExpr (ident + 2) condition
   ++ "\n" ++ replicate ident ' ' ++ "with first expression:\n" 
@@ -304,25 +304,25 @@ identShowExpr ident (If condition exp1 exp2) = "\n" ++
   ++ "\n" ++ replicate ident ' ' ++ "with second expression:\n" 
   ++ identShowExpr (ident + 2) exp2
 
-identShowExpr ident (ExprBlock exps) =
+identShowExpr ident (ExprBlock exps _) =
   concatMap (identShowExpr ident) exps
 
-identShowExpr ident (Return expm) = "\n" ++
+identShowExpr ident (Return expm _) = "\n" ++
   replicate ident ' ' ++ "Return: \n"
   ++ identShowExpr (ident + 2) expm
 
-identShowExpr ident (Break expm) = "\n" ++
+identShowExpr ident (Break expm _) = "\n" ++
   replicate ident ' ' ++ "Break: \n"
   ++ identShowExpr (ident + 2) expm
 
-identShowExpr ident (Continue expm) = "\n" ++
+identShowExpr ident (Continue expm _) = "\n" ++
   replicate ident ' ' ++ "Continue: \n"
   ++ identShowExpr (ident + 2) expm
 
-identShowExpr ident (Declaration decl_) = "\n" ++
+identShowExpr ident (Declaration decl_ _) = "\n" ++
   identShowDeclaration ident decl_
 
-identShowExpr ident (Op2 op lhs rhs) = "\n" ++
+identShowExpr ident (Op2 op lhs rhs _) = "\n" ++
   replicate ident ' ' ++ "Binary Operator:\n"
   ++ identShowOpr2 (ident + 2) op
   ++ "\n" ++ replicate ident ' ' ++ "with left hand side:\n"
@@ -330,35 +330,35 @@ identShowExpr ident (Op2 op lhs rhs) = "\n" ++
   ++ "\n" ++ replicate ident ' ' ++ "with right hand side:\n"
   ++ identShowExpr (ident + 2) rhs
 
-identShowExpr ident (Op1 op opr_) = "\n" ++
+identShowExpr ident (Op1 op opr_ _) = "\n" ++
   replicate ident ' ' ++ "Unary Operator:\n"
   ++ identShowOpr1 (ident + 2) op
   ++ "\n" ++ replicate ident ' ' ++ "with operand:\n"
   ++ identShowExpr (ident + 2) opr_ 
 
-identShowExpr ident (Array l) = "\n" ++
+identShowExpr ident (Array l _) = "\n" ++
   replicate ident ' ' ++ "Array Literal with elements:\n"
   ++ concatMap (identShowExpr (ident + 2)) l
 
-identShowExpr ident (UnionTrying u tag_) = "\n" ++
+identShowExpr ident (UnionTrying u tag_ _) = "\n" ++
   replicate ident ' ' ++  "Check Union: \n"
   ++ identShowExpr (ident + 2) u
   ++ "\n" ++ replicate ident ' ' ++ "with tag '" ++ tag_ ++ "'\n"
 
-identShowExpr ident (UnionUsing u tag_) = "\n" ++
+identShowExpr ident (UnionUsing u tag_ _) = "\n" ++
   replicate ident ' ' ++  "Access Union: \n"
   ++ identShowExpr (ident + 2) u
   ++ "\n" ++ replicate ident ' ' ++ "with tag '" ++ tag_ ++ "'\n"
 
-identShowExpr ident (New t) = "\n" ++
+identShowExpr ident (New t _) = "\n" ++
   replicate ident ' ' ++ "New statement with type:\n"
   ++ identShowType (ident + 2) t
 
-identShowExpr ident (Delete pt) = "\n" ++
+identShowExpr ident (Delete pt _) = "\n" ++
   replicate ident ' ' ++ "Delete:\n"
   ++ identShowExpr (ident + 2) pt
 
-identShowExpr ident (ArrayIndexing exp_ arrNm) = "\n" ++
+identShowExpr ident (ArrayIndexing exp_ arrNm _) = "\n" ++
   replicate ident ' ' ++ "Access Array: "
   ++ identShowExpr (ident + 2) arrNm ++ "\n"
   ++ "\n" ++ replicate ident ' ' ++"At position:\n"
@@ -424,5 +424,3 @@ identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
 identShowProgram :: Program -> String
 identShowProgram program = --"~  AST  ~\n"
   concatMap (identShowDeclaration 2) (decls program)
--}
-identShowProgram p = " * programa besho * "
