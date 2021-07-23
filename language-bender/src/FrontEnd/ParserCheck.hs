@@ -497,8 +497,7 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
         Just sym -> do
             if (not $ ST.isStruct sym) 
                 then do 
-                    addStaticError $
-                    SE.NotAValidStruct {
+                    addStaticError $ SE.NotAValidStruct {
                         SE.symName=_structName,
                         SE.actualSymType=ST.symType sym
                     }
@@ -509,12 +508,14 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
         _ -> return AST.TypeError 
 
     let fieldsTypes = case mbSym of
-        Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} ->
-            map snd _fields
-        _ -> []
+            Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> 
+                map snd _fields
+            _ -> []
 
+    -- Check that the types in _list match
+    expListOk <- checkExprList fieldsTypes _list
 
-    let cStructType' = if (checkExprList fieldsTypes _list)
+    let cStructType' = if expListOk
         then cStructType
         else AST.TypeError
     

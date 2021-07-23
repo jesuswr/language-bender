@@ -338,3 +338,5 @@ energy palo_de_agua allows lluvia technique of nada bending, inundacion techniqu
 bender katara of palo_de_agua.
 
 bender yolo of solazo is (katara's lluvia is 42.0).
+
+bender lol of solazo is learning solazo control using pepa, de_sol right now.
