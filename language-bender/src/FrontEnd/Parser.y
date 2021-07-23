@@ -221,9 +221,11 @@ Expr            :: { AST.Expr }
     | using Expr quotmark_s id technique                {% P.checkExpr $ AST.UnionUsing $2 ((TK.name . TK.tktype) $4) AST.TypeError }
     | learning id quotmark_s id 
        techniqueFrom Expr                               {% P.checkExpr $ AST.ConstUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6 AST.TypeError }
---    
---    | opening Expr of id chakrasFrom 
---        Expr to Expr colon PushScope PushScope Expr PopScope PopScope      { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
+   
+    | ForDescription colon PushScope Expr PopScope PopScope {% do
+                                                                let (_id,_step,_start,_end) = $1
+                                                                P.checkExpr $ AST.For _id _step _start _end $4 AST.TypeError
+                                                            }
 --    | while Expr doing colon PushScope Expr PopScope                       { AST.While $2 $5 }
 --    | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope                { AST.If $2 $4 $6 }
 --    | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope             { AST.If $2 $4 $6 }
@@ -285,6 +287,16 @@ Expr            :: { AST.Expr }
 --    | burstUnit                                         { AST.Break     AST.ConstUnit }
 --    | returnUnit                                        { AST.Return    AST.ConstUnit }
     
+
+    -- >> For description 
+
+ForDescription  ::  { (String, AST.Expr, AST.Expr, AST.Expr) }
+    : opening Expr of id chakrasFrom Expr to Expr       {% do
+                                                            P.pushEmptyScope
+                                                            P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $4) (AST.expType $6) (Just $6) False
+                                                            return (((TK.name . TK.tktype) $4), $2, $6, $8)
+                                                        }
+
     -- >> Evaluable and none evaluable expressions > -----------------------------------------------------
 Exprs           ::  { AST.Expr }
     : Expr                                              { $1 }

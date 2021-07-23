@@ -334,40 +334,13 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
 --  Check for
 checkExpr f@AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody} = do
 
-    -- check start, step & end expressions
-    --checkExpr _start
+    -- Check that _step, _start and _end are of integer type
+    areInt <- checkExprList [AST.TInt, AST.TInt, AST.TInt] [_step, _start, _end]
 
-    --checkExpr _step
+    -- Set return type as the return type of the body
+    let f' = f{AST.expType = AST.expType _cicBody}
 
-    --checkExpr _end
-
-    -- push a new scope for iteration variable declaration 
-    --pushEmptyScope  -- iterator variable declaration
-
-    -- create symbol for iterator variable 
-    let iter = ST.Symbol {
-                        ST.identifier=_iteratorName,
-                        ST.symType= ST.Variable {
-                            ST.varType=AST.TInt,
-                            ST.initVal=Just _start,
-                            ST.isConst = False
-                            },
-                        ST.scope=0,
-                        ST.enrtyType=Nothing
-                    }
-
-    -- add symbol. Its name it's trivially valid since we push an empty scope before 
-    -- adding it, so there's no symbol redefinition
-    tryAddSymbol iter
-
-    --pushEmptyScope  -- body scope
-
-    --checkExpr _cicBody -- check body
-
-    --popEmptyScope   -- body scope
-
-    --popEmptyScope   -- iterator variable declaration
-    return f
+    return f'
 
 --  Check While
 checkExpr w@AST.While {AST.cond=_cond, AST.cicBody=_cicBody} = do
@@ -632,7 +605,7 @@ checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=
             _ -> []
 
     -- Check that the types in _list match
-    tagTypeOk <- _checkTypeMatch' tagType (AST.expType _value)
+    tagTypeOk <- _checkTypeMatch' (concatMap getCastClass tagType) (AST.expType _value)
 
     let cUnionType' = if tagTypeOk && (not $ null tagType)
         then cUnionType
