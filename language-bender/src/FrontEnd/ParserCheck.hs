@@ -272,7 +272,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
                     (AST.CustomType s) -> s
                     _ -> "$"
 
-    -- Get type of the struct assignment
+    -- Get type of the struct access
     structType <- if (strNm == "$") 
         then
             do 
@@ -309,7 +309,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
     
     let structAcc' = structAcc{AST.expType = structType}
 
-    return structAcc
+    return structAcc'
 
 -- Check Function Call
 checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
@@ -452,15 +452,105 @@ checkExpr a@AST.Array {AST.list=_list} = do
     --M.forM_ _list checkExpr
     return a
 
---  Check Union type guessing
-checkExpr u@AST.UnionTrying {AST.union=_union} = do
-    --checkExpr _union
-    return u
+--  Check Union type guessing (return a boolean)
+checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
+    
+    -- check _union is an union
+    -- check that _tag is part of union _union
+
+    -- Get union name
+    let unionNm = case AST.expType _union of
+                    (AST.CustomType s) -> s
+                    _ -> "$"
+
+    -- Get type of the union trying
+    unionType <- if (unionNm == "$") 
+        then
+            do 
+               addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>"] (AST.expType _union))
+               return AST.TypeError 
+        else
+            do 
+
+                -- Get current state
+                currSt@State{symTable = st} <- RWS.get
+                
+                let unionSym = ST.findSymbol unionNm st
+
+                -- Check if struct symbol exists and it's a struct type.
+                case unionSym of
+                    Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> do 
+                        
+                        -- get fields that has name tag
+                        let ltag = filter (\(s,t)-> s ==_tag) _fields
+
+                        if null ltag then do
+                            addStaticError . SE.SymbolNotInScope $ _tag
+                            return AST.TypeError
+                        else do
+                            return $ AST.TBool
+
+                    Nothing -> do
+                        addStaticError . SE.SymbolNotInScope $ unionNm
+                        return AST.TypeError
+                    
+                    xd       -> do
+                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>"] (AST.expType _union))
+                        return AST.TypeError
+    
+    let unionTrying' = unionTrying{AST.expType = unionType}
+
+    return unionTrying'
 
 --  Check Union access 
-checkExpr u@AST.UnionUsing {AST.union=_union} = do
-    --checkExpr _union
-    return u
+checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
+    
+    -- check _union is an union
+    -- check that _tag is part of union _union
+
+    -- Get union name
+    let unionNm = case AST.expType _union of
+                    (AST.CustomType s) -> s
+                    _ -> "$"
+
+    -- Get type of the union trying
+    unionType <- if (unionNm == "$") 
+        then
+            do 
+               addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>"] (AST.expType _union))
+               return AST.TypeError 
+        else
+            do 
+
+                -- Get current state
+                currSt@State{symTable = st} <- RWS.get
+                
+                let unionSym = ST.findSymbol unionNm st
+
+                -- Check if struct symbol exists and it's a struct type.
+                case unionSym of
+                    Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> do 
+                        
+                        -- get fields that has name tag
+                        let ltag = filter (\(s,t)-> s ==_tag) _fields
+
+                        if null ltag then do
+                            addStaticError . SE.SymbolNotInScope $ _tag
+                            return AST.TypeError
+                        else do
+                            return $ AST.TBool
+
+                    Nothing -> do
+                        addStaticError . SE.SymbolNotInScope $ unionNm
+                        return AST.TypeError
+                    
+                    xd       -> do
+                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>"] (AST.expType _union))
+                        return AST.TypeError
+    
+    let unionUsing' = unionUsing{AST.expType = unionType}
+
+    return unionUsing'
 
 --  Check New Expression
 checkExpr n@AST.New {AST.typeName=_typeName} = do
@@ -515,23 +605,41 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
     return c'
 
 -- Check Union Literal
-checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value} = do
+checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=_tag} = do
 
     -- Check union name of literal union
     mbSym <- checkSymbolDefined _unionName
 
      -- Check if symbol is a valid union name 
-    case mbSym of
-        Just sym -> M.unless (ST.isUnion sym) . addStaticError $
-            SE.NotAValidUnion {
-                SE.symName=_unionName,
-                SE.actualSymType=ST.symType sym
-            }
-        _ -> return ()
+    cUnionType <- case mbSym of
+        Just sym -> do
+            if (not $ ST.isUnion sym)
+                then do
+                    addStaticError $ SE.NotAValidUnion {
+                        SE.symName=_unionName,
+                        SE.actualSymType=ST.symType sym
+                    }
+                    return AST.TypeError
+                else do
+                    return $ AST.CustomType _unionName
 
-    -- Check value expression
-    --checkExpr _value
-    return c
+        _ -> return AST.TypeError
+
+    let tagType = case mbSym of
+            Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> 
+                (map snd) $ filter (\(str,t)->str==_tag) _fields
+            _ -> []
+
+    -- Check that the types in _list match
+    tagTypeOk <- _checkTypeMatch' tagType (AST.expType _value)
+
+    let cUnionType' = if tagTypeOk && (not $ null tagType)
+        then cUnionType
+        else AST.TypeError
+    
+        c' = c{AST.expType = cUnionType'}
+
+    return c'
 
 checkExpr x = return x
 

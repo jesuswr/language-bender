@@ -214,13 +214,13 @@ Expr            :: { AST.Expr }
 --    
     | Expr quotmark_s id Assign                         {% P.checkExpr $ AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 AST.TypeError }
     | using Expr quotmark_s id skill                    {% P.checkExpr $ AST.StructAccess $2 ((TK.name . TK.tktype) $4) AST.TypeError }
-   | learning id control using
+    | learning id control using
        ExprList rightNow                                {% P.checkExpr $ AST.ConstStruct ((TK.name . TK.tktype) $2) (reverse $5) AST.TypeError }
---    
---    | trying Expr quotmark_s id technique               {% P.checkExpr $ AST.UnionTrying $2 ((TK.name . TK.tktype) $4) }
---    | using Expr quotmark_s id technique                {% P.checkExpr $ AST.UnionUsing $2 ((TK.name . TK.tktype) $4) }
---    | learning id quotmark_s id 
---        techniqueFrom Expr                              {% P.checkExpr $ AST.ConstUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6}
+   
+    | trying Expr quotmark_s id technique               {% P.checkExpr $ AST.UnionTrying $2 ((TK.name . TK.tktype) $4) AST.TypeError }
+    | using Expr quotmark_s id technique                {% P.checkExpr $ AST.UnionUsing $2 ((TK.name . TK.tktype) $4) AST.TypeError }
+    | learning id quotmark_s id 
+       techniqueFrom Expr                               {% P.checkExpr $ AST.ConstUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6 AST.TypeError }
 --    
 --    | opening Expr of id chakrasFrom 
 --        Expr to Expr colon PushScope PushScope Expr PopScope PopScope      { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
