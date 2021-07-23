@@ -184,24 +184,15 @@ checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retTyp
 
 -- | Check if a given expression uses valid names only
 checkExpr :: AST.Expr -> ParserState AST.Expr
-
 -- Check Id expression:
 checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
-    
     -- Get current state
-    currSt@State{symTable = st} <- RWS.get
-    
     checkIdIsVarOrReference _name
 
-    let idSym = ST.findSymbol _name  st
+    -- set new type 
 
-        idType = case idSym of 
-            Just idSym' -> ST.getIdType _name $ ST.symType idSym'
-            Nothing -> AST.TypeError
 
-        i' = i{AST.expType = idType}
-
-    return i'
+    return i
 
 -- Check assign expression 
 checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
@@ -666,13 +657,24 @@ checkSymbolDefined name = do
 checkIdIsVarOrReference :: U.Name -> ParserState ()
 checkIdIsVarOrReference name = do -- Check that given name is a valid one and it is a variable
 
-            mbSym <- checkSymbolDefined name
-            -- Raise invalid symbol if this symbol is not a variable nor a reference
-            case mbSym of
-                Just sym -> M.unless ( ST.isVariable  sym || ST.isReference  sym) $
-                            addStaticError SE.NotAValidVariable {SE.symName=name, SE.actualSymType=ST.symType sym}
-                _        -> return ()
+    mbSym <- checkSymbolDefined name
+    -- Raise invalid symbol if this symbol is not a variable nor a reference
+    case mbSym of
+        Just sym -> M.unless ( ST.isVariable  sym || ST.isReference  sym) $
+                    addStaticError SE.NotAValidVariable {SE.symName=name, SE.actualSymType=ST.symType sym}
+        _        -> return ()
 
+-- | Return type of given id if a valid variable or reference, return typerrror if none of them
+getTypeOfId :: U.Name -> ParserState AST.Type 
+getTypeOfId name = do 
+    st@State{symTable = symTb} <- RWS.get
+
+    case ST.findSymbol name symTb of 
+        Just ST.Symbol { ST.symType=ST.Variable {ST.varType=_varType} } -> return _varType
+        Just ST.Symbol { ST.symType=ST.Reference { ST.refType=_refType } } -> return _refType
+        _ -> return AST.TypeError 
+
+    
 
 
 

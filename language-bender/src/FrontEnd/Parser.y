@@ -147,13 +147,12 @@ Declaration     :: { AST.Declaration }
     | element id compoundBy PushScope StructIdDecls PopScope  {% P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $5) }
     | energy id allows PushScope UnionIdDecls PopScope        {% P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2) (reverse $5) }
     | FuncDecl                                                { $1 }
---    | ProcDecl                                                {% P.checkDecls $1 }
+    | ProcDecl                                                { $1 }
 
+ProcDecl        :: { AST.Declaration }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2)  (reverse $5) AST.TUnit $8 }
+    | travel id PushScope colon PushScope Exprs PopScope PopScope                           {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2)  [] AST.TUnit $6 }
 
---ProcDecl        :: { AST.Declaration }
---    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope            { AST.Func ((TK.name . TK.tktype) $2 $8) (reverse $5) (Just AST.TUnit) $8 }
---    | travel id PushScope colon PushScope Exprs PopScope PopScope                           { AST.Func ((TK.name . TK.tktype) $2 $6) [] (Just AST.TUnit) $6 }
---
 FuncDecl        :: { AST.Declaration }
     : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope       {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 $10 }
     | book id of Type PushScope colon PushScope Exprs PopScope PopScope                     {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 $8 }
