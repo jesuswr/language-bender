@@ -226,7 +226,7 @@ La sintaxis para una iteración acotada es la siguiente:
 ```
 opening <step> of <it_id> chakras from <start> to <end> : <exp>
 ```
-En `<exp>` no se permitira cambiar la variable de iteración `<it_id>` ni declarar una variable con el mismo nombre. `<step>`, `<start>` y `<end>` son expresiones de tipo entero (`air`) que indican la cantidad de incremento o decremento por iteración, el valor inicial de la variable de iteración y una cota para dicha variable respectivamente. Los valores que toma `<it_id>` estan en el rango `[<start>, <end>)` si `<start> <= <end>`, `(<end>, <start>]` en el caso contrario. Ejemplo:
+En `<exp>` no se permitira cambiar la variable de iteración `<it_id>`. `<step>`, `<start>` y `<end>` son expresiones de tipo entero (`air`) que indican la cantidad de incremento o decremento por iteración, el valor inicial de la variable de iteración y una cota para dicha variable respectivamente. Los valores que toma `<it_id>` estan en el rango `[<start>, <end>)` si `<start> <= <end>`, `(<end>, <start>]` en el caso contrario. Ejemplo:
 ```
 opening 1 of aang chakras from 7 to 0:
     aang.
