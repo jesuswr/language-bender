@@ -75,8 +75,6 @@ langBender = do
 
                         -- 7) Añadir arreglos a la tabla de simbolos
 
-                        -- 9) añadir el tipo void para tipos que se construyen de otros tipos (ptr por ahora)
-
                         let preParseState' = preParseState{ PC.symTable = (PC.symTable preParseState){ST.stNextScope = 1} }
                         (parseState, parseErrors) <- P.runParse tokens preParseState'
 

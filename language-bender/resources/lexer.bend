@@ -325,5 +325,16 @@ Only the Avatar, master of all four elements, could stop them.
 
 -- book bebe: 4.
 
-bender aang of air.
+element solazo is compound by calor skill of nada, calor skill of air.
 
+element solazo2 is compound by calor skill of nada, calor skill of air.
+
+bender aang of solazo.
+
+energy palo_de_agua allows lluvia technique of water bending, inundacion technique of water bending.
+
+energy palo_de_agua allows lluvia technique of nada bending, inundacion technique of water bending. 
+
+bender katara of palo_de_agua.
+
+bender yolo of solazo is (katara's lluvia is 42.0).

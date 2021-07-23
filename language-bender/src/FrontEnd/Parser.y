@@ -143,11 +143,11 @@ Declarations    :: { [AST.Declaration] }
     | Declarations Declaration dot                      { $2:$1 }
 
 Declaration     :: { AST.Declaration }
-    : VarDecl                                           { $1 }
---    | element id compoundBy StructIdDecls               {% P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $4) }
---    | energy id allows UnionIdDecls                     {% P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2) (reverse $4) }
---    | FuncDecl                                          {% P.checkDecls $1 }
---    | ProcDecl                                          {% P.checkDecls $1 }
+    : VarDecl                                                 { $1 }
+    | element id compoundBy PushScope StructIdDecls PopScope  {% P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $5) }
+    | energy id allows PushScope UnionIdDecls PopScope        {% P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2) (reverse $5) }
+--    | FuncDecl                                                {% P.checkDecls $1 }
+--    | ProcDecl                                                {% P.checkDecls $1 }
 --
 --ProcDecl        :: { AST.Declaration }
 --    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope            { AST.Func ((TK.name . TK.tktype) $2 $8) (reverse $5) (Just AST.TUnit) $8 }
@@ -182,13 +182,13 @@ Declaration     :: { AST.Declaration }
 --    : Type bender id                                    { AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing }
 --    | Type '&' bender id                                { AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing }
 --
---StructIdDecls   :: { [(String, AST.Type)] }
---    : id skillOf Type                                   { [(((TK.name . TK.tktype) $1), $3)] }
---    | StructIdDecls comma id skillOf Type               { (((TK.name . TK.tktype) $3), $5):$1 }
---
---UnionIdDecls    :: { [(String, AST.Type)] }
---    : id techniqueOf Type bending                       { [(((TK.name . TK.tktype) $1), $3)] }
---    | UnionIdDecls comma id techniqueOf Type bending    { (((TK.name . TK.tktype) $3), $5):$1 }
+StructIdDecls   :: { [(String, AST.Type)] }
+    : id skillOf Type                                   {% P.checkField $ [(((TK.name . TK.tktype) $1), $3)] }
+    | StructIdDecls comma id skillOf Type               {% P.checkField $ (((TK.name . TK.tktype) $3), $5):$1 }
+
+UnionIdDecls    :: { [(String, AST.Type)] }
+   : id techniqueOf Type bending                        {% P.checkField $ [(((TK.name . TK.tktype) $1), $3)] }
+   | UnionIdDecls comma id techniqueOf Type bending     {% P.checkField $ (((TK.name . TK.tktype) $3), $5):$1 }
 
 VarDecl         :: { AST.Declaration }
     : bender id of Type                                 {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) $4 Nothing False }
@@ -207,10 +207,10 @@ Expr            :: { AST.Expr }
     | ExprBlock                                         { $1 }
 --    | id Assign                                         {% P.checkExpr $ AST.Assign ((TK.name . TK.tktype) $1) $2 }
 --    
---    | Expr quotmark_s id Assign                         {% P.checkExpr $ AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 }
---    | using Expr quotmark_s id skill                    {% P.checkExpr $ AST.StructAccess $2 ((TK.name . TK.tktype) $4) }
---    | learning id control using
---        ExprList rightNow                               {% P.checkExpr $ AST.ConstStruct ((TK.name . TK.tktype) $2) (reverse $5) }
+    | Expr quotmark_s id Assign                         {% P.checkExpr $ AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 AST.TypeError }
+    | using Expr quotmark_s id skill                    {% P.checkExpr $ AST.StructAccess $2 ((TK.name . TK.tktype) $4) AST.TypeError }
+   | learning id control using
+       ExprList rightNow                                {% P.checkExpr $ AST.ConstStruct ((TK.name . TK.tktype) $2) (reverse $5) AST.TypeError }
 --    
 --    | trying Expr quotmark_s id technique               {% P.checkExpr $ AST.UnionTrying $2 ((TK.name . TK.tktype) $4) }
 --    | using Expr quotmark_s id technique                {% P.checkExpr $ AST.UnionUsing $2 ((TK.name . TK.tktype) $4) }
@@ -312,9 +312,9 @@ Dots            :: { [AST.Expr] }
     : dot                                               { [] }
     | Dots dot                                          { [] }
 
---ExprList        :: { [AST.Expr] }
---    : Expr                                              { [$1] }
---    | ExprList comma Expr                               { $3:$1 }
+ExprList        :: { [AST.Expr] }
+   : Expr                                              { [$1] }
+   | ExprList comma Expr                               { $3:$1 }
 
     -- >> Types -------------------------------------------------------------------------------------
 Type            :: { AST.Type }
@@ -324,7 +324,7 @@ Type            :: { AST.Type }
     | metal                                             { AST.TString }   
     | fire                                              { AST.TBool }
     | id                                                {% P.checkType $ AST.CustomType ((TK.name . TK.tktype) $1) }
-    | Type nation Expr year                             { AST.TArray $1 $3}
+    | Type nation Expr year                             {% P.checkType $ AST.TArray $1 $3}
     | Type art                                          { AST.TPtr $1 }
 
 

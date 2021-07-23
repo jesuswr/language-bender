@@ -108,6 +108,21 @@ checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = let sym = ST.Symbo
                                                     }
                                             in tryAddSymbol sym >> return arg
 
+checkField :: [(String, AST.Type)] -> ParserState [(String, AST.Type)]
+checkField l@((nm, t):fields) = do
+
+    let newSymT = ST.Variable{ ST.varType = t, ST.initVal = Nothing, ST.isConst = False }
+        newSym = ST.Symbol
+            { ST.identifier = nm
+            , ST.symType = newSymT
+            , ST.scope = 0
+            , ST.enrtyType = Nothing
+            }
+    
+    tryAddSymbol newSym
+
+    return l    
+
 -- | Add declarations to symbol table and check if they´re correct
 checkDecls :: AST.Declaration -> ParserState AST.Declaration
 
@@ -163,7 +178,7 @@ checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
 
     -- Create new symbol 
     --  Check that all types are valid 
-    M.forM_ (map snd _fields) checkType
+    -- M.forM_ (map snd _fields) checkType
 
     --  Create symbol type
     let symbol = declToSym u
@@ -176,9 +191,8 @@ checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
 -- Check Struct definition 
 checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 
-    -- Create new symbol 
-    --  Check that all types are valid 
-    M.forM_ (map snd _fields) checkType
+    --  Check that all types are valid (are defined)
+    --M.forM_ (map snd _fields) checkType
 
     --  Create symbol 
     let symbol = declToSym s
@@ -241,17 +255,113 @@ checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
     return a
 
 -- Check assign to struct
-checkExpr s@AST.StructAssign {AST.struct =_struct, AST.value=_value} = do
-    -- check that given symbol is valid expression  
-    --checkExpr _struct
-    -- check right hand value
-    --checkExpr _value
-    return s
+checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AST.tag=_tag} = do
+
+    -- check that _struct is of struct type
+    -- check that _tag is part of struct _struct 
+    -- check _value has the same type than _tag
+    
+    -- Get struct name
+    let strNm = case AST.expType _struct of
+                    (AST.CustomType s) -> s
+                    _ -> "$"
+
+    -- Get type of the struct assignment
+    structType <- if (strNm == "$") 
+        then
+            do 
+               addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>"] (AST.expType _struct))
+               return AST.TypeError 
+        else
+            do 
+
+                -- Get current state
+                currSt@State{symTable = st} <- RWS.get
+                
+                let structSym = ST.findSymbol strNm st
+
+                -- Check if struct symbol exists and it's a struct type.
+                case structSym of
+                    Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> do 
+                        
+                        -- get fields that has name tag
+                        let ltag = filter (\(s,t)-> s ==_tag) _fields
+
+                        if null ltag then do
+                            addStaticError . SE.SymbolNotInScope $ _tag
+                            return AST.TypeError
+                        else do
+                            -- Check the type of the tag is the same of the value
+                            let tagType = snd . head $ ltag
+
+                                valType = AST.expType _value
+
+                            if (not $ typeMatch tagType valType) then do
+                                addStaticError $ SE.UnmatchingTypes [tagType] valType
+                                return AST.TypeError
+                            else do
+                                return $ AST.CustomType strNm
+
+                    Nothing -> do
+                        addStaticError . SE.SymbolNotInScope $ strNm
+                        return AST.TypeError
+                    
+                    xd       -> do
+                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>"] (AST.expType _struct))
+                        return AST.TypeError
+    
+    let structAsg' = structAsg{AST.expType = structType}
+    
+    return structAsg'
 
 -- Check struct access
-checkExpr s@AST.StructAccess {AST.struct =_struct} = do
-    --checkExpr _struct
-    return s
+checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
+    -- check _struct is a struct
+    -- check that _tag is part of struct _struct
+
+    -- Get struct name
+    let strNm = case AST.expType _struct of
+                    (AST.CustomType s) -> s
+                    _ -> "$"
+
+    -- Get type of the struct assignment
+    structType <- if (strNm == "$") 
+        then
+            do 
+               addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>"] (AST.expType _struct))
+               return AST.TypeError 
+        else
+            do 
+
+                -- Get current state
+                currSt@State{symTable = st} <- RWS.get
+                
+                let structSym = ST.findSymbol strNm st
+
+                -- Check if struct symbol exists and it's a struct type.
+                case structSym of
+                    Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> do 
+                        
+                        -- get fields that has name tag
+                        let ltag = filter (\(s,t)-> s ==_tag) _fields
+
+                        if null ltag then do
+                            addStaticError . SE.SymbolNotInScope $ _tag
+                            return AST.TypeError
+                        else do
+                            return $ AST.CustomType strNm
+
+                    Nothing -> do
+                        addStaticError . SE.SymbolNotInScope $ strNm
+                        return AST.TypeError
+                    
+                    xd       -> do
+                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>"] (AST.expType _struct))
+                        return AST.TypeError
+    
+    let structAcc' = structAcc{AST.expType = structType}
+
+    return structAcc
 
 -- Check Function Call
 checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
@@ -426,17 +536,34 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
     mbSym <- checkSymbolDefined _structName
     
     -- Check if symbol is a valid struct name 
-    case mbSym of
-        Just sym -> M.unless (ST.isStruct sym) . addStaticError $
-            SE.NotAValidStruct {
-                SE.symName=_structName,
-                SE.actualSymType=ST.symType sym
-            }
-        _ -> return ()
+    cStructType <- case mbSym of
+        Just sym -> do
+            if (not $ ST.isStruct sym) 
+                then do 
+                    addStaticError $
+                    SE.NotAValidStruct {
+                        SE.symName=_structName,
+                        SE.actualSymType=ST.symType sym
+                    }
+                    return AST.TypeError
+                else do
+                    return $ AST.CustomType _structName
 
-    -- Check list of expressions
-    --M.forM_ _list checkExpr
-    return c
+        _ -> return AST.TypeError 
+
+    let fieldsTypes = case mbSym of
+        Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} ->
+            map snd _fields
+        _ -> []
+
+
+    let cStructType' = if (checkExprList fieldsTypes _list)
+        then cStructType
+        else AST.TypeError
+    
+        c' = c{AST.expType = cStructType'}
+
+    return c'
 
 -- Check Union Literal
 checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value} = do
@@ -469,16 +596,21 @@ checkType t@AST.CustomType {AST.tName=_tName} = do -- When it is a custom type
 
     -- Check if symbol was correct 
     case symbol of
-        Nothing -> addStaticError $ SE.SymbolNotInScope { SE.symName=_tName}
-        Just ST.Symbol { ST.symType= ST.Type{} } -> return ()
-        _  -> addStaticError $ SE.NotValidType{SE.nonTypeName = _tName}
+        Just ST.Symbol { ST.symType= ST.Type{} } -> return t
+        Just ST.Symbol { ST.symType= ST.StructType{} } -> return t
+        Just ST.Symbol { ST.symType= ST.UnionType{} } -> return t
+        Nothing -> do
+            addStaticError $ SE.SymbolNotInScope { SE.symName=_tName}
+            return AST.TypeError
+        _  -> do 
+            addStaticError $ SE.NotValidType{SE.nonTypeName = _tName}
+            return AST.TypeError
 
-    return t
 
 checkType arrType@(AST.TArray t sz) = do
 
     -- check type of array elements
-    checkType t
+    -- checkType t
     
     -- check that size of array is int
     let sizeType = AST.expType sz
@@ -488,11 +620,11 @@ checkType arrType@(AST.TArray t sz) = do
         _ -> return AST.TypeError
 
 checkType ptr@(AST.TPtr t) = do
-    checkType t
+    -- checkType t
     return ptr
 
 checkType ref@(AST.TReference t) = do
-    checkType t
+    --checkType t
     return ref
 
 checkType x = return x
@@ -575,3 +707,22 @@ checkIdIsVarOrReference name = do -- Check that given name is a valid one and it
                 Just sym -> M.unless ( ST.isVariable  sym || ST.isReference  sym) $
                             addStaticError SE.NotAValidVariable {SE.symName=name, SE.actualSymType=ST.symType sym}
                 _        -> return ()
+
+
+-- Check if two types match
+typeMatch :: AST.Type -> AST.Type -> Bool
+typeMatch t1 t2 = t1 == t2
+
+-- return the list of cast-able types with each other
+-- that contains the given type
+getCastClass :: AST.Type -> [AST.Type]
+getCastClass AST.TInt   = [AST.TInt, AST.TFloat]
+getCastClass AST.TFloat = [AST.TInt, AST.TFloat]
+getCastClass t          = [t]
+
+-- check that the given types match the given expressions
+checkExprList :: [AST.Type] -> [AST.Expr] -> Bool
+checkExprList ts exps = checkExpr' (map getCastClass ts) (map AST.expType exps)
+
+checkExprList' :: [[AST.Type]] -> [AST.Type] -> Bool
+checkExprList' ts exps = undefined

@@ -218,6 +218,12 @@ identShowType ident (TReference t) = "\n" ++
 identShowType ident (CustomType nm) = "\n" ++
   replicate ident ' ' ++ "Type: " ++ nm ++ "\n"
 
+identShowType ident (TypeError) = "\n" ++
+  replicate ident ' ' ++ "Type: Type Error\n"
+
+identShowType ident (TVoid) = "\n" ++
+  replicate ident ' ' ++ "Type: Void\n"
+
 
 identShowExpr :: Int -> Expr -> String
 
