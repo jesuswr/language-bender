@@ -29,7 +29,7 @@ data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal ::
                     | Reference { decName :: U.Name, refName :: U.Name }
                     | Union     { decName :: U.Name, fields :: [(U.Name, Type)] }
                     | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] }
-                    | Func      { decName :: U.Name, args :: [FuncArg], retType :: Maybe Type , body :: Expr }
+                    | Func      { decName :: U.Name, args :: [FuncArg], retType :: Type , body :: Expr }
                     deriving(Eq)
 
 -- | Binary Operators
@@ -173,12 +173,12 @@ identShowOpr2 ident Or =
 
 identShowFuncArg :: Int -> FuncArg -> String
 identShowFuncArg ident (FuncArg nm t def) = "\n" ++
-  replicate ident ' ' ++ "Func Arg: " ++ nm ++ " of type:\n"
-  ++ identShowType (ident + 2) t 
-  ++ "\n" ++ (case def of
+  replicate ident ' ' ++ "Func Arg: " ++ nm ++ " of type: "
+  ++ ( init . tail $ identShowType (ident + 2) t) 
+  ++ (case def of
     Nothing -> ""
     (Just exp_) ->
-      replicate ident ' ' ++ "with default value:\n" 
+      replicate ident ' ' ++ "with default value: " 
       ++ identShowExpr (ident + 2) exp_ )
 
 identShowType :: Int -> Type -> String
@@ -228,16 +228,16 @@ identShowType ident (TVoid) = "\n" ++
 identShowExpr :: Int -> Expr -> String
 
 identShowExpr ident (ConstChar c _) = "\n" ++
-  replicate ident ' ' ++ "Literal Character: " ++ (show c) ++ "\n"
+  replicate ident ' ' ++ "Literal Character: " ++ show c ++ "\n"
 
 identShowExpr ident (ConstString s _) = "\n" ++
   replicate ident ' ' ++ "Literal String: '" ++ s ++ "'\n"
 
 identShowExpr ident (ConstInt n _) = "\n" ++
-  replicate ident ' ' ++ "Literal Int: '" ++ (show n) ++ "'\n"
+  replicate ident ' ' ++ "Literal Int: '" ++ show n ++ "'\n"
 
 identShowExpr ident (ConstFloat f _) = "\n" ++
-  replicate ident ' ' ++ "Literal Float: '" ++ (show f) ++ "'\n"
+  replicate ident ' ' ++ "Literal Float: '" ++ show f ++ "'\n"
 
 identShowExpr ident (ConstStruct stru_id exps _) = "\n" ++
   replicate ident ' ' ++ "Literal Struct: '"++ stru_id ++ "'\n"
@@ -404,13 +404,13 @@ identShowDeclaration ident (Struct name fs) =
 
 identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
   case retT of    
-    (Just TUnit) ->
+    TUnit ->
       replicate ident ' ' ++ "Declaration of Procedure '" ++ name ++ "'\n"
       ++ replicate ident ' ' ++ "with parameters: \n"
       ++ concatMap (identShowFuncArg (ident + 2)) param
       ++ "\n" ++ replicate ident ' ' ++ "with body:\n"
       ++ identShowExpr (ident + 2) bodyExp
-    (Just t)->
+    t->
       replicate ident ' ' ++ "Declaration of Function '" ++ name ++ "'\n"
       ++ replicate ident ' ' ++ "with return type:\n"
       ++ identShowType (ident + 2) t ++ "\n"
@@ -418,14 +418,6 @@ identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
       ++ concatMap (identShowFuncArg (ident + 2)) param
       ++ "\n" ++ replicate ident ' ' ++ "with body:\n"
       ++ identShowExpr (ident + 2) bodyExp
-    Nothing -> 
-      replicate ident ' ' ++ "Declaration of Function '" ++ name ++ "'\n"
-      ++ replicate ident ' ' ++ "with return type: Inferred\n"
-      ++ replicate ident ' ' ++ "with parameters: \n"
-      ++ concatMap (identShowFuncArg (ident + 2)) param
-      ++ "\n" ++ replicate ident ' ' ++ "with body:\n"
-      ++ identShowExpr (ident + 2) bodyExp
-
 
 identShowProgram :: Program -> String
 identShowProgram program = --"~  AST  ~\n"

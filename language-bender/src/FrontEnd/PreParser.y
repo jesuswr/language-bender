@@ -150,19 +150,19 @@ Declaration    -- :: { () }--{ AST.Declaration }
     | ProcDecl                                          { }
 
 ProcDecl        :: { () }-- { AST.Declaration }
-    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (Just AST.TUnit) (AST.ConstUnit AST.TUnit) }
-    | travel id PushScope colon PushScope Exprs PopScope PopScope                             {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just AST.TUnit) (AST.ConstUnit AST.TUnit) }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
+    | travel id PushScope colon PushScope Exprs PopScope PopScope                             {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
 
 FuncDecl        :: { () }-- { AST.Declaration }
-    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope        {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) (Just $4) (AST.ConstUnit AST.TUnit) }
-    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                      {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (Just $4) (AST.ConstUnit AST.TUnit) }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope                {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) Nothing (AST.ConstUnit AST.TUnit) }
-    | book id PushScope colon PushScope Exprs PopScope PopScope                              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] Nothing (AST.ConstUnit AST.TUnit) }
+    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope        {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 (AST.ConstUnit AST.TUnit) }
+    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                      {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 (AST.ConstUnit AST.TUnit) }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope                {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
+    | book id PushScope colon PushScope Exprs PopScope PopScope                              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
 
 FuncArg         :: { [AST.FuncArg] }
-    : FuncDefArgDecl                                    {% P.preCheckFunArgs $1 }
-    | FuncArgDecl                                       {% P.preCheckFunArgs $1 }
-    | FuncArgDecl comma FuncDefArgDecl                  {% P.preCheckFunArgs ($3 ++ $1) }
+    : FuncDefArgDecl                                    { $1 }
+    | FuncArgDecl                                       { $1 }
+    | FuncArgDecl comma FuncDefArgDecl                  { ($3 ++ $1) }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : Type bender id Assign                             { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Nothing)] }
@@ -170,7 +170,7 @@ FuncDefArgDecl :: { [AST.FuncArg] }
     | FuncDefArgDecl comma Type bender id Assign        { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Nothing)):$1 }
     | FuncDefArgDecl comma Type '&' bender id Assign    { (AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Nothing)):$1 }
 
-FuncArgDecl     :: { [AST.FuncArg] }
+FuncArgDecl     :: { [AST.FuncArg] }                    
     : Type bender id                                    { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing] }
     | Type '&' bender id                                { [AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing] }
     | FuncArgDecl comma Type bender id                  { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing):$1 }

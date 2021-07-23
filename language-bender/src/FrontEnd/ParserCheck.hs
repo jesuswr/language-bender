@@ -54,50 +54,14 @@ preCheckDecls :: AST.Declaration -> ParserState ()
 
 preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
 
-    -- check valid return type if needed 
-    M.when (isJust _retType) $ do
-        let Just t = _retType
-        M.void $ checkType t
-
     -- Create a new symbol for this function 
     let symbol  = declToSym f
 
     -- try to add function symbol 
-    tryAddSymbol symbol
-
-
-preCheckFunArgs :: [AST.FuncArg] -> ParserState [AST.FuncArg]
-preCheckFunArgs _args = do
-
-    -- Function to check a single function argument 
-    let checkFArg :: AST.FuncArg -> ParserState ()
-        checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
-                        M.void $ checkType _argType -- check argument type 
-                        --M.when (isJust _defaultVal) $ checkExpr (fromJust _defaultVal) -- check expression validity
-
-    -- check arguments
-    M.forM_ _args checkFArg
-
-    -- try add arguments as variables
-    let variables = [
-                ST.Symbol {
-                    ST.identifier=_argName,
-                    ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
-                    ST.scope=0,
-                    ST.enrtyType=Nothing
-                }
-                | (AST.FuncArg _argName _argType _defaultVal) <- _args
-            ]
-
-    M.forM_ variables tryAddSymbol
-
-    return _args
-
-
+    tryAddSymbol symbol                
 
 -- --------------------------------------------------------------------
 -- >> Parser ---------------------------------------------------------
-
 
 checkFunArg :: AST.FuncArg -> ParserState AST.FuncArg
 checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = let sym = ST.Symbol {
@@ -134,6 +98,9 @@ checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = iv
 
     -- Add new variable to symbol table 
     tryAddSymbol newSym
+
+    -- check initial value if provided 
+    M.forM_ ival (_checkTypeMatch'' t)
 
     return v
 
@@ -205,25 +172,15 @@ checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 -- Check function declaration
 checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
 
+    -- Check if function body matches return type
+    _checkTypeMatch'' _retType _body
 
-    let bodyType = AST.expType _body
-        
-        checkFuncType (Just t)
-            | bodyType == t = Just bodyType       -- types of firm and body are equal
-            | otherwise     = Just AST.TypeError  -- type error
-        checkFuncType Nothing = Just bodyType     -- Inferred type
+    -- Try to update function, as in the parser it just has a the signature, not the body
+    let sym = declToSym f
+    updateSymbol sym
 
-        funcType = checkFuncType _retType
+    return f
 
-        f' = f{AST.retType=funcType}
-
-    -- Create a new symbol for this function 
-        symbol  = declToSym f'
-
-    -- try to add function symbol 
-    tryAddSymbol symbol -- check if redefined
-
-    return f'
 
 -- | Check if a given expression uses valid names only
 checkExpr :: AST.Expr -> ParserState AST.Expr
@@ -656,7 +613,7 @@ declToSym decl = ST.Symbol {
         declToSymType AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body} =
             ST.Function {
                 ST.args=_args,
-                ST.retType=fromMaybe AST.TUnit  _retType,
+                ST.retType=_retType,
                 ST.body=_body
             }
 
@@ -669,6 +626,13 @@ tryAddSymbol s@ST.Symbol {ST.identifier=_identifier} = do
     case ST.insertSymbol s st of
         Nothing -> addStaticError $ SE.SymbolRedefinition _identifier -- if could not add, it's because of symbol redefinition
         Just st' -> RWS.put currSt{symTable = st'}                   -- update state
+
+-- | Update a symbol with a new one 
+updateSymbol :: ST.Symbol -> ParserState ()
+updateSymbol sym = do 
+    currSt@State{symTable=st} <- RWS.get
+    let newSymTable = ST.updateSymbol sym st
+    RWS.put currSt{symTable=newSymTable}
 
 -- | Utility function to push an empty scope, updating state
 pushEmptyScope :: ParserState ()
@@ -709,6 +673,11 @@ checkIdIsVarOrReference name = do -- Check that given name is a valid one and it
                 _        -> return ()
 
 
+
+
+-- < Utility functions to check matching types > ---------------------------------------------------- 
+
+
 -- Check if two types match
 typeMatch :: AST.Type -> AST.Type -> Bool
 typeMatch t1 t2 = t1 == t2
@@ -721,8 +690,30 @@ getCastClass AST.TFloat = [AST.TInt, AST.TFloat]
 getCastClass t          = [t]
 
 -- check that the given types match the given expressions
-checkExprList :: [AST.Type] -> [AST.Expr] -> Bool
-checkExprList ts exps = checkExpr' (map getCastClass ts) (map AST.expType exps)
+checkExprList :: [AST.Type] -> [AST.Expr] -> ParserState Bool
+checkExprList ts = _checkTypeMatchesArgs (map getCastClass ts)
 
-checkExprList' :: [[AST.Type]] -> [AST.Type] -> Bool
-checkExprList' ts exps = undefined
+
+-- | Check if a given expr typematchs an expected set of types, and report error if they don't
+_checkTypeMatch :: [AST.Type] -> AST.Expr -> ParserState Bool
+_checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType  
+
+-- | Check if a given type matches some of the expected ones 
+_checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
+_checkTypeMatch' expected exprType = do
+    -- Check if current type matches one of expected types
+    case exprType of
+        AST.TypeError -> return False
+        t             -> if t `elem` expected
+                            then return True
+                            else do
+                                addStaticError $ SE.UnmatchingTypes expected exprType
+                                return False
+
+_checkTypeMatch'' :: AST.Type -> AST.Expr -> ParserState Bool
+_checkTypeMatch'' t = _checkTypeMatch [t]
+
+-- | Check if a sorted list of expression matches a sorted list of types
+_checkTypeMatchesArgs :: [[AST.Type]] -> [AST.Expr] -> ParserState Bool
+_checkTypeMatchesArgs expected args = M.zipWithM _checkTypeMatch expected args <&> and
+

@@ -3,6 +3,7 @@
 module FrontEnd.Utils where
 
 import Data.List(nub)
+import Data.Char(isSpace)
 
 -- Token position in file
 data Position = Position {row :: Int, col :: Int} deriving (Eq)
@@ -17,3 +18,7 @@ instance Show Position where
 -- | Function to check if a list contains duplicates
 hasDuplicates :: (Eq a) => [a] -> Bool 
 hasDuplicates l = nub l == l
+
+-- | remove space characters from end and start of the string
+trim :: String -> String
+trim = f . f where f = reverse . dropWhile isSpace
