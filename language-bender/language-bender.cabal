@@ -32,7 +32,8 @@ library
       FrontEnd.Errors
       FrontEnd.Lexer
       FrontEnd.Parser
-      FrontEnd.StaticAnalysis
+      FrontEnd.ParserCheck
+      FrontEnd.PreParser
       FrontEnd.StaticErrors
       FrontEnd.SymTable
       FrontEnd.Tokens

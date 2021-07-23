@@ -186,13 +186,14 @@ checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retTyp
 checkExpr :: AST.Expr -> ParserState AST.Expr
 -- Check Id expression:
 checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
-    -- Get current state
+
+    --check if a valid symbol for variable or reference
     checkIdIsVarOrReference _name
 
     -- set new type 
+    new_type <- getTypeOfId _name
 
-
-    return i
+    return i{AST.expType = new_type}
 
 -- Check assign expression 
 checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
@@ -654,6 +655,7 @@ checkSymbolDefined name = do
         Nothing  -> addStaticError SE.SymbolNotInScope {SE.symName=name} >> return Nothing
         Just sym -> return . Just $ sym
 
+-- | Check if an if corresponds to a valid variable or reference, raise an error if not 
 checkIdIsVarOrReference :: U.Name -> ParserState ()
 checkIdIsVarOrReference name = do -- Check that given name is a valid one and it is a variable
 
