@@ -13,7 +13,7 @@ import qualified Control.Monad.Trans as T
 import qualified Control.Monad.RWS   as RWS
 import qualified Data.Map.Strict     as M
 import qualified Data.List           as L
-import           Data.Maybe(isNothing)
+import           Data.Maybe(isNothing, fromJust)
 -----------------------------------------------------------------
 
 -- <Type Definitions> ------------------------------------------
@@ -107,6 +107,41 @@ insertSymbol s st = res
             Just sym    -> if scope sym == currScope -- could not insert symbol if already in current scope 
                                 then Nothing 
                                 else Just newSt
+
+-- | Update next symbol in scope named the same as this one, delete the old one and replace it 
+-- | for the given symbol. If no symbol was found with the same name, do nothing. The scope will be 
+-- | overriden
+updateSymbol :: Symbol
+             -> SymTable
+             -> SymTable
+updateSymbol sym st = st'
+    where
+        sname = identifier sym
+        mbSym = findSymbol sname st
+        
+        -- In case the sym is actually there
+        Just sym' = mbSym
+        symToInsert = sym{scope=scope sym'}
+
+        -- look for entry in dict where the symbol is stored
+        dict = stDict st
+        Just list =  M.lookup sname dict -- should not crash as we already looked this symbol and it's available
+        
+        -- Function to replace a symbol in a list of symbols
+        replace :: Symbol -> Symbol -> [Symbol] -> [Symbol]
+        replace _ _ [] = []
+        replace sym repl (s:ss)
+            | sym == s = repl:ss
+            | otherwise  = s : replace sym repl ss
+
+        newList = replace sym' symToInsert list
+
+        -- Create new dict
+        newDict = M.insert sname newList dict
+
+        st' = case mbSym of 
+                Nothing   -> st
+                Just sym' -> st{stDict=newDict}
 
 
 -- | Find Symbol by name if available in current scope
@@ -228,7 +263,7 @@ _printStDict dict =
 
 -- | Return signature as str
 _showSignature :: [AST.FuncArg] -> AST.Type -> String
-_showSignature _args _retType = "(" ++ (if null _args then "" else concat ((show . head) _args : [", " ++ show arg | arg <- tail _args]))++ ") -> " ++ show _retType 
+_showSignature _args _retType = "(" ++ (if null _args then "" else concat ((U.trim . show . head) _args : [", " ++ (U.trim . show $ arg) | arg <- tail _args]))++ ") -> " ++ (U.trim . show$ _retType) 
 
 -- | Return struct and union subnames as str
 _showSubFields :: [(U.Name , AST.Type)] -> String 

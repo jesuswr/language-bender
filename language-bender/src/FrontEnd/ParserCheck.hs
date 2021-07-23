@@ -58,41 +58,10 @@ preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_ret
     let symbol  = declToSym f
 
     -- try to add function symbol 
-    tryAddSymbol symbol
-
-
-preCheckFunArgs :: [AST.FuncArg] -> ParserState [AST.FuncArg]
-preCheckFunArgs _args = do
-
-    -- Function to check a single function argument 
-    let checkFArg :: AST.FuncArg -> ParserState ()
-        checkFArg AST.FuncArg {AST.argType=_argType, AST.defaultVal=_defaultVal} = do
-                        M.void $ checkType _argType -- check argument type 
-                        --M.when (isJust _defaultVal) $ checkExpr (fromJust _defaultVal) -- check expression validity
-
-    -- check arguments
-    M.forM_ _args checkFArg
-
-    -- try add arguments as variables
-    let variables = [
-                ST.Symbol {
-                    ST.identifier=_argName,
-                    ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False},
-                    ST.scope=0,
-                    ST.enrtyType=Nothing
-                }
-                | (AST.FuncArg _argName _argType _defaultVal) <- _args
-            ]
-
-    M.forM_ variables tryAddSymbol
-
-    return _args
-
-
+    tryAddSymbol symbol                
 
 -- --------------------------------------------------------------------
 -- >> Parser ---------------------------------------------------------
-
 
 checkFunArg :: AST.FuncArg -> ParserState AST.FuncArg
 checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = let sym = ST.Symbol {
@@ -191,6 +160,10 @@ checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retTyp
 
     -- Check if function body matches return type
     _checkTypeMatch'' _retType _body
+
+    -- Try to update function, as in the parser it just has a the signature, not the body
+    let sym = declToSym f
+    updateSymbol sym
 
     return f
 
@@ -521,6 +494,13 @@ tryAddSymbol s@ST.Symbol {ST.identifier=_identifier} = do
     case ST.insertSymbol s st of
         Nothing -> addStaticError $ SE.SymbolRedefinition _identifier -- if could not add, it's because of symbol redefinition
         Just st' -> RWS.put currSt{symTable = st'}                   -- update state
+
+-- | Update a symbol with a new one 
+updateSymbol :: ST.Symbol -> ParserState ()
+updateSymbol sym = do 
+    currSt@State{symTable=st} <- RWS.get
+    let newSymTable = ST.updateSymbol sym st
+    RWS.put currSt{symTable=newSymTable}
 
 -- | Utility function to push an empty scope, updating state
 pushEmptyScope :: ParserState ()
