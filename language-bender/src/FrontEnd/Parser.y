@@ -228,23 +228,23 @@ Expr            :: { AST.Expr }
                                                             }
     | while Expr doing colon PushScope Expr PopScope                                   {% P.checkExpr $ AST.While $2 $6 AST.TypeError }
     | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope         {% P.checkExpr $ AST.If $2 $5 $9 AST.TypeError }
-    | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope      { AST.If $2 $5 $9 AST.TypeError }
-    | if  Expr colon PushScope Expr PopScope                                           { AST.If $2 $5 (AST.ConstUnit AST.TUnit) AST.TypeError }
-    | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope     { AST.If $2 $6 $10 AST.TypeError }
-    | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope  { AST.If $2 $6 $10 AST.TypeError }
-    | if  Expr dot colon PushScope Expr PopScope                                       { AST.If $2 $6 (AST.ConstUnit AST.TUnit) AST.TypeError }
+    | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope      {% P.checkExpr $ AST.If $2 $5 $9 AST.TypeError }
+    | if  Expr colon PushScope Expr PopScope                                           {% P.checkExpr $ AST.If $2 $5 (AST.ConstUnit AST.TUnit) AST.TypeError }
+    | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope     {% P.checkExpr $ AST.If $2 $6 $10 AST.TypeError }
+    | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope  {% P.checkExpr $ AST.If $2 $6 $10 AST.TypeError }
+    | if  Expr dot colon PushScope Expr PopScope                                       {% P.checkExpr $ AST.If $2 $6 (AST.ConstUnit AST.TUnit) AST.TypeError }
   
-    | in id bookWith ExprList elipsis                   { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError }
-    | in id bookWith elipsis                            { AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError }
-    | id bookWith ExprList elipsis                      { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError }
-    | id bookWith elipsis                               { AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError }
+    | in id bookWith ExprList elipsis                   {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError }
+    | in id bookWith elipsis                            {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError }
+    | id bookWith ExprList elipsis                      {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError }
+    | id bookWith elipsis                               {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError }
 
-    | in id travelWith ExprList elipsis                 { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError }
-    | in id travelWith elipsis                          { AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError }
-    | id travelWith ExprList elipsis                    { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError }
-    | id travelWith elipsis                             { AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError }
+    | in id travelWith ExprList elipsis                 {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError }
+    | in id travelWith elipsis                          {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError }
+    | id travelWith ExprList elipsis                    {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError }
+    | id travelWith elipsis                             {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError }
 
-    -- | born Type member                                  { AST.New $2 AST.TypeError }
+    | born Type member                                  { AST.New $2 AST.TypeError }
     -- | Expr died                                         { AST.Delete $1 AST.TypeError }
     -- | disciple Expr of Expr                             { AST.ArrayIndexing $2 $4 AST.TypeError }
     -- | masterOf ExprList rightNow                        { AST.Array (reverse $2) AST.TypeError }
