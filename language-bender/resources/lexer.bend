@@ -189,6 +189,11 @@ book for:
     	aang.
 -.
 
+book if_:
+.-
+	if xd : 2.3 otherwise 7.
+-.
+
 
 -- bender n is 100.
 -- book While:

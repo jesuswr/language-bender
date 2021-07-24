@@ -210,8 +210,8 @@ Expr            :: { AST.Expr }
     : '(' Expr ')'                                      { $2 }
     | id                                                {% P.checkExpr $ AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) AST.TypeError }
     | ExprBlock                                         { $1 }
---    | id Assign                                         {% P.checkExpr $ AST.Assign ((TK.name . TK.tktype) $1) $2 }
---    
+    | id Assign                                         {% P.checkExpr $ AST.Assign ((TK.name . TK.tktype) $1) $2 AST.TypeError }
+   
     | Expr quotmark_s id Assign                         {% P.checkExpr $ AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 AST.TypeError }
     | using Expr quotmark_s id skill                    {% P.checkExpr $ AST.StructAccess $2 ((TK.name . TK.tktype) $4) AST.TypeError }
     | learning id control using
@@ -233,22 +233,22 @@ Expr            :: { AST.Expr }
     | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope     { AST.If $2 $6 $10 AST.TypeError }
     | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope  { AST.If $2 $6 $10 AST.TypeError }
     | if  Expr dot colon PushScope Expr PopScope                                       { AST.If $2 $6 (AST.ConstUnit AST.TUnit) AST.TypeError }
---   
---    | in id bookWith ExprList elipsis                   { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
---    | in id bookWith elipsis                            { AST.FunCall ((TK.name . TK.tktype) $2) [] }
---    | id bookWith ExprList elipsis                      { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) }
---    | id bookWith elipsis                               { AST.FunCall ((TK.name . TK.tktype) $1) [] }
---
---    | in id travelWith ExprList elipsis                 { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
---    | in id travelWith elipsis                          { AST.FunCall ((TK.name . TK.tktype) $2) [] }
---    | id travelWith ExprList elipsis                    { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) }
---    | id travelWith elipsis                             { AST.FunCall ((TK.name . TK.tktype) $1) [] }
---
---    | born Type member                                  { AST.New $2 }
---    | Expr died                                         { AST.Delete $1 }
---    | disciple Expr of Expr                             { AST.ArrayIndexing $2 $4 }
---    | masterOf ExprList rightNow                        { AST.Array (reverse $2) }
---
+  
+    | in id bookWith ExprList elipsis                   { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError }
+    | in id bookWith elipsis                            { AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError }
+    | id bookWith ExprList elipsis                      { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError }
+    | id bookWith elipsis                               { AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError }
+
+    | in id travelWith ExprList elipsis                 { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError }
+    | in id travelWith elipsis                          { AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError }
+    | id travelWith ExprList elipsis                    { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError }
+    | id travelWith elipsis                             { AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError }
+
+    -- | born Type member                                  { AST.New $2 AST.TypeError }
+    -- | Expr died                                         { AST.Delete $1 AST.TypeError }
+    -- | disciple Expr of Expr                             { AST.ArrayIndexing $2 $4 AST.TypeError }
+    -- | masterOf ExprList rightNow                        { AST.Array (reverse $2) AST.TypeError }
+
     -- >> Const Values --------------------------------------------------------------------------------
     | int                                               { AST.ConstInt $1 AST.TInt }
     | float                                             { AST.ConstFloat $1 AST.TFloat }

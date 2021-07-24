@@ -199,9 +199,19 @@ checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
 checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
     -- check if left hand corresponds to a variable or reference name
     checkIdIsVarOrReference _variable
-    -- Check right side 
-    --checkExpr _value
-    return a
+    
+    -- get the variable type 
+    var_type <- getTypeOfId _variable
+
+    -- check that var_type and the type of _value match
+    match <- _checkTypeMatch (getCastClass var_type) _value
+
+    -- get return type
+    let assgType = if match
+        then var_type
+        else AST.TypeError
+
+    return a{AST.expType = assgType}
 
 -- Check assign to struct
 checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AST.tag=_tag} = do
@@ -318,18 +328,35 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
     -- check symbol definition 
     mbSym <- checkSymbolDefined _fname
 
-    -- Check if symbol is a valid function 
-    case mbSym of
-        Just sym -> M.unless (ST.isFunction sym || ST.isProc sym) . addStaticError $
-            SE.NotAValidFunction {
-                SE.symName=_fname,
-                SE.actualSymType=ST.symType sym
-            }
-        _ -> return ()
+    -- Check if symbol is a valid function and get its type
+    fType <- case mbSym of
+        Just sym -> do
+            if (ST.isFunction sym || ST.isProc sym)
+                then if (ST.isFunction sym)
+                    then return AST.TUnit
+                    else return $ (ST.retType . ST.symType) sym
+                
+                else do
+                    addStaticError $ SE.NotAValidFunction {
+                        SE.symName=_fname,
+                        SE.actualSymType=ST.symType sym
+                    }
+                    return AST.TypeError
 
-    -- check args expressions            
-    --M.forM_ _actualArgs checkExpr
-    return f
+        _ -> return AST.TypeError
+
+    -- Get the types the arguments should have
+    let argsTypes = case mbSym of
+            Just sym -> do
+                if (ST.isFunction sym || ST.isProc sym)
+                    then map AST.argType $ (ST.args . ST.symType) sym
+                    else []
+            _ -> []
+
+    -- Check that the types in _actualArgs match
+    checkExprList argsTypes _actualArgs
+
+    return f{AST.expType = fType}
 
 --  Check for
 checkExpr f@AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody} = do
@@ -369,7 +396,7 @@ checkExpr i@AST.If {AST.cond=_cond, AST.accExpr=_accExpr, AST.failExpr=_failExpr
     -- Set return type as the return type of the body
         i' = i{AST.expType = ifType}
 
-    return i
+    return i'
 
 --  Check expression block 
 checkExpr e@AST.ExprBlock {AST.exprs=_exprs} = do

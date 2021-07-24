@@ -65,16 +65,6 @@ langBender = do
 
                         putStrLn " entre preparsing y parsing\n"
 
-                        -- 2) El parser debe ignorar redef. de funciones
-                        -- 3) el preparser debe consultar redef. de funciones
-                        -- 4) crear funcion update symbol
-
-                        -- 5) adaptar type checking actual al nuevo
-
-                        -- 6) cambiar mucho el parser (dirigido por sintaxis)
-
-                        -- 7) Añadir arreglos a la tabla de simbolos
-
                         let preParseState' = preParseState{ PC.symTable = (PC.symTable preParseState){ST.stNextScope = 1} }
                         (parseState, parseErrors) <- P.runParse tokens preParseState'
 
