@@ -335,7 +335,7 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
 checkExpr f@AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody} = do
 
     -- Check that _step, _start and _end are of integer type
-    areInt <- checkExprList [AST.TInt, AST.TInt, AST.TInt] [_step, _start, _end]
+    checkExprList [AST.TInt, AST.TInt, AST.TInt] [_step, _start, _end]
 
     -- Set return type as the return type of the body
     let f' = f{AST.expType = AST.expType _cicBody}
@@ -344,39 +344,31 @@ checkExpr f@AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_
 
 --  Check While
 checkExpr w@AST.While {AST.cond=_cond, AST.cicBody=_cicBody} = do
-    -- check condition expression
-    --checkExpr _cond
+    
+    -- check condition expression is boolean
+    _checkTypeMatch'' AST.TBool _cond
 
-    -- check body
-    --pushEmptyScope          -- body scope
+    -- Set return type as the return type of the body
+    let w' = w{AST.expType = AST.expType _cicBody}
 
-    -- check body expression
-    --checkExpr _cicBody
-
-    --popEmptyScope           -- body scope
-    return w
+    return w'
 
 --  Check if conditional expression
 checkExpr i@AST.If {AST.cond=_cond, AST.accExpr=_accExpr, AST.failExpr=_failExpr} = do
 
-    -- check boolean condition
-    --checkExpr _cond
+    -- check condition expression is boolean
+    _checkTypeMatch'' AST.TBool _cond
 
-    -- push an empty scope for each different body
+    -- Check _accExpr expression and _failExpr expression has the same type
+    match <- _checkTypeMatch' (getCastClass $ AST.expType _accExpr) (AST.expType _failExpr)
 
-    -- check accepted body
-    --pushEmptyScope  -- acc body scope
+    let ifType = if match
+        then AST.expType _accExpr
+        else AST.TypeError
 
-    --checkExpr _accExpr
+    -- Set return type as the return type of the body
+        i' = i{AST.expType = ifType}
 
-    --popEmptyScope   -- acc body scope
-
-    -- check failed body
-    --pushEmptyScope  -- acc body scope
-
-    --checkExpr _failExpr
-
-    --popEmptyScope   -- acc body scope
     return i
 
 --  Check expression block 

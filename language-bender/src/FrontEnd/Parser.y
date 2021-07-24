@@ -226,13 +226,13 @@ Expr            :: { AST.Expr }
                                                                 let (_id,_step,_start,_end) = $1
                                                                 P.checkExpr $ AST.For _id _step _start _end $4 AST.TypeError
                                                             }
---    | while Expr doing colon PushScope Expr PopScope                       { AST.While $2 $5 }
---    | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope                { AST.If $2 $4 $6 }
---    | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope             { AST.If $2 $4 $6 }
---    | if  Expr colon PushScope Expr PopScope                               { AST.If $2 $4 AST.ConstUnit }
---    | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope            { AST.If $2 $5 $7 }
---    | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope         { AST.If $2 $5 $7 }
---    | if  Expr dot colon PushScope Expr PopScope                           { AST.If $2 $5 AST.ConstUnit }
+    | while Expr doing colon PushScope Expr PopScope                                   {% P.checkExpr $ AST.While $2 $6 AST.TypeError }
+    | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope         {% P.checkExpr $ AST.If $2 $5 $9 AST.TypeError }
+    | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope      { AST.If $2 $5 $9 AST.TypeError }
+    | if  Expr colon PushScope Expr PopScope                                           { AST.If $2 $5 (AST.ConstUnit AST.TUnit) AST.TypeError }
+    | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope     { AST.If $2 $6 $10 AST.TypeError }
+    | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope  { AST.If $2 $6 $10 AST.TypeError }
+    | if  Expr dot colon PushScope Expr PopScope                                       { AST.If $2 $6 (AST.ConstUnit AST.TUnit) AST.TypeError }
 --   
 --    | in id bookWith ExprList elipsis                   { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
 --    | in id bookWith elipsis                            { AST.FunCall ((TK.name . TK.tktype) $2) [] }

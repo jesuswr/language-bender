@@ -183,11 +183,11 @@ Only the Avatar, master of all four elements, could stop them.
 -- -.
 
 
--- book for:
--- .-
--- 	opening 1 of aang chakras from 7 to 0:
---     	aang.
--- -.
+book for:
+.-
+	opening 1 of aang chakras from 7 to "salsa":
+    	aang.
+-.
 
 
 -- bender n is 100.
