@@ -430,10 +430,35 @@ checkExpr d@AST.Declaration {AST.decl=_decl} = do
     return d
 
 --  Check Binary Operation
-checkExpr o@AST.Op2 {AST.opr1=_opr1, AST.opr2=_opr2} = do
-    --checkExpr _opr1
-    --checkExpr _opr2
-    return o
+checkExpr o@AST.Op2 {AST.op2 =_operation, AST.opr1=_opr1, AST.opr2=_opr2} = do
+    
+    -- Get expected types for the given operation
+    let expecTypes = getOperationTypes _operation
+
+    -- Check both operators have the expected types
+    ok1 <- _checkTypeMatch expecTypes _opr1
+    ok2 <- _checkTypeMatch expecTypes _opr2
+
+    -- get expression type
+    let opType = if isAritmethic _operation
+        then head $ getCastClass (AST.expType _opr1)
+        else if isMod _operation
+            then AST.TInt
+            else AST.TBool
+
+    if typeMatch (AST.expType _opr1) (AST.expType _opr2) && ok1 && ok2
+    -- Set the expression type
+        then return o{AST.expType = opType}
+        else return o{AST.expType = AST.TypeError}
+
+  where
+    isMod AST.Mod = True
+    isMod _       = False
+    isAritmethic AST.Sum  = True
+    isAritmethic AST.Sub  = True
+    isAritmethic AST.Mult = True
+    isAritmethic AST.Div  = True
+    isAritmethic _        = False
 
 --  Check Unary Operation
 checkExpr o@AST.Op1 {AST.opr=_opr} = do
@@ -810,8 +835,20 @@ getTypeOfId name = do
         _ -> return AST.TypeError 
 
     
-
-
+getOperationTypes :: AST.Opr2 -> [AST.Type]
+getOperationTypes AST.Sum = [AST.TFloat, AST.TInt]
+getOperationTypes AST.Sub = [AST.TFloat, AST.TInt]
+getOperationTypes AST.Mult = [AST.TFloat, AST.TInt]
+getOperationTypes AST.Div = [AST.TFloat, AST.TInt]
+getOperationTypes AST.Mod = [AST.TInt]
+getOperationTypes AST.Lt = [AST.TFloat, AST.TInt, AST.TBool]
+getOperationTypes AST.LtEq = [AST.TFloat, AST.TInt, AST.TBool]
+getOperationTypes AST.Gt = [AST.TFloat, AST.TInt, AST.TBool]
+getOperationTypes AST.GtEq = [AST.TFloat, AST.TInt, AST.TBool]
+getOperationTypes AST.Eq = [AST.TFloat, AST.TInt, AST.TBool]
+getOperationTypes AST.NotEq = [AST.TFloat, AST.TInt, AST.TBool]
+getOperationTypes AST.And = [AST.TBool]
+getOperationTypes AST.Or = [AST.TBool]
 
 -- < Utility functions to check matching types > ---------------------------------------------------- 
 
@@ -823,8 +860,8 @@ typeMatch t1 t2 = t2 `elem` (getCastClass t1)
 -- return the list of cast-able types with each other
 -- that contains the given type
 getCastClass :: AST.Type -> [AST.Type]
-getCastClass AST.TInt   = [AST.TInt, AST.TFloat]
-getCastClass AST.TFloat = [AST.TInt, AST.TFloat]
+getCastClass AST.TInt   = [AST.TFloat, AST.TInt]
+getCastClass AST.TFloat = [AST.TFloat, AST.TInt]
 getCastClass t          = [t]
 
 -- check that the given types match the given expressions

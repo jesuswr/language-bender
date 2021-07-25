@@ -172,15 +172,16 @@ Only the Avatar, master of all four elements, could stop them.
 -- 	(5 and then 7) and thus (6 but 4) besides 6 left 2
 -- -.
 
--- book z:
--- .-
---     2 is less than 3.
---     4 is less or equal than 4.
---     6 is greater than 2.
---     3 is greater or equal than 3.
---     6 is equal to 6.
---     8 is not equal to 5
--- -.
+book z:
+.-
+    2 is less than 3.
+    4 is less or equal than 4.
+    6 is greater than 2.
+    3 is greater or equal than 3.
+    6 is equal to 6.
+    8 is not equal to 5.
+    5 left 2
+-.
 
 
 book for:

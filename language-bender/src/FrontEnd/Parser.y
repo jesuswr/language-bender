@@ -260,24 +260,24 @@ Expr            :: { AST.Expr }
 
     -- >> Binary Expressions --------------------------------------------------------------------------
 
---    | Expr '+' Expr                                     { AST.Op2 AST.Sum $1 $3 }
---    | Expr '-' Expr                                     { AST.Op2 AST.Sub $1 $3 }
---    | Expr '*' Expr                                     { AST.Op2 AST.Mult $1 $3 }
---    | Expr '/' Expr                                     { AST.Op2 AST.Div $1 $3 }
---    | Expr '%' Expr                                     { AST.Op2 AST.Mod $1 $3 }
---    | Expr '<' Expr                                     { AST.Op2 AST.Lt $1 $3 }
---    | Expr '<=' Expr                                    { AST.Op2 AST.LtEq $1 $3 }
---    | Expr '>' Expr                                     { AST.Op2 AST.Gt $1 $3 }
---    | Expr '>=' Expr                                    { AST.Op2 AST.GtEq $1 $3 }
---    | Expr '==' Expr                                    { AST.Op2 AST.Eq $1 $3 }
---    | Expr '!=' Expr                                    { AST.Op2 AST.NotEq $1 $3 }
---    | Expr and Expr                                     { AST.Op2 AST.And $1 $3 }
---    | Expr or Expr                                      { AST.Op2 AST.Or $1 $3 }
+    | Expr '+' Expr                                     {% P.checkExpr $ AST.Op2 AST.Sum $1 $3 AST.TypeError }
+    | Expr '-' Expr                                     {% P.checkExpr $ AST.Op2 AST.Sub $1 $3 AST.TypeError }
+    | Expr '*' Expr                                     {% P.checkExpr $ AST.Op2 AST.Mult $1 $3 AST.TypeError }
+    | Expr '/' Expr                                     {% P.checkExpr $ AST.Op2 AST.Div $1 $3 AST.TypeError }
+    | Expr '%' Expr                                     {% P.checkExpr $ AST.Op2 AST.Mod $1 $3 AST.TypeError }
+    | Expr '<' Expr                                     {% P.checkExpr $ AST.Op2 AST.Lt $1 $3 AST.TypeError }
+    | Expr '<=' Expr                                    {% P.checkExpr $ AST.Op2 AST.LtEq $1 $3 AST.TypeError }
+    | Expr '>' Expr                                     {% P.checkExpr $ AST.Op2 AST.Gt $1 $3 AST.TypeError }
+    | Expr '>=' Expr                                    {% P.checkExpr $ AST.Op2 AST.GtEq $1 $3 AST.TypeError }
+    | Expr '==' Expr                                    {% P.checkExpr $ AST.Op2 AST.Eq $1 $3 AST.TypeError }
+    | Expr '!=' Expr                                    {% P.checkExpr $ AST.Op2 AST.NotEq $1 $3 AST.TypeError }
+    | Expr and Expr                                     {% P.checkExpr $ AST.Op2 AST.And $1 $3 AST.TypeError }
+    | Expr or Expr                                      {% P.checkExpr $ AST.Op2 AST.Or $1 $3 AST.TypeError }
 
     -- >> Unary Expressions ------------------------------------------------------------------------------
---    | not Expr                                          { AST.Op1 AST.Negation $2 }
---    | '-' Expr %prec NEG                                { AST.Op1 AST.Negative $2 }
---    | Expr unit                                         { AST.Op1 AST.UnitOperator $1 }
+--    | not Expr                                          {% P.checkExpr $ AST.Op1 AST.Negation $2 AST.TypeError }
+--    | '-' Expr %prec NEG                                {% P.checkExpr $ AST.Op1 AST.Negative $2 AST.TypeError }
+--    | Expr unit                                         {% P.checkExpr $ AST.Op1 AST.UnitOperator $1 AST.TypeError }
 
     -- >> Control Flow -----------------------------------------------------------------------------------
 --    | toBeContinued Expr                                { AST.Continue  $2 }
