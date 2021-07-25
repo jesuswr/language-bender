@@ -80,7 +80,7 @@ Números flotantes de 32 bits (```water``` ). Siguen el estándar [IEEE 754](htt
 Tipo booleano con dos posibles valores: ```lightning master``` o ```fire master``` (```fire```). Cuentan con sus propios operadores:
 - ``` and ```: Retorna ```lightning master``` si ambos argumentos valen ```lightning master```. De otra forma retorna ```fire master```.
 - ``` or ```: Retorna ```lightning master``` si alguno de los argumentos vale ```lightning master```. De otra forma retorna ```fire master```.
-- ``` not ```: Retorna ```lightning master``` si ambos argumentos tienen el mismo valor. De otra forma retorna ```fire master```.
+- ``` not ```: Retorna ```lightning master``` si el argumento vale ```fire master```. De otra forma retorna ```fire master```.
 
 
 #### Char
