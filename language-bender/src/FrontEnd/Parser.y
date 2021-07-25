@@ -275,9 +275,9 @@ Expr            :: { AST.Expr }
     | Expr or Expr                                      {% P.checkExpr $ AST.Op2 AST.Or $1 $3 AST.TypeError }
 
     -- >> Unary Expressions ------------------------------------------------------------------------------
---    | not Expr                                          {% P.checkExpr $ AST.Op1 AST.Negation $2 AST.TypeError }
---    | '-' Expr %prec NEG                                {% P.checkExpr $ AST.Op1 AST.Negative $2 AST.TypeError }
---    | Expr unit                                         {% P.checkExpr $ AST.Op1 AST.UnitOperator $1 AST.TypeError }
+    | not Expr                                          {% P.checkExpr $ AST.Op1 AST.Negation $2 AST.TypeError }
+    | '-' Expr %prec NEG                                {% P.checkExpr $ AST.Op1 AST.Negative $2 AST.TypeError }
+    | Expr unit                                         {% P.checkExpr $ AST.Op1 AST.UnitOperator $1 AST.TypeError }
 
     -- >> Control Flow -----------------------------------------------------------------------------------
 --    | toBeContinued Expr                                { AST.Continue  $2 }

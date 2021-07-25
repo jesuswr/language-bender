@@ -180,7 +180,9 @@ book z:
     3 is greater or equal than 3.
     6 is equal to 6.
     8 is not equal to 5.
-    5 left 2
+    5 left 2.
+    bender negabro is -4.
+    not fire master ~
 -.
 
 

@@ -430,19 +430,19 @@ checkExpr d@AST.Declaration {AST.decl=_decl} = do
     return d
 
 --  Check Binary Operation
-checkExpr o@AST.Op2 {AST.op2 =_operation, AST.opr1=_opr1, AST.opr2=_opr2} = do
+checkExpr o@AST.Op2 {AST.op2 =_operator, AST.opr1=_opr1, AST.opr2=_opr2} = do
     
     -- Get expected types for the given operation
-    let expecTypes = getOperationTypes _operation
+    let expecTypes = getOperationTypes _operator
 
     -- Check both operators have the expected types
     ok1 <- _checkTypeMatch expecTypes _opr1
     ok2 <- _checkTypeMatch expecTypes _opr2
 
     -- get expression type
-    let opType = if isAritmethic _operation
+    let opType = if isAritmethic _operator
         then head $ getCastClass (AST.expType _opr1)
-        else if isMod _operation
+        else if isMod _operator
             then AST.TInt
             else AST.TBool
 
@@ -461,9 +461,24 @@ checkExpr o@AST.Op2 {AST.op2 =_operation, AST.opr1=_opr1, AST.opr2=_opr2} = do
     isAritmethic _        = False
 
 --  Check Unary Operation
-checkExpr o@AST.Op1 {AST.opr=_opr} = do
-    --checkExpr _opr
-    return o
+checkExpr o@AST.Op1 {AST.op1=_operator, AST.opr=_opr} = do
+    
+    -- get expression type and check _opr type
+    opType <- case _operator of
+
+        AST.UnitOperator -> return AST.TUnit
+        
+        _                -> do
+
+            let expectedTypes = getOPTypes _operator
+            ok <- _checkTypeMatch expectedTypes _opr
+            if ok then return (AST.expType _opr) 
+                else return AST.TypeError 
+
+    return o{AST.expType = opType}
+  where
+    getOPTypes AST.Negation = [AST.TBool]
+    getOPTypes AST.Negative = [AST.TFloat, AST.TInt]
 
 --  Check Array Literal Expression
 checkExpr a@AST.Array {AST.list=_list} = do
