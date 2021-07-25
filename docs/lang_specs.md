@@ -172,10 +172,10 @@ Sólo entre flotantes, entre enteros y entre ambos (en este último caso se reto
 
 #### Comparaciones
 Para tipos enteros, flotantes y booleanos:
-- ``` is less than ```: Retorna ```lightning master``` si el argumento izquierdo es menor que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
-- ``` is less or equal than ```: Retorna ```lightning master``` si el argumento izquierdo es menor o igual que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
-- ``` is greater than ```: Retorna ```lightning master``` si el argumento izquierdo es mayor que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
-- ``` is greater or equal than ```: Retorna ```lightning master``` si el argumento izquierdo es mayor o igual que el derecho. Para booleanos toma ```lightning master``` como ```1``` y ```fire master``` como ```0```.
+- ``` is less than ```: Retorna ```lightning master``` si el argumento izquierdo es menor que el derecho. Para booleanos toma ```lightning master``` como mayor a ```fire master```.
+- ``` is less or equal than ```: Retorna ```lightning master``` si el argumento izquierdo es menor o igual que el derecho. Para booleanos toma ```lightning master``` como mayor a ```fire master```.
+- ``` is greater than ```: Retorna ```lightning master``` si el argumento izquierdo es mayor que el derecho. Para booleanos toma ```lightning master``` como mayor a ```fire master```.
+- ``` is greater or equal than ```: Retorna ```lightning master``` si el argumento izquierdo es mayor o igual que el derecho. Para booleanos toma ```lightning master``` como mayor a ```fire master```.
 - ``` is equal to ```: Retorna ```lightning master``` si el argumento izquierdo es igual que el derecho, de lo contrario retorna ```fire master```. Además, para tipos compuestos compara los valores de forma profunda.
 - ``` is not equal to ```: Retorna ```fire master``` si el argumento izquierdo es igual que el derecho, de lo contrario retorna ```lightning master```. Además, para tipos compuestos compara los valores de forma profunda.
 
