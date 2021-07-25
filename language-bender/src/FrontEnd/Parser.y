@@ -167,8 +167,8 @@ FuncArg         :: { [AST.FuncArg] }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : SingleDefArgDecl                                  { [$1] }
-    | FuncDefArgDecl comma Type bender id Assign        { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Just $6)):$1 }
-    | FuncDefArgDecl comma Type '&' bender id Assign    { (AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Just $7)):$1 }
+    | FuncDefArgDecl comma Type bender id Assign        {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Just $6)) >>= (return . (:$1)) }
+    | FuncDefArgDecl comma Type '&' bender id Assign    {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Just $7)) >>= (return . (:$1)) }
 
 SingleDefArgDecl :: { AST.FuncArg }
     : Type bender id Assign                             {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Just $4) }
