@@ -442,8 +442,19 @@ checkExpr o@AST.Op1 {AST.opr=_opr} = do
 
 --  Check Array Literal Expression
 checkExpr a@AST.Array {AST.list=_list} = do
-    --M.forM_ _list checkExpr
-    return a
+    
+    -- Get the type of the first elem
+    let t  = (AST.expType . head) _list
+        sz = length _list 
+    -- Check all the element have the same type
+        homogeneous = all (\e-> typeMatch t (AST.expType e)) (tail _list)
+    -- Set the expression type
+    if (typeMatch t AST.TypeError || not homogeneous)
+        then
+            return a{AST.expType = AST.TypeError}
+        else
+            return a{AST.expType = AST.TArray t (AST.ConstInt sz AST.TInt) }
+
 
 --  Check Union type guessing (return a boolean)
 checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
@@ -546,19 +557,41 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
     return unionUsing'
 
 --  Check New Expression
-checkExpr n@AST.New {AST.typeName=_typeName} = do
-    --checkType _typeName
-    return n
+checkExpr n@AST.New {AST.typeName=_type} = do
+    -- Set the type of the new expression
+    if typeMatch _type AST.TypeError
+        then
+            return n{AST.expType = AST.TypeError }
+        else
+            return n{AST.expType = AST.TPtr _type }
 
 --  Check Delete
 checkExpr d@AST.Delete {AST.ptrExpr=_ptrExpr} = do
-    --checkExpr _ptrExpr
+    --check that _ptrExpr is a pointer
+    case AST.expType _ptrExpr of
+        AST.TPtr t -> case t of
+            AST.TypeError -> 
+                addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] t
+            _             -> return ()
+        t -> addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] t 
+
     return d
 
 --  Check array index access
 checkExpr a@AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = do
-    --checkExpr _index >> checkExpr _expr
-    return a
+    -- check index is integer type
+    _checkTypeMatch'' AST.TInt _index
+
+    let arrExprType = AST.expType _expr
+    -- check _expr is array type
+    aType <- case arrExprType of
+        ta@AST.TArray{} -> return ta
+        _ -> do
+            addStaticError $ SE.NonArrayExpr arrExprType
+            return AST.TypeError
+
+    -- Set expression type
+    return a{AST.expType = aType}
 
 -- Check Struct Literal
 checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
@@ -785,7 +818,7 @@ getTypeOfId name = do
 
 -- Check if two types match
 typeMatch :: AST.Type -> AST.Type -> Bool
-typeMatch t1 t2 = t1 == t2
+typeMatch t1 t2 = t2 `elem` (getCastClass t1)
 
 -- return the list of cast-able types with each other
 -- that contains the given type
@@ -816,7 +849,7 @@ _checkTypeMatch' expected exprType = do
                                 return False
 
 _checkTypeMatch'' :: AST.Type -> AST.Expr -> ParserState Bool
-_checkTypeMatch'' t = _checkTypeMatch [t]
+_checkTypeMatch'' t = _checkTypeMatch (getCastClass t)
 
 -- | Check if a sorted list of expression matches a sorted list of types
 _checkTypeMatchesArgs :: [[AST.Type]] -> [AST.Expr] -> ParserState Bool

@@ -17,6 +17,7 @@ data StaticError = SymbolNotInScope         { symName :: U.Name }
                  | NotAValidFunction        { symName :: U.Name, actualSymType :: ST.SymType  }
                  | NotAValidStruct          { symName :: U.Name, actualSymType :: ST.SymType }
                  | NotAValidUnion           { symName :: U.Name, actualSymType :: ST.SymType }
+                 | NonArrayExpr             { actualType :: AST.Type }
                  | DuplicateNamesInCompound { symName :: U.Name  }
                  | UnexpectedEOF
                  | ParseError               { remStream :: [T.Token] }

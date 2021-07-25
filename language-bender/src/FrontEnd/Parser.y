@@ -244,10 +244,10 @@ Expr            :: { AST.Expr }
     | id travelWith ExprList elipsis                    {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError }
     | id travelWith elipsis                             {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError }
 
-    | born Type member                                  { AST.New $2 AST.TypeError }
-    -- | Expr died                                         { AST.Delete $1 AST.TypeError }
-    -- | disciple Expr of Expr                             { AST.ArrayIndexing $2 $4 AST.TypeError }
-    -- | masterOf ExprList rightNow                        { AST.Array (reverse $2) AST.TypeError }
+    | born Type member                                  {% P.checkExpr $ AST.New $2 AST.TypeError }
+    | Expr died                                         {% P.checkExpr $ AST.Delete $1 AST.TUnit }
+    | disciple Expr of Expr                             {% P.checkExpr $ AST.ArrayIndexing $2 $4 AST.TypeError }
+    | masterOf ExprList rightNow                        {% P.checkExpr $ AST.Array (reverse $2) AST.TypeError }
 
     -- >> Const Values --------------------------------------------------------------------------------
     | int                                               { AST.ConstInt $1 AST.TInt }

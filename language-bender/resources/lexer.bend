@@ -304,24 +304,24 @@ book if_:
 -- -.
 
 
+travel main:
+.-
+	in fibonacci book with 42 ...
+-.
 
--- book fibonacci of air about air bender n:
--- .-
--- 	if n is equal to 0:
--- 		this story comes to an end 0 ~ .
--- 	if n is equal to 1:
--- 		this story comes to an end 1 ~ .
+book fibonacci of air about air bender n:
+.-
+	-- if n is equal to 0:
+	-- 	this story comes to an end 0 ~ .
+	-- if n is equal to 1:
+	-- 	this story comes to an end 1 ~ .
 
--- 	this story comes to an end
--- 		in fibonacci book with n but 1 ... 
--- 		and then 
--- 		in fibonacci book with n but 2 ...
--- -.
-
--- travel main:
--- .-
--- 	in fibonacci book with 42 ...
--- -.
+	-- this story comes to an end
+	-- 	in fibonacci book with n but 1 ... 
+	-- 	and then 
+	-- 	in fibonacci book with n but 2 ...
+	0
+-.
 
 
 -- book ola:
@@ -345,3 +345,13 @@ bender katara of palo_de_agua.
 bender yolo of solazo is (katara's lluvia is 42.0).
 
 bender lol of solazo is learning solazo control using pepa, de_sol right now.
+
+bender badBunny is born as water member.
+bender ted is an apprentice.
+
+book del:
+.-
+	ted has died.
+	disciple 3 of toph.
+	master of 12.5, 2, 12.9, 3, 3 right now.
+-.
