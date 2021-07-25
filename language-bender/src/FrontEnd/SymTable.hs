@@ -211,7 +211,7 @@ getIdType _ Type{unType = t} = t
 getIdType _ Procedure{} = AST.TUnit
 getIdType _ Function{retType = t} = t
 getIdType _ Reference{refType = t} = t
-getIdType nm _ = AST.CustomType{AST.tName=nm}
+getIdType nm _ = AST.CustomType{AST.tName=nm, AST.scope = -1}
 
 
 -- < Pretty Printing > --------------------------------------------

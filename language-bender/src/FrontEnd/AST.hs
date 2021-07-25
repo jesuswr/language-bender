@@ -17,7 +17,7 @@ data Type = TFloat
           | TPtr   { ptrType :: Type }
           | TUnit 
           | TReference { refType :: Type }
-          | CustomType { tName :: U.Name }
+          | CustomType { tName :: U.Name, scope :: Int }
           | TypeError
           | TVoid
           deriving(Eq)
@@ -215,13 +215,13 @@ identShowType ident (TReference t) = "\n" ++
   replicate ident ' ' ++ "Type: Reference of:\n"
   ++ identShowType (ident + 2) t 
 
-identShowType ident (CustomType nm) = "\n" ++
-  replicate ident ' ' ++ "Type: " ++ nm ++ "\n"
+identShowType ident (CustomType nm scope) = "\n" ++
+  replicate ident ' ' ++ "Type: " ++ nm ++ "[" ++ show scope ++ "]" ++ "\n"
 
-identShowType ident (TypeError) = "\n" ++
+identShowType ident TypeError = "\n" ++
   replicate ident ' ' ++ "Type: Type Error\n"
 
-identShowType ident (TVoid) = "\n" ++
+identShowType ident TVoid = "\n" ++
   replicate ident ' ' ++ "Type: Void\n"
 
 

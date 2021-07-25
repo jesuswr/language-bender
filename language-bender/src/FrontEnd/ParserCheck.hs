@@ -34,18 +34,9 @@ newtype ParsingState = State { symTable :: ST.SymTable } deriving(Eq, Show)
 startingState :: ParsingState
 startingState = State ST.newTable
 
--- parseProgram :: AST.Program -> IO (ParsingState, ErrorLog)
--- parseProgram p = do
---     (_, s, e) <- RWS.runRWST (namesAnalysis p) () (startingState p)
---     return (s, e)
-
 -- | Add error to state of RWST
 addStaticError :: SE.StaticError -> ParserState ()
 addStaticError e = RWS.tell [e]
-
--- | Function to check if every name used is in the current scope
--- namesAnalysis :: AST.Program -> ParserState ()
--- namesAnalysis p@AST.Program{AST.decls=ds} = M.forM_ ds checkDecls
 
 -- --------------------------------------------------------------------
 -- >> PreParser ------------------------------------------------------
@@ -58,7 +49,7 @@ preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_ret
     let symbol  = declToSym f
 
     -- try to add function symbol 
-    tryAddSymbol symbol                
+    tryAddSymbol symbol
 
 -- --------------------------------------------------------------------
 -- >> Parser ---------------------------------------------------------
@@ -82,10 +73,10 @@ checkField l@((nm, t):fields) = do
             , ST.scope = 0
             , ST.enrtyType = Nothing
             }
-    
+
     tryAddSymbol newSym
 
-    return l    
+    return l
 
 -- | Add declarations to symbol table and check if they´re correct
 checkDecls :: AST.Declaration -> ParserState AST.Declaration
@@ -199,7 +190,7 @@ checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
 checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
     -- check if left hand corresponds to a variable or reference name
     checkIdIsVarOrReference _variable
-    
+
     -- get the variable type 
     var_type <- getTypeOfId _variable
 
@@ -219,30 +210,30 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
     -- check that _struct is of struct type
     -- check that _tag is part of struct _struct 
     -- check _value has the same type than _tag
-    
+
     -- Get struct name
     let strNm = case AST.expType _struct of
-                    (AST.CustomType s) -> s
+                    (AST.CustomType s _) -> s
                     _ -> "$"
 
     -- Get type of the struct assignment
-    structType <- if (strNm == "$") 
+    structType <- if strNm == "$"
         then
-            do 
-               addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>"] (AST.expType _struct))
-               return AST.TypeError 
+            do
+               addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
+               return AST.TypeError
         else
-            do 
+            do
 
                 -- Get current state
                 currSt@State{symTable = st} <- RWS.get
-                
+
                 let structSym = ST.findSymbol strNm st
 
                 -- Check if struct symbol exists and it's a struct type.
                 case structSym of
-                    Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> do 
-                        
+                    Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> do
+
                         -- get fields that has name tag
                         let ltag = filter (\(s,t)-> s ==_tag) _fields
 
@@ -255,22 +246,22 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
 
                                 valType = AST.expType _value
 
-                            if (not $ typeMatch tagType valType) then do
+                            if not $ typeMatch tagType valType then do
                                 addStaticError $ SE.UnmatchingTypes [tagType] valType
                                 return AST.TypeError
-                            else do
-                                return $ AST.CustomType strNm
+                            else
+                                return $ AST.CustomType strNm (-1)
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ strNm
                         return AST.TypeError
-                    
+
                     xd       -> do
-                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>"] (AST.expType _struct))
+                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
                         return AST.TypeError
-    
+
     let structAsg' = structAsg{AST.expType = structType}
-    
+
     return structAsg'
 
 -- Check struct access
@@ -280,44 +271,44 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
 
     -- Get struct name
     let strNm = case AST.expType _struct of
-                    (AST.CustomType s) -> s
+                    (AST.CustomType s _) -> s
                     _ -> "$"
 
     -- Get type of the struct access
-    structType <- if (strNm == "$") 
+    structType <- if strNm == "$"
         then
-            do 
-               addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>"] (AST.expType _struct))
-               return AST.TypeError 
+            do
+               addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
+               return AST.TypeError
         else
-            do 
+            do
 
                 -- Get current state
                 currSt@State{symTable = st} <- RWS.get
-                
+
                 let structSym = ST.findSymbol strNm st
 
                 -- Check if struct symbol exists and it's a struct type.
                 case structSym of
-                    Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> do 
-                        
+                    Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> do
+
                         -- get fields that has name tag
                         let ltag = filter (\(s,t)-> s ==_tag) _fields
 
                         if null ltag then do
                             addStaticError . SE.SymbolNotInScope $ _tag
                             return AST.TypeError
-                        else do
-                            return $ AST.CustomType strNm
+                        else
+                            return $ AST.CustomType strNm (-1)
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ strNm
                         return AST.TypeError
-                    
+
                     xd       -> do
-                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>"] (AST.expType _struct))
+                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
                         return AST.TypeError
-    
+
     let structAcc' = structAcc{AST.expType = structType}
 
     return structAcc'
@@ -331,11 +322,11 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
     -- Check if symbol is a valid function and get its type
     fType <- case mbSym of
         Just sym -> do
-            if (ST.isFunction sym || ST.isProc sym)
-                then if (ST.isFunction sym)
+            if ST.isFunction sym || ST.isProc sym
+                then if ST.isFunction sym
                     then return AST.TUnit
                     else return $ (ST.retType . ST.symType) sym
-                
+
                 else do
                     addStaticError $ SE.NotAValidFunction {
                         SE.symName=_fname,
@@ -348,7 +339,7 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
     -- Get the types the arguments should have
     let argsTypes = case mbSym of
             Just sym -> do
-                if (ST.isFunction sym || ST.isProc sym)
+                if ST.isFunction sym || ST.isProc sym
                     then map AST.argType $ (ST.args . ST.symType) sym
                     else []
             _ -> []
@@ -371,7 +362,7 @@ checkExpr f@AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_
 
 --  Check While
 checkExpr w@AST.While {AST.cond=_cond, AST.cicBody=_cicBody} = do
-    
+
     -- check condition expression is boolean
     _checkTypeMatch'' AST.TBool _cond
 
@@ -399,39 +390,28 @@ checkExpr i@AST.If {AST.cond=_cond, AST.accExpr=_accExpr, AST.failExpr=_failExpr
     return i'
 
 --  Check expression block 
-checkExpr e@AST.ExprBlock {AST.exprs=_exprs} = do
-
-    -- push scope for this block
-    --pushEmptyScope -- body scope
-
-    --M.forM_ _exprs checkExpr
-
-    --popEmptyScope  -- body scope
+checkExpr e@AST.ExprBlock {AST.exprs=_exprs} =
     return e
 
 --  Check return 
-checkExpr r@AST.Return {AST.expr=_expr} = do
-    --checkExpr _expr
+checkExpr r@AST.Return {AST.expr=_expr} =
     return r
 
 --  Check break 
-checkExpr b@AST.Break {AST.expr=_expr} = do
-    --checkExpr _expr
+checkExpr b@AST.Break {AST.expr=_expr} =
     return b
 
 --  Check continue 
-checkExpr c@AST.Continue {AST.expr=_expr} = do
-    --checkExpr _expr
+checkExpr c@AST.Continue {AST.expr=_expr} =
     return c
 
 --  Check Declarations
-checkExpr d@AST.Declaration {AST.decl=_decl} = do
-    --checkDecls _decl
+checkExpr d@AST.Declaration {AST.decl=_decl} =
     return d
 
 --  Check Binary Operation
 checkExpr o@AST.Op2 {AST.op2 =_operator, AST.opr1=_opr1, AST.opr2=_opr2} = do
-    
+
     -- Get expected types for the given operation
     let expecTypes = getOperationTypes _operator
 
@@ -440,11 +420,10 @@ checkExpr o@AST.Op2 {AST.op2 =_operator, AST.opr1=_opr1, AST.opr2=_opr2} = do
     ok2 <- _checkTypeMatch expecTypes _opr2
 
     -- get expression type
-    let opType = if isAritmethic _operator
-        then head $ getCastClass (AST.expType _opr1)
-        else if isMod _operator
-            then AST.TInt
-            else AST.TBool
+    let opType
+          | isAritmethic _operator = head $ getCastClass (AST.expType _opr1)
+          | isMod _operator = AST.TInt
+          | otherwise = AST.TBool
 
     if typeMatch (AST.expType _opr1) (AST.expType _opr2) && ok1 && ok2
     -- Set the expression type
@@ -462,18 +441,18 @@ checkExpr o@AST.Op2 {AST.op2 =_operator, AST.opr1=_opr1, AST.opr2=_opr2} = do
 
 --  Check Unary Operation
 checkExpr o@AST.Op1 {AST.op1=_operator, AST.opr=_opr} = do
-    
+
     -- get expression type and check _opr type
     opType <- case _operator of
 
         AST.UnitOperator -> return AST.TUnit
-        
+
         _                -> do
 
             let expectedTypes = getOPTypes _operator
             ok <- _checkTypeMatch expectedTypes _opr
-            if ok then return (AST.expType _opr) 
-                else return AST.TypeError 
+            if ok then return (AST.expType _opr)
+                else return AST.TypeError
 
     return o{AST.expType = opType}
   where
@@ -482,14 +461,14 @@ checkExpr o@AST.Op1 {AST.op1=_operator, AST.opr=_opr} = do
 
 --  Check Array Literal Expression
 checkExpr a@AST.Array {AST.list=_list} = do
-    
+
     -- Get the type of the first elem
     let t  = (AST.expType . head) _list
-        sz = length _list 
+        sz = length _list
     -- Check all the element have the same type
-        homogeneous = all (\e-> typeMatch t (AST.expType e)) (tail _list)
+        homogeneous = all (typeMatch t . AST.expType) (tail _list)
     -- Set the expression type
-    if (typeMatch t AST.TypeError || not homogeneous)
+    if typeMatch t AST.TypeError || not homogeneous
         then
             return a{AST.expType = AST.TypeError}
         else
@@ -498,107 +477,106 @@ checkExpr a@AST.Array {AST.list=_list} = do
 
 --  Check Union type guessing (return a boolean)
 checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
-    
+
     -- check _union is an union
     -- check that _tag is part of union _union
 
     -- Get union name
     let unionNm = case AST.expType _union of
-                    (AST.CustomType s) -> s
+                    (AST.CustomType s _) -> s
                     _ -> "$"
 
     -- Get type of the union trying
-    unionType <- if (unionNm == "$") 
+    unionType <- if unionNm == "$"
         then
-            do 
-               addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>"] (AST.expType _union))
-               return AST.TypeError 
+            do
+               addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>" (-1)] (AST.expType _union))
+               return AST.TypeError
         else
-            do 
+            do
 
                 -- Get current state
                 currSt@State{symTable = st} <- RWS.get
-                
+
                 let unionSym = ST.findSymbol unionNm st
 
                 -- Check if struct symbol exists and it's a struct type.
                 case unionSym of
-                    Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> do 
-                        
+                    Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> do
+
                         -- get fields that has name tag
                         let ltag = filter (\(s,t)-> s ==_tag) _fields
 
                         if null ltag then do
                             addStaticError . SE.SymbolNotInScope $ _tag
                             return AST.TypeError
-                        else do
-                            return $ AST.TBool
+                        else
+                            return AST.TBool
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ unionNm
                         return AST.TypeError
-                    
+
                     xd       -> do
-                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>"] (AST.expType _union))
+                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>" (-1)] (AST.expType _union))
                         return AST.TypeError
-    
+
     let unionTrying' = unionTrying{AST.expType = unionType}
 
     return unionTrying'
 
 --  Check Union access 
 checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
-    
+
     -- check _union is an union
     -- check that _tag is part of union _union
 
     -- Get union name
     let unionNm = case AST.expType _union of
-                    (AST.CustomType s) -> s
+                    AST.CustomType s _ -> s
                     _ -> "$"
 
     -- Get type of the union trying
-    unionType <- if (unionNm == "$") 
+    unionType <- if unionNm == "$"
         then
-            do 
-               addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>"] (AST.expType _union))
-               return AST.TypeError 
+            do
+               addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>" (-1)] (AST.expType _union))
+               return AST.TypeError
         else
-            do 
+            do
 
                 -- Get current state
                 currSt@State{symTable = st} <- RWS.get
-                
+
                 let unionSym = ST.findSymbol unionNm st
 
                 -- Check if struct symbol exists and it's a struct type.
                 case unionSym of
-                    Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> do 
-                        
+                    Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> do
+
                         -- get fields that has name tag
                         let ltag = filter (\(s,t)-> s ==_tag) _fields
 
                         if null ltag then do
                             addStaticError . SE.SymbolNotInScope $ _tag
                             return AST.TypeError
-                        else do
-                            return $ AST.TBool
+                        else
+                            return AST.TBool
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ unionNm
                         return AST.TypeError
-                    
+
                     xd       -> do
-                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>"] (AST.expType _union))
+                        addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>" (-1)] (AST.expType _union))
                         return AST.TypeError
-    
+
     let unionUsing' = unionUsing{AST.expType = unionType}
 
     return unionUsing'
 
 --  Check New Expression
-checkExpr n@AST.New {AST.typeName=_type} = do
-    -- Set the type of the new expression
+checkExpr n@AST.New {AST.typeName=_type} =
     if typeMatch _type AST.TypeError
         then
             return n{AST.expType = AST.TypeError }
@@ -610,10 +588,10 @@ checkExpr d@AST.Delete {AST.ptrExpr=_ptrExpr} = do
     --check that _ptrExpr is a pointer
     case AST.expType _ptrExpr of
         AST.TPtr t -> case t of
-            AST.TypeError -> 
+            AST.TypeError ->
                 addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] t
             _             -> return ()
-        t -> addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] t 
+        t -> addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] t
 
     return d
 
@@ -638,24 +616,24 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
 
     -- Check struct name of literal struct
     mbSym <- checkSymbolDefined _structName
-    
+
     -- Check if symbol is a valid struct name 
     cStructType <- case mbSym of
         Just sym -> do
-            if (not $ ST.isStruct sym) 
-                then do 
+            if not $ ST.isStruct sym
+                then do
                     addStaticError $ SE.NotAValidStruct {
                         SE.symName=_structName,
                         SE.actualSymType=ST.symType sym
                     }
                     return AST.TypeError
-                else do
-                    return $ AST.CustomType _structName
+                else
+                    return $ AST.CustomType _structName (-1)
 
-        _ -> return AST.TypeError 
+        _ -> return AST.TypeError
 
     let fieldsTypes = case mbSym of
-            Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> 
+            Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} ->
                 map snd _fields
             _ -> []
 
@@ -665,7 +643,7 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
     let cStructType' = if expListOk
         then cStructType
         else AST.TypeError
-    
+
         c' = c{AST.expType = cStructType'}
 
     return c'
@@ -679,30 +657,30 @@ checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=
      -- Check if symbol is a valid union name 
     cUnionType <- case mbSym of
         Just sym -> do
-            if (not $ ST.isUnion sym)
+            if not $ ST.isUnion sym
                 then do
                     addStaticError $ SE.NotAValidUnion {
                         SE.symName=_unionName,
                         SE.actualSymType=ST.symType sym
                     }
                     return AST.TypeError
-                else do
-                    return $ AST.CustomType _unionName
+                else
+                    return $ AST.CustomType _unionName (-1)
 
         _ -> return AST.TypeError
 
     let tagType = case mbSym of
-            Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> 
-                (map snd) $ filter (\(str,t)->str==_tag) _fields
+            Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} ->
+                map snd $ filter (\(str,t)->str==_tag) _fields
             _ -> []
 
     -- Check that the types in _list match
     tagTypeOk <- _checkTypeMatch' (concatMap getCastClass tagType) (AST.expType _value)
 
-    let cUnionType' = if tagTypeOk && (not $ null tagType)
+    let cUnionType' = if tagTypeOk && not (null tagType)
         then cUnionType
         else AST.TypeError
-    
+
         c' = c{AST.expType = cUnionType'}
 
     return c'
@@ -725,7 +703,7 @@ checkType t@AST.CustomType {AST.tName=_tName} = do -- When it is a custom type
         Nothing -> do
             addStaticError $ SE.SymbolNotInScope { SE.symName=_tName}
             return AST.TypeError
-        _  -> do 
+        _  -> do
             addStaticError $ SE.NotValidType{SE.nonTypeName = _tName}
             return AST.TypeError
 
@@ -734,7 +712,7 @@ checkType arrType@(AST.TArray t sz) = do
 
     -- check type of array elements
     -- checkType t
-    
+
     -- check that size of array is int
     let sizeType = AST.expType sz
 
@@ -742,12 +720,10 @@ checkType arrType@(AST.TArray t sz) = do
         AST.TInt -> return arrType
         _ -> return AST.TypeError
 
-checkType ptr@(AST.TPtr t) = do
-    -- checkType t
+checkType ptr@(AST.TPtr t) =
     return ptr
 
-checkType ref@(AST.TReference t) = do
-    --checkType t
+checkType ref@(AST.TReference t) =
     return ref
 
 checkType x = return x
@@ -762,13 +738,13 @@ declToSym decl = ST.Symbol {
                 }
     where
         declToSymType :: AST.Declaration -> ST.SymType
-        declToSymType AST.Variable {AST.decName = _, AST.varType=_varType, AST.initVal=_initVal, AST.isConst=_isConst} = 
+        declToSymType AST.Variable {AST.decName = _, AST.varType=_varType, AST.initVal=_initVal, AST.isConst=_isConst} =
             ST.Variable {
-                ST.varType=_varType, 
-                ST.initVal=_initVal, 
+                ST.varType=_varType,
+                ST.initVal=_initVal,
                 ST.isConst=_isConst
             }
-            
+
         declToSymType AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=AST.TypeError, ST.refScope=0}
 
 
@@ -795,7 +771,7 @@ tryAddSymbol s@ST.Symbol {ST.identifier=_identifier} = do
 
 -- | Update a symbol with a new one 
 updateSymbol :: ST.Symbol -> ParserState ()
-updateSymbol sym = do 
+updateSymbol sym = do
     currSt@State{symTable=st} <- RWS.get
     let newSymTable = ST.updateSymbol sym st
     RWS.put currSt{symTable=newSymTable}
@@ -840,16 +816,16 @@ checkIdIsVarOrReference name = do -- Check that given name is a valid one and it
         _        -> return ()
 
 -- | Return type of given id if a valid variable or reference, return typerrror if none of them
-getTypeOfId :: U.Name -> ParserState AST.Type 
-getTypeOfId name = do 
+getTypeOfId :: U.Name -> ParserState AST.Type
+getTypeOfId name = do
     st@State{symTable = symTb} <- RWS.get
 
-    case ST.findSymbol name symTb of 
+    case ST.findSymbol name symTb of
         Just ST.Symbol { ST.symType=ST.Variable {ST.varType=_varType} } -> return _varType
         Just ST.Symbol { ST.symType=ST.Reference { ST.refType=_refType } } -> return _refType
-        _ -> return AST.TypeError 
+        _ -> return AST.TypeError
 
-    
+
 getOperationTypes :: AST.Opr2 -> [AST.Type]
 getOperationTypes AST.Sum = [AST.TFloat, AST.TInt]
 getOperationTypes AST.Sub = [AST.TFloat, AST.TInt]
@@ -870,7 +846,7 @@ getOperationTypes AST.Or = [AST.TBool]
 
 -- Check if two types match
 typeMatch :: AST.Type -> AST.Type -> Bool
-typeMatch t1 t2 = t2 `elem` (getCastClass t1)
+typeMatch t1 t2 = t2 `elem` getCastClass t1
 
 -- return the list of cast-able types with each other
 -- that contains the given type
@@ -886,12 +862,11 @@ checkExprList ts = _checkTypeMatchesArgs (map getCastClass ts)
 
 -- | Check if a given expr typematchs an expected set of types, and report error if they don't
 _checkTypeMatch :: [AST.Type] -> AST.Expr -> ParserState Bool
-_checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType  
+_checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType
 
 -- | Check if a given type matches some of the expected ones 
 _checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
-_checkTypeMatch' expected exprType = do
-    -- Check if current type matches one of expected types
+_checkTypeMatch' expected exprType =
     case exprType of
         AST.TypeError -> return False
         t             -> if t `elem` expected
