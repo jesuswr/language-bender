@@ -60,17 +60,55 @@ preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_ret
     -- try to add function symbol 
     tryAddSymbol symbol                
 
+preCheckDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
+
+    --  Create symbol 
+    let symbol = declToSym s
+
+    -- check if add symbol is possible 
+    tryAddSymbol symbol
+
+
+preCheckDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
+
+    --  Create symbol type
+    let symbol = declToSym u
+
+    -- check if add symbol is possible 
+    tryAddSymbol symbol
+
+
+preCheckFunArg :: AST.FuncArg -> ParserState AST.FuncArg
+preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
+    let sym = ST.Symbol {
+            ST.identifier=_argName,
+            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
+            ST.scope=0,
+            ST.enrtyType=Nothing
+        }
+    --M.when (isJust _defaultVal) $ _checkTypeMatch'' _argType (fromMaybe _defaultVal)
+    tryAddSymbol sym
+    return arg
+
 -- --------------------------------------------------------------------
 -- >> Parser ---------------------------------------------------------
 
 checkFunArg :: AST.FuncArg -> ParserState AST.FuncArg
-checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = let sym = ST.Symbol {
-                                                        ST.identifier=_argName,
-                                                        ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
-                                                        ST.scope=0,
-                                                        ST.enrtyType=Nothing
-                                                    }
-                                            in tryAddSymbol sym >> return arg
+checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
+    
+    let sym = ST.Symbol {
+            ST.identifier=_argName,
+            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
+            ST.scope=0,
+            ST.enrtyType=Nothing
+        }
+
+    M.when (isJust _defaultVal) $ do 
+        _checkTypeMatch'' _argType (fromMaybe (AST.ConstUnit AST.TUnit) _defaultVal)
+        return ()
+
+    updateSymbol sym
+    return arg
 
 checkField :: [(String, AST.Type)] -> ParserState [(String, AST.Type)]
 checkField l@((nm, t):fields) = do
@@ -143,29 +181,22 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
 -- Check union definition 
 checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
 
-    -- Create new symbol 
-    --  Check that all types are valid 
-    -- M.forM_ (map snd _fields) checkType
-
     --  Create symbol type
     let symbol = declToSym u
 
     -- check if add symbol is possible 
-    tryAddSymbol symbol
+    updateSymbol symbol
 
     return u
 
 -- Check Struct definition 
 checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 
-    --  Check that all types are valid (are defined)
-    --M.forM_ (map snd _fields) checkType
-
     --  Create symbol 
     let symbol = declToSym s
 
     -- check if add symbol is possible 
-    tryAddSymbol symbol
+    updateSymbol symbol
 
     return s
 

@@ -134,200 +134,206 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 -- Grammar
 
 -- Source Symbol
-Program         -- :: { AST.Program }
-    : Declarations                                      { }
+Program        
+    : Declarations                                                                       { }
 
 -- Program as declaration list
-Declarations    -- :: { [AST.Declaration] }
-    : Declaration dot                                   { }
-    | Declarations Declaration dot                      { }
+Declarations   
+    : Declaration dot                                                                    { }
+    | Declarations Declaration dot                                                       { }
 
-Declaration    -- :: { () }--{ AST.Declaration }
-    : element id compoundBy StructIdDecls               { }
-    | energy id allows UnionIdDecls                     { }
-    | VarDecl                                           { }
-    | FuncDecl                                          { }
-    | ProcDecl                                          { }
+Declaration     :: { () } 
+    : element id compoundBy PushScope StructIdDecls PopScope                             {% M.void . P.preCheckDecls $ AST.Struct ((TK.name . TK.tktype) $2) [] }
+    | energy id allows PushScope UnionIdDecls PopScope                                   {% M.void . P.preCheckDecls $ AST.Union  ((TK.name . TK.tktype) $2) [] }
+    | VarDecl                                                                            { () }
+    | FuncDecl                                                                           { () }
+    | ProcDecl                                                                           { () }
 
-ProcDecl        :: { () }-- { AST.Declaration }
-    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
-    | travel id PushScope colon PushScope Exprs PopScope PopScope                             {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
+ProcDecl        :: { () }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope         {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
+    | travel id PushScope colon PushScope Exprs PopScope PopScope                        {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
 
-FuncDecl        :: { () }-- { AST.Declaration }
-    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope        {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 (AST.ConstUnit AST.TUnit) }
-    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                      {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 (AST.ConstUnit AST.TUnit) }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope                {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
-    | book id PushScope colon PushScope Exprs PopScope PopScope                              {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
+FuncDecl        :: { () }
+    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope    {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 (AST.ConstUnit AST.TUnit) }
+    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                  {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 (AST.ConstUnit AST.TUnit) }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
+    | book id PushScope colon PushScope Exprs PopScope PopScope                          {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
 
 FuncArg         :: { [AST.FuncArg] }
-    : FuncDefArgDecl                                    { $1 }
-    | FuncArgDecl                                       { $1 }
-    | FuncArgDecl comma FuncDefArgDecl                  { ($3 ++ $1) }
+    : FuncDefArgDecl                                                                     { $1 }
+    | FuncArgDecl                                                                        { $1 }
+    | FuncArgDecl comma FuncDefArgDecl                                                   { ($3 ++ $1) }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
-    : Type bender id Assign                             { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Nothing)] }
-    | Type '&' bender id Assign                         { [AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) (Nothing)] }
-    | FuncDefArgDecl comma Type bender id Assign        { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Nothing)):$1 }
-    | FuncDefArgDecl comma Type '&' bender id Assign    { (AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Nothing)):$1 }
+    : SingleDefArgDecl                                                                   { [$1] }
+    | FuncDefArgDecl comma Type bender id Assign                                         {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing) >>= (return . (:$1)) }
+    | FuncDefArgDecl comma Type '&' bender id Assign                                     {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing) >>= (return . (:$1)) }
 
-FuncArgDecl     :: { [AST.FuncArg] }                    
-    : Type bender id                                    { [AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing] }
-    | Type '&' bender id                                { [AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing] }
-    | FuncArgDecl comma Type bender id                  { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing):$1 }
-    | FuncArgDecl comma Type '&' bender id              { (AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing):$1 }
+SingleDefArgDecl :: { AST.FuncArg }
+    : Type bender id Assign                                                              {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing }
+    | Type '&' bender id Assign                                                          {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing }
 
-StructIdDecls   -- :: { [(String, AST.Type)] }
-    : id skillOf Type                                   {}-- { [(((TK.name . TK.tktype) $1), $3)] }
-    | StructIdDecls comma id skillOf Type               {}-- { (((TK.name . TK.tktype) $3), $5):$1 }
+FuncArgDecl     :: { [AST.FuncArg] }
+    : SingleFuncArgDecl                                                                  { [$1] }
+    | FuncArgDecl comma Type bender id                                                   {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing) >>= (return . (:$1)) }
+    | FuncArgDecl comma Type '&' bender id                                               {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing) >>= (return . (:$1)) }
 
-UnionIdDecls    -- :: { [(String, AST.Type)] }
-    : id techniqueOf Type bending                       {}-- { [(((TK.name . TK.tktype) $1), $3)] }
-    | UnionIdDecls comma id techniqueOf Type bending    {}-- { (((TK.name . TK.tktype) $3), $5):$1 }
+SingleFuncArgDecl :: { AST.FuncArg }
+    : Type bender id                                                                     {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing }
+    | Type '&' bender id                                                                 {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing }
 
-VarDecl         -- ::{ () }--{ AST.Declaration }
-    : bender id of Type                                 {}-- {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) (Just $4) Nothing False }
-    | bender id of Type Assign                          {}-- {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) (Just $4) (Just $5) False }
-    | bender id Assign                                  {}-- {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) Nothing (Just $3) False }
-    | eternal bender id of Type Assign                  {}-- {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) (Just $5) (Just $6) True }
-    | eternal bender id Assign                          {}-- {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) Nothing (Just $4) True }
-    | bender id is reincarnationOf id                   {}-- {% P.checkDecls $ AST.Reference ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $5) }
+StructIdDecls   
+    : id skillOf Type                                                                    {}
+    | StructIdDecls comma id skillOf Type                                                {}
+
+UnionIdDecls    
+    : id techniqueOf Type bending                                                        {}
+    | UnionIdDecls comma id techniqueOf Type bending                                     {}
+
+VarDecl         
+    : bender id of Type                                                                  {}
+    | bender id of Type Assign                                                           {} 
+    | bender id Assign                                                                   {}
+    | eternal bender id of Type Assign                                                   {} 
+    | eternal bender id Assign                                                           {}
+    | bender id is reincarnationOf id                                                    {}
     
 
     -- >> Expressions --------------------------------------------------------------------------
 
-Expr            --:: { AST.Expr }  
-    : '(' Expr ')'                                      {}-- { $2 }
-    | id                                                {}-- { AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) }
-    | ExprBlock                                         {}-- { $1 }
-    | id Assign                                         {}-- { AST.Assign ((TK.name . TK.tktype) $1) $2 }
+Expr           
+    : '(' Expr ')'                                                                       {}
+    | id                                                                                 {}
+    | ExprBlock                                                                          {}
+    | id Assign                                                                          {}
     
-    | Expr quotmark_s id Assign                         {}-- { AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 }
-    | using Expr quotmark_s id skill                    {}-- { AST.StructAccess $2 ((TK.name . TK.tktype) $4) }
+    | Expr quotmark_s id Assign                                                          {}
+    | using Expr quotmark_s id skill                                                     {}
     | learning id control using
-        ExprList rightNow                               {}-- { AST.ConstStruct ((TK.name . TK.tktype) $2) (reverse $5) }
+        ExprList rightNow                                                                {}
     
-    | trying Expr quotmark_s id technique               {}-- { AST.UnionTrying $2 ((TK.name . TK.tktype) $4) }
-    | using Expr quotmark_s id technique                {}-- { AST.UnionUsing $2 ((TK.name . TK.tktype) $4) }
+    | trying Expr quotmark_s id technique                                                {}
+    | using Expr quotmark_s id technique                                                 {}
     | learning id quotmark_s id 
-        techniqueFrom Expr                              {}-- { AST.ConstUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6}
+        techniqueFrom Expr                                                               {}
     
     | opening Expr of id chakrasFrom 
-        Expr to Expr colon PushScope PushScope Expr PopScope PopScope       {}-- { AST.For ((TK.name . TK.tktype) $4) $2 $6 $8 $10 }
-    | while Expr doing colon PushScope Expr PopScope              {}-- { AST.While $2 $5 }
-    | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope   {}-- { AST.If $2 $4 $6 }
-    | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope             {}-- { AST.If $2 $4 $6 }
-    | if  Expr colon PushScope Expr PopScope                              {}-- { AST.If $2 $4 AST.(AST.ConstUnit AST.TUnit) }
-    | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope     {}-- { AST.If $2 $5 $7 }
-    | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope  {}-- { AST.If $2 $5 $7 }
-    | if  Expr dot colon PushScope Expr PopScope                          {}-- { AST.If $2 $5 AST.(AST.ConstUnit AST.TUnit) }
+        Expr to Expr colon PushScope PushScope Expr PopScope PopScope                    {}
+    | while Expr doing colon PushScope Expr PopScope                                     {}
+    | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope           {}
+    | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope        {}
+    | if  Expr colon PushScope Expr PopScope                                             {}
+    | if  Expr dot colon PushScope Expr PopScope otherwise PushScope Expr PopScope       {}
+    | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope    {}
+    | if  Expr dot colon PushScope Expr PopScope                                         {}
    
-    | in id bookWith ExprList elipsis                   {}-- { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
-    | in id bookWith elipsis                            {}-- { AST.FunCall ((TK.name . TK.tktype) $2) [] }
-    | id bookWith ExprList elipsis                      {}-- { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) }
-    | id bookWith elipsis                               {}-- { AST.FunCall ((TK.name . TK.tktype) $1) [] }
+    | in id bookWith ExprList elipsis                                                    {}
+    | in id bookWith elipsis                                                             {}
+    | id bookWith ExprList elipsis                                                       {}
+    | id bookWith elipsis                                                                {} 
 
-    | in id travelWith ExprList elipsis                 {}-- { AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) }
-    | in id travelWith elipsis                          {}-- { AST.FunCall ((TK.name . TK.tktype) $2) [] }
-    | id travelWith ExprList elipsis                    {}-- { AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) }
-    | id travelWith elipsis                             {}-- { AST.FunCall ((TK.name . TK.tktype) $1) [] }
+    | in id travelWith ExprList elipsis                                                  {}
+    | in id travelWith elipsis                                                           {} 
+    | id travelWith ExprList elipsis                                                     {}
+    | id travelWith elipsis                                                              {} 
 
-    | born Type member                                  {}-- { AST.New $2 }
-    | Expr died                                         {}-- { AST.Delete $1 }
-    | disciple Expr of Expr                             {}-- { AST.ArrayIndexing $2 $4 }
-    | masterOf ExprList rightNow                        {}-- { AST.Array (reverse $2) }
+    | born Type member                                                                   {}
+    | Expr died                                                                          {}
+    | disciple Expr of Expr                                                              {}
+    | masterOf ExprList rightNow                                                         {} 
 
     -- >> Const Values --------------------------------------------------------------------------------
-    | int                                               {}-- { AST.ConstInt $1 }
-    | float                                             {}-- { AST.ConstFloat $1 }
-    | true                                              {}-- { AST.ConstTrue }
-    | false                                             {}-- { AST.ConstFalse }
-    | char                                              {}-- { AST.ConstChar $1 }
-    | string                                            {}-- { AST.ConstString $1 }
-    | null                                              {}-- { AST.ConstNull }
+    | int                                                                                {} 
+    | float                                                                              {}
+    | true                                                                               {}
+    | false                                                                              {}
+    | char                                                                               {}
+    | string                                                                             {}
+    | null                                                                               {}
 
     -- >> Binary Expressions --------------------------------------------------------------------------
 
-    | Expr '+' Expr                                     {}-- { AST.Op2 AST.Sum $1 $3 }
-    | Expr '-' Expr                                     {}-- { AST.Op2 AST.Sub $1 $3 }
-    | Expr '*' Expr                                     {}-- { AST.Op2 AST.Mult $1 $3 }
-    | Expr '/' Expr                                     {}-- { AST.Op2 AST.Div $1 $3 }
-    | Expr '%' Expr                                     {}-- { AST.Op2 AST.Mod $1 $3 }
-    | Expr '<' Expr                                     {}-- { AST.Op2 AST.Lt $1 $3 }
-    | Expr '<=' Expr                                    {}-- { AST.Op2 AST.LtEq $1 $3 }
-    | Expr '>' Expr                                     {}-- { AST.Op2 AST.Gt $1 $3 }
-    | Expr '>=' Expr                                    {}-- { AST.Op2 AST.GtEq $1 $3 }
-    | Expr '==' Expr                                    {}-- { AST.Op2 AST.Eq $1 $3 }
-    | Expr '!=' Expr                                    {}-- { AST.Op2 AST.NotEq $1 $3 }
-    | Expr and Expr                                     {}-- { AST.Op2 AST.And $1 $3 }
-    | Expr or Expr                                      {}-- { AST.Op2 AST.Or $1 $3 }
+    | Expr '+' Expr                                                                      {}
+    | Expr '-' Expr                                                                      {}
+    | Expr '*' Expr                                                                      {}
+    | Expr '/' Expr                                                                      {}
+    | Expr '%' Expr                                                                      {}
+    | Expr '<' Expr                                                                      {}
+    | Expr '<=' Expr                                                                     {}
+    | Expr '>' Expr                                                                      {}
+    | Expr '>=' Expr                                                                     {}
+    | Expr '==' Expr                                                                     {}
+    | Expr '!=' Expr                                                                     {}
+    | Expr and Expr                                                                      {}
+    | Expr or Expr                                                                       {}
 
     -- >> Unary Expressions ------------------------------------------------------------------------------
-    | not Expr                                          {}-- { AST.Op1 AST.Negation $2 }
-    | '-' Expr %prec NEG                                {}-- { AST.Op1 AST.Negative $2 }
-    | Expr unit                                         {}-- { AST.Op1 AST.UnitOperator $1 }
+    | not Expr                                                                           {}
+    | '-' Expr %prec NEG                                                                 {}
+    | Expr unit                                                                          {}
 
     -- >> Control Flow -----------------------------------------------------------------------------------
-    | toBeContinued Expr                                {}-- { AST.Continue  $2 }
-    | burst Expr                                        {}-- { AST.Break     $2 }
-    | return Expr                                       {}-- { AST.Return    $2 }
-    | toBeContinuedUnit                                 {}-- { AST.Continue  AST.(AST.ConstUnit AST.TUnit) }
-    | burstUnit                                         {}-- { AST.Break     AST.(AST.ConstUnit AST.TUnit) }
-    | returnUnit                                        {}-- { AST.Return    AST.(AST.ConstUnit AST.TUnit) }
+    | toBeContinued Expr                                                                 {}
+    | burst Expr                                                                         {}
+    | return Expr                                                                        {}
+    | toBeContinuedUnit                                                                  {}
+    | burstUnit                                                                          {}
+    | returnUnit                                                                         {}
     
     -- >> Evaluable and none evaluable expressions > -----------------------------------------------------
-Exprs           --::  { AST.Expr }
-    : Expr                                              {}-- { $1 }
-    | Declaration                                       {}-- { AST.Declaration $1 } 
+Exprs         
+    : Expr                                                                               {}
+    | Declaration                                                                        {}
 
     -- >> Assigment ---------------------------------------------------------------------------------------
-Assign          --:: { AST.Expr }
-    : is Expr                                           {}-- { $2 } 
+Assign          
+    : is Expr                                                                            {} 
 
 
 -- < Expression block Grammar > --------------------------------------------------------------------------  
-ExprBlock       --::  { AST.Expr }
-    : beginBlock PushScope ExprSeq PopScope endBlock    {}
-    | beginBlock PushScope PopScope endBlock            {}
+ExprBlock      
+    : beginBlock PushScope ExprSeq PopScope endBlock                                     {}
+    | beginBlock PushScope PopScope endBlock                                             {}
 
-ExprSeq         --::  { [AST.Expr] }
-    : LastInBlock                                       {}-- { [$1] }
-    | Seq LastInBlock                                   {}-- { $2:$1 }
+ExprSeq         
+    : LastInBlock                                                                        {}
+    | Seq LastInBlock                                                                    {}
 
-Seq             --:: { [AST.Expr] }
-    : Exprs Dots                                        {}-- { [$1] }
-    | Seq Exprs Dots                                    {}-- { $2:$1 }
-    | Dots                                              {}-- { [] }
+Seq             
+    : Exprs Dots                                                                         {}
+    | Seq Exprs Dots                                                                     {}
+    | Dots                                                                               {}
     
-LastInBlock     --:: { AST.Expr }
-    : Exprs                                             {}-- { $1 }
-    | Exprs Dots                                        {}-- { $1 }
+LastInBlock    
+    : Exprs                                                                              {}
+    | Exprs Dots                                                                         {}
 
-Dots            --:: { [AST.Expr] }
-    : dot                                               {}-- { [] }
-    | Dots dot                                          {}-- { [] }
+Dots 
+    : dot                                                                                {}
+    | Dots dot                                                                           {}
 
-ExprList        -- {}-- :: { [AST.Expr] }
-    : Expr                                              {}-- { [$1] }
-    | ExprList comma Expr                               {}-- { $3:$1 }
+ExprList
+    : Expr                                                                               {}
+    | ExprList comma Expr                                                                {}
 
     -- >> Types -------------------------------------------------------------------------------------
 Type            :: { AST.Type }
-    : water                                             { AST.TFloat }
-    | air                                               { AST.TInt }
-    | earth                                             { AST.TChar }
-    | metal                                             { AST.TString }   
-    | fire                                              { AST.TBool }
-    | id                                                { AST.CustomType ((TK.name . TK.tktype) $1) }
-    | Type nation Expr year                             { AST.TArray $1 (AST.ConstInt 0 AST.TInt)}
-    | Type art                                          { AST.TPtr $1 }
+    : water                                                                              { AST.TFloat }
+    | air                                                                                { AST.TInt }
+    | earth                                                                              { AST.TChar }
+    | metal                                                                              { AST.TString }   
+    | fire                                                                               { AST.TBool }
+    | id                                                                                 {% P.checkType $  AST.CustomType ((TK.name . TK.tktype) $1) }
+    | Type nation Expr year                                                              {% P.checkType $  AST.TArray $1 (AST.ConstInt 0 AST.TInt)}
+    | Type art                                                                           { AST.TPtr $1 }
 
     -- >> Auxiliar Rules ----------------------------------------------------------------------------
 
 PushScope 
-    : {- empty -}                                       {% P.pushEmptyScope }
+    : {- empty -}                                                                        {% P.pushEmptyScope }
 
 PopScope
-    : {- empty -}                                       {% P.popEmptyScope }
+    : {- empty -}                                                                        {% P.popEmptyScope }
 
 {
 
