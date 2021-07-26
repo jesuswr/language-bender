@@ -333,7 +333,12 @@ book fibonacci of air about air bender n:
 
 -- book bebe: 4.
 
--- element solazo is compound by calor skill of nada, calor skill of air.
+element solazo is compound by caloron skill of water, calor skill of air.
+
+book args:
+.-
+	learning solazo control using 2.3 right now.
+-.
 
 -- element solazo2 is compound by calor skill of nada, calor skill of air.
 

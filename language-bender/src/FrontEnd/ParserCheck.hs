@@ -80,14 +80,16 @@ preCheckDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
 
 preCheckFunArg :: AST.FuncArg -> ParserState AST.FuncArg
 preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
+    
     let sym = ST.Symbol {
             ST.identifier=_argName,
             ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
             ST.scope=0,
             ST.enrtyType=Nothing
         }
-    --M.when (isJust _defaultVal) $ _checkTypeMatch'' _argType (fromMaybe _defaultVal)
+    
     tryAddSymbol sym
+
     return arg
 
 -- --------------------------------------------------------------------
@@ -377,12 +379,34 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
         _ -> return AST.TypeError
 
     -- Get the types the arguments should have
-    let argsTypes = case mbSym of
+    let args = case mbSym of
             Just sym -> do
                 if (ST.isFunction sym || ST.isProc sym)
-                    then map AST.argType $ (ST.args . ST.symType) sym
+                    then (ST.args . ST.symType) sym
                     else []
             _ -> []
+
+        argsTypes = map AST.argType args
+
+        maxNumOfArgs = length argsTypes
+
+        minNumOfArgs = length . filter (isJust . AST.defaultVal) $ args
+
+        numberOfArgs = length _actualArgs
+
+    M.when (numberOfArgs > maxNumOfArgs) $ do
+        addStaticError SE.TooManyArguments{
+            SE.refTo = _fname,
+            SE.expectedNumOfArgs=maxNumOfArgs, 
+            SE.actualNumOfArgs=numberOfArgs
+        }
+
+    M.when (numberOfArgs < minNumOfArgs) $ do
+        addStaticError SE.FewArguments{
+            SE.refTo = _fname,
+            SE.expectedNumOfArgs=maxNumOfArgs, 
+            SE.actualNumOfArgs=numberOfArgs
+        }
 
     -- Check that the types in _actualArgs match
     checkExprList argsTypes _actualArgs
@@ -685,10 +709,28 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
 
         _ -> return AST.TypeError 
 
+    -- get fields types
     let fieldsTypes = case mbSym of
             Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> 
                 map snd _fields
             _ -> []
+
+        expNumOfArgs = length fieldsTypes
+        actNumOfArgs = length _list
+
+    M.when (actNumOfArgs > expNumOfArgs) $ do
+        addStaticError SE.TooManyArguments{
+            SE.refTo = _structName,
+            SE.expectedNumOfArgs=expNumOfArgs, 
+            SE.actualNumOfArgs=actNumOfArgs
+        }
+
+    M.when (actNumOfArgs < expNumOfArgs) $ do
+        addStaticError SE.FewArguments{
+            SE.refTo = _structName,
+            SE.expectedNumOfArgs=expNumOfArgs, 
+            SE.actualNumOfArgs=actNumOfArgs
+        }
 
     -- Check that the types in _list match
     expListOk <- checkExprList fieldsTypes _list

@@ -10,20 +10,22 @@ import qualified FrontEnd.Tokens    as T
 
 -- | Static Analysis Errors
 data StaticError = SymbolNotInScope         { symName :: U.Name } 
-                 | SymbolRedefinition       {symName :: U.Name} 
+                 | SymbolRedefinition       { symName :: U.Name } 
                  | ReferencingNonVariable   { symName :: U.Name } 
                  | NotValidType             { nonTypeName :: U.Name }
                  | NotAValidVariable        { symName :: U.Name, actualSymType :: ST.SymType }
-                 | NotAValidFunction        { symName :: U.Name, actualSymType :: ST.SymType  }
+                 | NotAValidFunction        { symName :: U.Name, actualSymType :: ST.SymType }
                  | NotAValidStruct          { symName :: U.Name, actualSymType :: ST.SymType }
                  | NotAValidUnion           { symName :: U.Name, actualSymType :: ST.SymType }
                  | NonArrayExpr             { actualType :: AST.Type }
-                 | DuplicateNamesInCompound { symName :: U.Name  }
+                 | DuplicateNamesInCompound { symName :: U.Name }
                  | UnexpectedEOF
                  | ParseError               { remStream :: [T.Token] }
                  | UnmatchingTypes          { expectedTypes :: [AST.Type], actualType :: AST.Type }
                  | AssignToConst            { symName :: U.Name  } -- you can't assign to const initialized variables
 --                 | TypeError {typeError :: TypeError}
+                 | FewArguments             { refTo :: U.Name, expectedNumOfArgs :: Int, actualNumOfArgs :: Int }
+                 | TooManyArguments         { refTo :: U.Name, expectedNumOfArgs :: Int, actualNumOfArgs :: Int }
                  deriving(Eq, Show)  
 
 
