@@ -35,7 +35,6 @@ data SymType
     | Type          { unType :: AST.Type}
     | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
     | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
-    | Array         { arrType :: AST.Type, arrSize :: Int } -- necesario?? creo que no
     | StructType    { fields :: [(U.Name, AST.Type)] }
     | UnionType     { fields :: [(U.Name, AST.Type)] }
     | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int }
