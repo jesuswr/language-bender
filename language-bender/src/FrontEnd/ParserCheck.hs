@@ -668,7 +668,7 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
                             addStaticError . SE.SymbolNotInScope $ _tag
                             return AST.TypeError
                         else
-                            return $ AST.CustomType unionNm scope
+                            return . snd . head $ ltag 
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ unionNm
