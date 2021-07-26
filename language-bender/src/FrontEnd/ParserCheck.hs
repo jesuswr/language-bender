@@ -23,10 +23,10 @@ type ErrorLog = [SE.StaticError]
 type ParserState = RWS.RWST () ErrorLog ParsingState IO
 
 -- | State of current analysis 
-data ParsingState = 
-    State 
+data ParsingState =
+    State
     { symTable :: ST.SymTable
-    , expectedTypeStack :: [AST.Type] 
+    , expectedTypeStack :: [AST.Type]
     } deriving(Eq, Show)
 
 -- -------------------------------------------------------------------
@@ -40,7 +40,7 @@ addStaticError :: SE.StaticError -> ParserState ()
 addStaticError e = RWS.tell [e]
 
 -- | Get Current Scope
-getScope :: ParserState ST.Scope 
+getScope :: ParserState ST.Scope
 getScope = RWS.get <&> (ST.stCurrScope . symTable)
 
 -- | Try to get a type from a name, return type error if not possible with the current state
@@ -49,23 +49,21 @@ getCustomType sid = do
     st@State{symTable = symTb} <- RWS.get  -- get current symbol table
 
     let foundType = ST.findSymbol sid symTb
-    
-    retType <- case foundType of 
-                    Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.UnionType {}} -> return $ AST.CustomType sid $ ST.scope s
-                    Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.StructType {}} -> return $ AST.CustomType sid $ ST.scope s
-                    Nothing -> do
-                        addStaticError $ SE.SymbolNotInScope{SE.symName=sid}
-                        return AST.TypeError
-                    _  -> do
-                        addStaticError $ SE.NotValidType{SE.nonTypeName = sid}
-                        return AST.TypeError
 
-    return retType
+    case foundType of
+         Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.UnionType {}} -> return $ AST.CustomType sid $ ST.scope s
+         Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.StructType {}} -> return $ AST.CustomType sid $ ST.scope s
+         Nothing -> do
+             addStaticError $ SE.SymbolNotInScope{SE.symName=sid}
+             return AST.TypeError
+         _  -> do
+             addStaticError $ SE.NotValidType{SE.nonTypeName = sid}
+             return AST.TypeError
 
 -- | Add this type to the stack of expected types
 pushType :: AST.Type -> ParserState ()
 pushType t = do
-    s@State{expectedTypeStack = stk} <- RWS.get 
+    s@State{expectedTypeStack = stk} <- RWS.get
     RWS.put s{expectedTypeStack = t:stk}
 
 -- | Pop type from top of stack 
@@ -73,7 +71,7 @@ popType :: ParserState ()
 popType = do
     s@State{expectedTypeStack = stk} <- RWS.get
 
-    case stk of 
+    case stk of
             [s]  -> return ()
             t:ts -> RWS.put s{expectedTypeStack=ts}
             _ -> error "Error in ParserState: Inconsistent state, stack of expected types should not be empty"
@@ -81,11 +79,12 @@ popType = do
 -- | Replace type at the top of the stack with a new one
 replaceType :: AST.Type -> ParserState ()
 replaceType newType = do
-    s@State{expectedTypeStack=stk} <- RWS.get 
+    s@State{expectedTypeStack=stk} <- RWS.get
 
     case stk of
         [s] -> error "Error in ParserState: You shouldn't be replacing base expected type"
-        t:ts -> RWS.put s{expectedTypeStack=newType:ts}
+        AST.TVoid:ts -> RWS.put s{expectedTypeStack=newType:ts}
+        _ -> return ()
 
 -- | Get top of the type stack 
 topType :: ParserState AST.Type
@@ -124,14 +123,14 @@ preCheckDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
 
 preCheckFunArg :: AST.FuncArg -> ParserState AST.FuncArg
 preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
-    
+
     let sym = ST.Symbol {
             ST.identifier=_argName,
             ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
             ST.scope=0,
             ST.enrtyType=Nothing
         }
-    
+
     tryAddSymbol sym
 
     return arg
@@ -141,7 +140,7 @@ preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
 
 checkFunArg :: AST.FuncArg -> ParserState AST.FuncArg
 checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
-    
+
     let sym = ST.Symbol {
             ST.identifier=_argName,
             ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
@@ -149,7 +148,7 @@ checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
             ST.enrtyType=Nothing
         }
 
-    M.when (isJust _defaultVal) $ do 
+    M.when (isJust _defaultVal) $ do
         _checkTypeMatch'' _argType (fromMaybe (AST.ConstUnit AST.TUnit) _defaultVal)
         return ()
 
@@ -445,14 +444,14 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
     M.when (numberOfArgs > maxNumOfArgs) $ do
         addStaticError SE.TooManyArguments{
             SE.refTo = _fname,
-            SE.expectedNumOfArgs=maxNumOfArgs, 
+            SE.expectedNumOfArgs=maxNumOfArgs,
             SE.actualNumOfArgs=numberOfArgs
         }
 
     M.when (numberOfArgs < minNumOfArgs) $ do
         addStaticError SE.FewArguments{
             SE.refTo = _fname,
-            SE.expectedNumOfArgs=maxNumOfArgs, 
+            SE.expectedNumOfArgs=maxNumOfArgs,
             SE.actualNumOfArgs=numberOfArgs
         }
 
@@ -752,14 +751,14 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
     M.when (actNumOfArgs > expNumOfArgs) $ do
         addStaticError SE.TooManyArguments{
             SE.refTo = _structName,
-            SE.expectedNumOfArgs=expNumOfArgs, 
+            SE.expectedNumOfArgs=expNumOfArgs,
             SE.actualNumOfArgs=actNumOfArgs
         }
 
     M.when (actNumOfArgs < expNumOfArgs) $ do
         addStaticError SE.FewArguments{
             SE.refTo = _structName,
-            SE.expectedNumOfArgs=expNumOfArgs, 
+            SE.expectedNumOfArgs=expNumOfArgs,
             SE.actualNumOfArgs=actNumOfArgs
         }
 
@@ -834,7 +833,7 @@ checkType t@AST.CustomType {AST.tName=_tName, AST.scope = _scope} = do -- When i
     st@State{symTable=symTb} <- RWS.get
 
     -- try to find symbol
-    let symbol =  ST.findSymbolInScope _tName _scope symTb 
+    let symbol =  ST.findSymbolInScope _tName _scope symTb
 
     -- Check if symbol was correct 
     case symbol of
@@ -1007,20 +1006,22 @@ _checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType
 
 -- | Check if a given type matches some of the expected ones. Report error if not 
 _checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
-_checkTypeMatch' expected exprType 
+_checkTypeMatch' expected exprType
     | exprType == AST.TypeError = return False -- nothing matches TypeError
     | AST.TVoid `elem` expected = return True  -- void typematches enything 
     | otherwise =
     case exprType of
         AST.TypeError -> return False
-        t             -> if t `elem` expected
+        t             -> if t `elem` expected'
                             then return True
                             else do
                                 addStaticError $ SE.UnmatchingTypes expected exprType
                                 return False
+    where
+        expected' = concatMap getCastClass expected
 
 _checkTypeMatch'' :: AST.Type -> AST.Expr -> ParserState Bool
-_checkTypeMatch'' t = _checkTypeMatch (getCastClass t)
+_checkTypeMatch'' t = _checkTypeMatch [t]
 
 -- | Check if a sorted list of expression matches a sorted list of types
 _checkTypeMatchesArgs :: [[AST.Type]] -> [AST.Expr] -> ParserState Bool
@@ -1031,17 +1032,18 @@ _functionCheckerHelper  :: U.Name               -- ^ Function ID
                         -> Maybe AST.Type       -- ^ Function return type if provided 
                         -> [AST.FuncArg]        -- ^ Function args
                         -> AST.Expr             -- ^ Function Body
-                        -> ParserState AST.Declaration  
+                        -> ParserState AST.Declaration
 _functionCheckerHelper id mbType args body = do
 
     -- Get current type 
     inferedType <- topType
     popType
 
-    -- Get actual body type 
-    let exprType = AST.expType body
+    let inferedType' = if inferedType == AST.TVoid 
+                            then AST.expType body
+                            else inferedType
 
     -- Check if body type matches expected type 
-    matching <- _checkTypeMatch' [inferedType] exprType
+    matching <- _checkTypeMatch' [inferedType] (AST.expType body)
 
-    checkDecls $ AST.Func id (reverse args) exprType body
+    checkDecls $ AST.Func id (reverse args) inferedType' body
