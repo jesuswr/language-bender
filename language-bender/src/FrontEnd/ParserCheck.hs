@@ -23,20 +23,67 @@ type ErrorLog = [SE.StaticError]
 type ParserState = RWS.RWST () ErrorLog ParsingState IO
 
 -- | State of current analysis 
-newtype ParsingState = State { symTable :: ST.SymTable } deriving(Eq, Show)
+data ParsingState = 
+    State 
+    { symTable :: ST.SymTable
+    , expectedTypeStack :: [AST.Type] 
+    } deriving(Eq, Show)
 
 -- -------------------------------------------------------------------
 -- >> Commons -------------------------------------------------------
 
---unPack :: ParserState a -> a
---unPack (RWS.RWST _ _ _ _ r) = r
-
 startingState :: ParsingState
-startingState = State ST.newTable
+startingState = State ST.newTable [AST.TUnit]
 
 -- | Add error to state of RWST
 addStaticError :: SE.StaticError -> ParserState ()
 addStaticError e = RWS.tell [e]
+
+-- | Get Current Scope
+getScope :: ParserState ST.Scope 
+getScope = RWS.get <&> (ST.stCurrScope . symTable)
+
+-- | Try to get a type from a name, return type error if not possible with the current state
+getCustomType :: U.Name -> ParserState AST.Type
+getCustomType sid = do
+    st@State{symTable = symTb} <- RWS.get  -- get current symbol table
+
+    let foundType = ST.findSymbol sid symTb
+        retType   = case foundType of 
+                        Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.UnionType {}} -> AST.CustomType sid $ ST.scope s
+                        Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.StructType {}} -> AST.CustomType sid $ ST.scope s
+                        _ -> AST.TypeError 
+
+    return retType
+
+-- | Add this type to the stack of expected types
+pushType :: AST.Type -> ParserState ()
+pushType t = do
+    s@State{expectedTypeStack = stk} <- RWS.get 
+    RWS.put s{expectedTypeStack = t:stk}
+
+-- | Pop type from top of stack 
+popType :: ParserState ()
+popType = do
+    s@State{expectedTypeStack = stk} <- RWS.get
+
+    case stk of 
+            [s]  -> return ()
+            t:ts -> RWS.put s{expectedTypeStack=ts}
+            _ -> error "Error in ParserState: Inconsistent state, stack of expected types should not be empty"
+
+-- | Replace type at the top of the stack with a new one
+replaceType :: AST.Type -> ParserState ()
+replaceType newType = do
+    s@State{expectedTypeStack=stk} <- RWS.get 
+
+    case stk of
+        [s] -> error "Error in ParserState: You shouldn't be replacing base expected type"
+        t:ts -> RWS.put s{expectedTypeStack=newType:ts}
+
+-- | Get top of the type stack 
+topType :: ParserState AST.Type
+topType = RWS.get <&> head . expectedTypeStack
 
 -- --------------------------------------------------------------------
 -- >> PreParser ------------------------------------------------------
@@ -212,9 +259,9 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
     -- check _value has the same type than _tag
 
     -- Get struct name
-    let strNm = case AST.expType _struct of
-                    (AST.CustomType s _) -> s
-                    _ -> "$"
+    let (strNm, scope) = case AST.expType _struct of
+                    (AST.CustomType s scope) -> (s,scope)
+                    _ -> ("$", -1)
 
     -- Get type of the struct assignment
     structType <- if strNm == "$"
@@ -228,7 +275,7 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
                 -- Get current state
                 currSt@State{symTable = st} <- RWS.get
 
-                let structSym = ST.findSymbol strNm st
+                let structSym = ST.findSymbolInScope strNm scope st
 
                 -- Check if struct symbol exists and it's a struct type.
                 case structSym of
@@ -270,9 +317,9 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
     -- check that _tag is part of struct _struct
 
     -- Get struct name
-    let strNm = case AST.expType _struct of
-                    (AST.CustomType s _) -> s
-                    _ -> "$"
+    let (strNm, scope) = case AST.expType _struct of
+                    (AST.CustomType s scope) -> (s, scope)
+                    _ -> ("$", -1)
 
     -- Get type of the struct access
     structType <- if strNm == "$"
@@ -286,7 +333,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
                 -- Get current state
                 currSt@State{symTable = st} <- RWS.get
 
-                let structSym = ST.findSymbol strNm st
+                let structSym = ST.findSymbolInScope strNm scope st
 
                 -- Check if struct symbol exists and it's a struct type.
                 case structSym of
@@ -482,9 +529,9 @@ checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
     -- check that _tag is part of union _union
 
     -- Get union name
-    let unionNm = case AST.expType _union of
-                    (AST.CustomType s _) -> s
-                    _ -> "$"
+    let (unionNm, scope) = case AST.expType _union of
+                    (AST.CustomType s scope) -> (s, scope)
+                    _ -> ("$", -1)
 
     -- Get type of the union trying
     unionType <- if unionNm == "$"
@@ -498,7 +545,7 @@ checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
                 -- Get current state
                 currSt@State{symTable = st} <- RWS.get
 
-                let unionSym = ST.findSymbol unionNm st
+                let unionSym = ST.findSymbolInScope unionNm scope st
 
                 -- Check if struct symbol exists and it's a struct type.
                 case unionSym of
@@ -532,9 +579,9 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
     -- check that _tag is part of union _union
 
     -- Get union name
-    let unionNm = case AST.expType _union of
-                    AST.CustomType s _ -> s
-                    _ -> "$"
+    let (unionNm, scope) = case AST.expType _union of
+                    AST.CustomType s scope -> (s,scope)
+                    _ -> ("$", -1)
 
     -- Get type of the union trying
     unionType <- if unionNm == "$"
@@ -548,7 +595,7 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
                 -- Get current state
                 currSt@State{symTable = st} <- RWS.get
 
-                let unionSym = ST.findSymbol unionNm st
+                let unionSym = ST.findSymbolInScope unionNm scope st
 
                 -- Check if struct symbol exists and it's a struct type.
                 case unionSym of
@@ -689,11 +736,11 @@ checkExpr x = return x
 
 -- | Checks if a given type is a valid one 
 checkType :: AST.Type -> ParserState AST.Type
-checkType t@AST.CustomType {AST.tName=_tName} = do -- When it is a custom type
+checkType t@AST.CustomType {AST.tName=_tName, AST.scope = _scope} = do -- When it is a custom type
     st@State{symTable=symTb} <- RWS.get
 
     -- try to find symbol
-    let symbol =  ST.findSymbol _tName symTb
+    let symbol =  ST.findSymbolInScope _tName _scope symTb 
 
     -- Check if symbol was correct 
     case symbol of
@@ -866,7 +913,10 @@ _checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType
 
 -- | Check if a given type matches some of the expected ones 
 _checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
-_checkTypeMatch' expected exprType =
+_checkTypeMatch' expected exprType 
+    | exprType == AST.TypeError = return False -- nothing matches TypeError
+    | AST.TVoid `elem` expected = return True  -- void typematches enything 
+    | otherwise =
     case exprType of
         AST.TypeError -> return False
         t             -> if t `elem` expected

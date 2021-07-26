@@ -15,6 +15,7 @@ import qualified FrontEnd.StaticErrors  as SE
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
 import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
+import Data.Functor((<&>))
 
 }
 
@@ -317,7 +318,7 @@ Type            :: { AST.Type }
     | earth                                             { AST.TChar }
     | metal                                             { AST.TString }   
     | fire                                              { AST.TBool }
-    | id                                                { AST.CustomType ((TK.name . TK.tktype) $1) }
+    | id                                                {% P.getCustomType ((TK.name . TK.tktype) $1) }
     | Type nation Expr year                             { AST.TArray $1 (AST.ConstInt 0 AST.TInt)}
     | Type art                                          { AST.TPtr $1 }
 
