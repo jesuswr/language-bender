@@ -439,6 +439,6 @@ simplePrint TypeError            = "Type error"
 simplePrint TVoid                = "Void"
 
 simpleListPrint :: [Type] -> String
-simpleListPrint ts = "[" ++ tsPrinted ++ "]"
+simpleListPrint ts = tsPrinted
   where
     tsPrinted = L.intercalate ", " (map simplePrint ts) 
