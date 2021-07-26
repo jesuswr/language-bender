@@ -49,10 +49,16 @@ getCustomType sid = do
     st@State{symTable = symTb} <- RWS.get  -- get current symbol table
 
     let foundType = ST.findSymbol sid symTb
-        retType   = case foundType of 
-                        Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.UnionType {}} -> AST.CustomType sid $ ST.scope s
-                        Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.StructType {}} -> AST.CustomType sid $ ST.scope s
-                        _ -> AST.TypeError 
+    
+    retType <- case foundType of 
+                    Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.UnionType {}} -> return $ AST.CustomType sid $ ST.scope s
+                    Just s@ST.Symbol {ST.identifier=_identifier, ST.symType=ST.StructType {}} -> return $ AST.CustomType sid $ ST.scope s
+                    Nothing -> do
+                        addStaticError $ SE.SymbolNotInScope{SE.symName=sid}
+                        return AST.TypeError
+                    _  -> do
+                        addStaticError $ SE.NotValidType{SE.nonTypeName = sid}
+                        return AST.TypeError
 
     return retType
 
@@ -98,17 +104,57 @@ preCheckDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_ret
     -- try to add function symbol 
     tryAddSymbol symbol
 
+preCheckDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
+
+    --  Create symbol 
+    let symbol = declToSym s
+
+    -- check if add symbol is possible 
+    tryAddSymbol symbol
+
+
+preCheckDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
+
+    --  Create symbol type
+    let symbol = declToSym u
+
+    -- check if add symbol is possible 
+    tryAddSymbol symbol
+
+
+preCheckFunArg :: AST.FuncArg -> ParserState AST.FuncArg
+preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
+    
+    let sym = ST.Symbol {
+            ST.identifier=_argName,
+            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
+            ST.scope=0,
+            ST.enrtyType=Nothing
+        }
+    
+    tryAddSymbol sym
+
+    return arg
+
 -- --------------------------------------------------------------------
 -- >> Parser ---------------------------------------------------------
 
 checkFunArg :: AST.FuncArg -> ParserState AST.FuncArg
-checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = let sym = ST.Symbol {
-                                                        ST.identifier=_argName,
-                                                        ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
-                                                        ST.scope=0,
-                                                        ST.enrtyType=Nothing
-                                                    }
-                                            in tryAddSymbol sym >> return arg
+checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
+    
+    let sym = ST.Symbol {
+            ST.identifier=_argName,
+            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
+            ST.scope=0,
+            ST.enrtyType=Nothing
+        }
+
+    M.when (isJust _defaultVal) $ do 
+        _checkTypeMatch'' _argType (fromMaybe (AST.ConstUnit AST.TUnit) _defaultVal)
+        return ()
+
+    updateSymbol sym
+    return arg
 
 checkField :: [(String, AST.Type)] -> ParserState [(String, AST.Type)]
 checkField l@((nm, t):fields) = do
@@ -181,29 +227,22 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
 -- Check union definition 
 checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
 
-    -- Create new symbol 
-    --  Check that all types are valid 
-    -- M.forM_ (map snd _fields) checkType
-
     --  Create symbol type
     let symbol = declToSym u
 
     -- check if add symbol is possible 
-    tryAddSymbol symbol
+    updateSymbol symbol
 
     return u
 
 -- Check Struct definition 
 checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
 
-    --  Check that all types are valid (are defined)
-    --M.forM_ (map snd _fields) checkType
-
     --  Create symbol 
     let symbol = declToSym s
 
     -- check if add symbol is possible 
-    tryAddSymbol symbol
+    updateSymbol symbol
 
     return s
 
@@ -297,7 +336,7 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
                                 addStaticError $ SE.UnmatchingTypes [tagType] valType
                                 return AST.TypeError
                             else
-                                return $ AST.CustomType strNm (-1)
+                                return $ AST.CustomType strNm (scope)
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ strNm
@@ -346,7 +385,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
                             addStaticError . SE.SymbolNotInScope $ _tag
                             return AST.TypeError
                         else
-                            return $ AST.CustomType strNm (-1)
+                            return $ AST.CustomType strNm scope
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ strNm
@@ -371,8 +410,8 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
         Just sym -> do
             if ST.isFunction sym || ST.isProc sym
                 then if ST.isFunction sym
-                    then return AST.TUnit
-                    else return $ (ST.retType . ST.symType) sym
+                    then return $ (ST.retType . ST.symType) sym
+                    else return AST.TUnit
 
                 else do
                     addStaticError $ SE.NotAValidFunction {
@@ -381,15 +420,41 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
                     }
                     return AST.TypeError
 
-        _ -> return AST.TypeError
+        _ -> do
+            addStaticError $ SE.SymbolNotInScope {
+                SE.symName = _fname
+            }
+            return AST.TypeError
 
     -- Get the types the arguments should have
-    let argsTypes = case mbSym of
+    let args = case mbSym of
             Just sym -> do
                 if ST.isFunction sym || ST.isProc sym
-                    then map AST.argType $ (ST.args . ST.symType) sym
+                    then (ST.args . ST.symType) sym
                     else []
             _ -> []
+
+        argsTypes = map AST.argType args
+
+        maxNumOfArgs = length argsTypes
+
+        minNumOfArgs = maxNumOfArgs - (length . filter (isJust . AST.defaultVal) $ args)
+
+        numberOfArgs = length _actualArgs
+
+    M.when (numberOfArgs > maxNumOfArgs) $ do
+        addStaticError SE.TooManyArguments{
+            SE.refTo = _fname,
+            SE.expectedNumOfArgs=maxNumOfArgs, 
+            SE.actualNumOfArgs=numberOfArgs
+        }
+
+    M.when (numberOfArgs < minNumOfArgs) $ do
+        addStaticError SE.FewArguments{
+            SE.refTo = _fname,
+            SE.expectedNumOfArgs=maxNumOfArgs, 
+            SE.actualNumOfArgs=numberOfArgs
+        }
 
     -- Check that the types in _actualArgs match
     checkExprList argsTypes _actualArgs
@@ -608,7 +673,7 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
                             addStaticError . SE.SymbolNotInScope $ _tag
                             return AST.TypeError
                         else
-                            return AST.TBool
+                            return $ AST.CustomType unionNm scope
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ unionNm
@@ -675,14 +740,32 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
                     }
                     return AST.TypeError
                 else
-                    return $ AST.CustomType _structName (-1)
+                    return $ AST.CustomType _structName (ST.scope sym)
 
         _ -> return AST.TypeError
 
+    -- get fields types
     let fieldsTypes = case mbSym of
             Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} ->
                 map snd _fields
             _ -> []
+
+        expNumOfArgs = length fieldsTypes
+        actNumOfArgs = length _list
+
+    M.when (actNumOfArgs > expNumOfArgs) $ do
+        addStaticError SE.TooManyArguments{
+            SE.refTo = _structName,
+            SE.expectedNumOfArgs=expNumOfArgs, 
+            SE.actualNumOfArgs=actNumOfArgs
+        }
+
+    M.when (actNumOfArgs < expNumOfArgs) $ do
+        addStaticError SE.FewArguments{
+            SE.refTo = _structName,
+            SE.expectedNumOfArgs=expNumOfArgs, 
+            SE.actualNumOfArgs=actNumOfArgs
+        }
 
     -- Check that the types in _list match
     expListOk <- checkExprList fieldsTypes _list
@@ -712,7 +795,7 @@ checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=
                     }
                     return AST.TypeError
                 else
-                    return $ AST.CustomType _unionName (-1)
+                    return $ AST.CustomType _unionName (ST.scope sym)
 
         _ -> return AST.TypeError
 
@@ -721,7 +804,7 @@ checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=
                 map snd $ filter (\(str,t)->str==_tag) _fields
             _ -> []
 
-    -- Check that the types in _list match
+    -- Check that the types in _value match the type of the tag
     tagTypeOk <- _checkTypeMatch' (concatMap getCastClass tagType) (AST.expType _value)
 
     let cUnionType' = if tagTypeOk && not (null tagType)
@@ -862,7 +945,7 @@ checkIdIsVarOrReference name = do -- Check that given name is a valid one and it
                     addStaticError SE.NotAValidVariable {SE.symName=name, SE.actualSymType=ST.symType sym}
         _        -> return ()
 
--- | Return type of given id if a valid variable or reference, return typerrror if none of them
+-- | Return type of given id if a valid variable or reference, return type error if none of them
 getTypeOfId :: U.Name -> ParserState AST.Type
 getTypeOfId name = do
     st@State{symTable = symTb} <- RWS.get

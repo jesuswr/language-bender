@@ -172,30 +172,30 @@ Only the Avatar, master of all four elements, could stop them.
 -- 	(5 and then 7) and thus (6 but 4) besides 6 left 2
 -- -.
 
-book z:
-.-
-    2 is less than 3.
-    4 is less or equal than 4.
-    6 is greater than 2.
-    3 is greater or equal than 3.
-    6 is equal to 6.
-    8 is not equal to 5.
-    5 left 2.
-    bender negabro is -4.
-    not fire master ~
--.
+-- book z:
+-- .-
+--     2 is less than 3.
+--     4 is less or equal than 4.
+--     6 is greater than 2.
+--     3 is greater or equal than 3.
+--     6 is equal to 6.
+--     8 is not equal to 5.
+--     5 left 2.
+--     bender negabro is -4.
+--     not fire master ~
+-- -.
 
 
-book for:
-.-
-	opening 1 of aang chakras from 7 to "salsa":
-    	aang.
--.
+-- book for:
+-- .-
+-- 	opening 1 of aang chakras from 7 to "salsa":
+--     	aang.
+-- -.
 
-book if_:
-.-
-	if xd : 2.3 otherwise 7.
--.
+-- book if_:
+-- .-
+-- 	if xd : 2.3 otherwise 7.
+-- -.
 
 
 -- bender n is 100.
@@ -309,7 +309,8 @@ book if_:
 
 travel main:
 .-
-	in fibonacci book with 42 ...
+	in fibonacci book with 42, 65 ...
+	~
 -.
 
 book fibonacci of air about air bender n:
@@ -333,28 +334,33 @@ book fibonacci of air about air bender n:
 
 -- book bebe: 4.
 
-element solazo is compound by calor skill of nada, calor skill of air.
+element solazo is compound by caloron skill of water, calor skill of air.
 
-element solazo2 is compound by calor skill of nada, calor skill of air.
-
-bender aang of solazo.
-
-energy palo_de_agua allows lluvia technique of water bending, inundacion technique of water bending.
-
-energy palo_de_agua allows lluvia technique of nada bending, inundacion technique of water bending. 
-
-bender katara of palo_de_agua.
-
-bender yolo of solazo is (katara's lluvia is 42.0).
-
-bender lol of solazo is learning solazo control using pepa, de_sol right now.
-
-bender badBunny is born as water member.
-bender ted is an apprentice.
-
-book del:
+book args:
 .-
-	ted has died.
-	disciple 3 of toph.
-	master of 12.5, 2, 12.9, 3, 3 right now.
+	learning solazo control using 2.3 right now.
 -.
+
+-- element solazo2 is compound by calor skill of nada, calor skill of air.
+
+-- bender aang of solazo.
+
+-- energy palo_de_agua allows lluvia technique of water bending, inundacion technique of water bending.
+
+-- energy palo_de_agua allows lluvia technique of nada bending, inundacion technique of water bending. 
+
+-- bender katara of palo_de_agua.
+
+-- bender yolo of solazo is (katara's lluvia is 42.0).
+
+-- bender lol of solazo is learning solazo control using pepa, de_sol right now.
+
+-- bender badBunny is born as water member.
+-- bender ted is an apprentice.
+
+-- book del:
+-- .-
+-- 	ted has died.
+-- 	disciple 3 of toph.
+-- 	master of 12.5, 2, 12.9, 3, 3 right now.
+-- -.
