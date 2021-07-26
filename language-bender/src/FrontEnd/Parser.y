@@ -289,7 +289,7 @@ Expr            :: { AST.Expr }
     | return Expr                                       {% P.checkExpr $ AST.Return $2 (AST.expType $2) }
 --    | toBeContinuedUnit                                 { AST.Continue  AST.ConstUnit }
 --    | burstUnit                                         { AST.Break     AST.ConstUnit }
---    | returnUnit                                        { AST.Return    AST.ConstUnit }
+    | returnUnit                                        { AST.Return  (AST.ConstUnit AST.TUnit) AST.TUnit }
     
 
     -- >> For description 
