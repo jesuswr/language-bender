@@ -10,7 +10,7 @@ import qualified FrontEnd.Tokens    as T
 
 -- | Static Analysis Errors
 data StaticError = SymbolNotInScope         { symName :: U.Name } 
-                 | SymbolRedefinition       {symName :: U.Name} 
+                 | SymbolRedefinition       { symName :: U.Name} 
                  | ReferencingNonVariable   { symName :: U.Name } 
                  | NotValidType             { nonTypeName :: U.Name }
                  | NotAValidVariable        { symName :: U.Name, actualSymType :: ST.SymType }
@@ -27,3 +27,4 @@ data StaticError = SymbolNotInScope         { symName :: U.Name }
                  deriving(Eq, Show)  
 
 
+ 

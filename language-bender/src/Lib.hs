@@ -23,7 +23,6 @@ langBender = do
         Left cliError -> do
             print cliError
         Right (Result opts warnings) -> do
-
             M.when (not $ null warnings) $ do
                 putStrLn "lbend CLI warnings:"
                 mapM_ print warnings
@@ -32,55 +31,54 @@ langBender = do
             if help opts then 
                 putStrLn helpMsg
             else do
-
                 content <- readFile (fileName opts)
 
                 let lexerResult = scanTokens content
                 let lexerErrors = fst lexerResult
                 let tokens = snd lexerResult
 
-                M.unless (null lexerErrors) $ do
-                    putStrLn "~ Lexer Errors ~\n"
-                    mapM_ print lexerErrors
-                    putStrLn "\n"
 
-                M.when (printLex opts || justLex opts) $ do
+                let _printTokens1 = printLex opts || justLex opts
+                let _printTokens2 = null lexerErrors || verbose opts
+                let printTokens = _printTokens1 && _printTokens2
+
+                M.when printTokens $ do
                     putStrLn "~ Tokens ~\n"
                     mapM_ print tokens
                     putStrLn "\n"
+
+                M.unless (null lexerErrors) $ do
+                    putStrLn "~ Lexer Errors ~\n"
+                    mapM_ print lexerErrors
 
                 M.when (null tokens) $ do
                     putStrLn "No token was found.\nAn executable will not be generated\n"
 
                 if justLex opts || null tokens then return ()
-                    else do
+                else do
+                    (preParseState, preParseErrors) <- PP.runPreParse tokens
+                    let lol = PC.symTable preParseState
 
-                        putStrLn " antes del preparsing\n"
+                    let preParseState' = preParseState{ PC.symTable = (PC.symTable preParseState){ST.stNextScope = 1} }
+                    (parseState, parseErrors) <- P.runParse tokens preParseState'
 
-                        (preParseState, preParseErrors) <- PP.runPreParse tokens
+                    let symT = PC.symTable parseState
+                    let errors = preParseErrors ++ parseErrors
 
-                        let lol = PC.symTable preParseState
+                    let _printST1 = printPar opts || justPar opts
+                    let _printST2 = null errors || verbose opts
+                    let printST = _printST1 && _printST2
+
+                    M.when (printST) $ do
                         putStrLn "~ Pre Symbol Table ~"
                         print lol
-
-                        putStrLn " entre preparsing y parsing\n"
-
-                        let preParseState' = preParseState{ PC.symTable = (PC.symTable preParseState){ST.stNextScope = 1} }
-                        (parseState, parseErrors) <- P.runParse tokens preParseState'
-
-                        putStrLn " despues del parsing\n"
-
-                        let symT = PC.symTable parseState
-
-                        let errors = preParseErrors ++ parseErrors
-
-                        M.unless (null errors) $ do
-                            putStrLn "~ Errors ~\n"
-                            mapM_ print errors
-                            putStrLn "\n"
-
                         putStrLn "~ Symbol Table ~"
                         print symT
+                    
+                    M.unless (null errors) $ do
+                        putStrLn "~ Errors ~\n"
+                        mapM_ print errors
+                        putStrLn "\n"
 
 
 
