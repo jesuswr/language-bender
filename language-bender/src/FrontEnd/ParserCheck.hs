@@ -425,6 +425,12 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
             }
             return AST.TypeError
 
+    -- Error on foward reference with inferred type
+    M.when (fType == AST.TVoid) $ do
+        addStaticError $ SE.FowardRefToInferred{
+            SE.symName = _fname
+        }
+
     -- Get the types the arguments should have
     let (args, isFunc) = case mbSym of
             Just sym -> do

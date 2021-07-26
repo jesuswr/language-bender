@@ -158,8 +158,8 @@ ProcDecl        :: { () }
 FuncDecl        :: { () }
     : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope    {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 (AST.ConstUnit AST.TUnit) }
     | book id of Type PushScope colon PushScope Exprs PopScope PopScope                  {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 (AST.ConstUnit AST.TUnit) }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
-    | book id PushScope colon PushScope Exprs PopScope PopScope                          {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TVoid (AST.ConstUnit AST.TUnit) }
+    | book id PushScope colon PushScope Exprs PopScope PopScope                          {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TVoid (AST.ConstUnit AST.TUnit) }
 
 FuncArg         :: { [AST.FuncArg] }
     : FuncDefArgDecl                                                                     { $1 }
