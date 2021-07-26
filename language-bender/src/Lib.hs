@@ -57,10 +57,10 @@ langBender = do
                 if justLex opts || null tokens then return ()
                 else do
                     (preParseState, preParseErrors) <- PP.runPreParse tokens
-                    let lol = PC.symTable preParseState
+                    let preSymT = PC.symTable preParseState
 
                     let preParseState' = preParseState{ PC.symTable = (PC.symTable preParseState){ST.stNextScope = 1} }
-                    (parseState, parseErrors) <- P.runParse tokens preParseState'
+                    (ast, parseState, parseErrors) <- P.runParse tokens preParseState'
 
                     let symT = PC.symTable parseState
                     let errors = preParseErrors ++ parseErrors
@@ -70,11 +70,14 @@ langBender = do
                     let printST = _printST1 && _printST2
 
                     M.when (printST) $ do
+                        putStrLn "~ AST ~"
+                        print ast
                         putStrLn "~ Pre Symbol Table ~"
-                        print lol
+                        print preSymT
                         putStrLn "~ Symbol Table ~"
                         print symT
-                    
+                        putStrLn "\n"
+
                     M.unless (null errors) $ do
                         putStrLn "~ Parse Errors ~\n"
                         mapM_ print errors

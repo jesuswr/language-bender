@@ -23,6 +23,7 @@ import Data.Functor((<&>))
 %tokentype { TK.Token }
 %error { parseError }
 %monad { P.ParserState }
+%expect 128
 
 %token
     bender              { TK.Token _ TK.TKbender }

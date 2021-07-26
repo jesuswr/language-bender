@@ -355,15 +355,15 @@ Only the Avatar, master of all four elements, could stop them.
 
 -- bender lol of solazo is learning solazo control using pepa, de_sol right now.
 
--- bender badBunny is born as water member.
--- bender ted is an apprentice.
+bender badBunny is born as water member.
+bender ted is an apprentice.
 
--- book del:
--- .-
--- 	ted has died.
--- 	disciple 3 of toph.
--- 	master of 12.5, 2, 12.9, 3, 3 right now.
--- -.
+book del:
+.-
+	ted has died.
+	disciple 3 of toph.
+	master of 12.5, 2, 12.9, 3, 3 right now.
+-.
 
 book notValidFunc:
 .-

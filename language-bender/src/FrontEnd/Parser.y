@@ -22,6 +22,7 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 %tokentype { TK.Token }
 %error { parseError }
 %monad { P.ParserState }
+%expect 128
 
 %token
     bender              { TK.Token _ TK.TKbender }
@@ -365,10 +366,10 @@ PopScope
 parseError []       = P.addStaticError SE.UnexpectedEOF >> (fail . show) SE.UnexpectedEOF 
 parseError rem@(tk:tks) = P.addStaticError (SE.ParseError rem)    >> (fail . show . SE.ParseError) rem
 
--- could use execRWST instead of runRWST
-runParse :: [TK.Token] -> P.ParsingState -> IO (P.ParsingState, P.ErrorLog)
+-- Run the parser and return the results
+runParse :: [TK.Token] -> P.ParsingState -> IO (AST.Program, P.ParsingState, P.ErrorLog)
 runParse tks preState = do
-    (_, s, e) <- RWS.runRWST (parseTokens tks) () preState
-    return (s, e)
+    (ast, s, e) <- RWS.runRWST (parseTokens tks) () preState
+    return (ast, s, e)
 
 }
