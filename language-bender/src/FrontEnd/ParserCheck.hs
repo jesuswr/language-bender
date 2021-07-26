@@ -384,7 +384,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
                             addStaticError . SE.SymbolNotInScope $ _tag
                             return AST.TypeError
                         else
-                            return $ AST.CustomType strNm scope
+                            return . snd . head $ ltag
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ strNm
