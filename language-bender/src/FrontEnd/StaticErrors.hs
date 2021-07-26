@@ -25,7 +25,7 @@ data StaticError = SymbolNotInScope         { symName :: U.Name }
                  | AssignToConst            { symName :: U.Name  } -- you can't assign to const initialized variables
                  | FewArguments             { refTo :: U.Name, expectedNumOfArgs :: Int, actualNumOfArgs :: Int }
                  | TooManyArguments         { refTo :: U.Name, expectedNumOfArgs :: Int, actualNumOfArgs :: Int }
-                 | FowardRefToInferred      { symName :: U.Name }
+                 | CouldNotInferType        { symName :: U.Name }
                  deriving(Eq)  
 
 
@@ -54,5 +54,5 @@ instance Show StaticError where
             _               ->
                 "\t~ Error: expected any of '" ++ AST.simpleListPrint expTypes ++ "' but got '" ++ AST.simplePrint actType ++ "'"
     show (AssignToConst name)                   = "\t~ Error: assignment of constant variable '" ++ show name ++ "'" 
-    show (FowardRefToInferred name)             = "\t~ Error: Foward reference to a function with inferred type: '" ++ show name ++ "'"
+    show (CouldNotInferType name)             = "\t~ Error: Could not infer type of '" ++ show name ++ "'"
     show badArgNumbers                          = "\t~ Error: in call to '" ++ show (refTo badArgNumbers) ++ "' expected " ++ show (expectedNumOfArgs badArgNumbers) ++ " arguments but got " ++ show (actualNumOfArgs badArgNumbers)

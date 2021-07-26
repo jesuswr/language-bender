@@ -427,7 +427,7 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
 
     -- Error on foward reference with inferred type
     M.when (fType == AST.TVoid) $ do
-        addStaticError $ SE.FowardRefToInferred{
+        addStaticError $ SE.CouldNotInferType{
             SE.symName = _fname
         }
 
