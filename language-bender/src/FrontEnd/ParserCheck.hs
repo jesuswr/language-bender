@@ -505,10 +505,6 @@ checkExpr i@AST.If {AST.cond=_cond, AST.accExpr=_accExpr, AST.failExpr=_failExpr
 checkExpr e@AST.ExprBlock {AST.exprs=_exprs} =
     return e
 
---  Check return 
-checkExpr r@AST.Return {AST.expr=_expr} =
-    return r
-
 --  Check break 
 checkExpr b@AST.Break {AST.expr=_expr} =
     return b
@@ -812,8 +808,23 @@ checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=
         else AST.TypeError
 
         c' = c{AST.expType = cUnionType'}
-
     return c'
+
+
+    -- Check a return expression 
+checkExpr r@AST.Return {AST.expr = _expr} = do
+
+    -- Get expected type from expected types stack
+    expectedType <- topType
+    -- check type of expression matches the expected one
+    let retType = AST.expType _expr
+
+    matching <- _checkTypeMatch' [expectedType] retType
+
+    -- Replace expected type when typematch found
+    M.when matching $ replaceType retType
+
+    return r
 
 checkExpr x = return x
 
@@ -994,7 +1005,7 @@ checkExprList ts = _checkTypeMatchesArgs (map getCastClass ts)
 _checkTypeMatch :: [AST.Type] -> AST.Expr -> ParserState Bool
 _checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType
 
--- | Check if a given type matches some of the expected ones 
+-- | Check if a given type matches some of the expected ones. Report error if not 
 _checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
 _checkTypeMatch' expected exprType 
     | exprType == AST.TypeError = return False -- nothing matches TypeError
@@ -1015,3 +1026,22 @@ _checkTypeMatch'' t = _checkTypeMatch (getCastClass t)
 _checkTypeMatchesArgs :: [[AST.Type]] -> [AST.Expr] -> ParserState Bool
 _checkTypeMatchesArgs expected args = M.zipWithM _checkTypeMatch expected args <&> and
 
+-- | utility function to perform some operations needed before checking a function
+_functionCheckerHelper  :: U.Name               -- ^ Function ID
+                        -> Maybe AST.Type       -- ^ Function return type if provided 
+                        -> [AST.FuncArg]        -- ^ Function args
+                        -> AST.Expr             -- ^ Function Body
+                        -> ParserState AST.Declaration  
+_functionCheckerHelper id mbType args body = do
+
+    -- Get current type 
+    inferedType <- topType
+    popType
+
+    -- Get actual body type 
+    let exprType = AST.expType body
+
+    -- Check if body type matches expected type 
+    matching <- _checkTypeMatch' [inferedType] exprType
+
+    checkDecls $ AST.Func id (reverse args) exprType body

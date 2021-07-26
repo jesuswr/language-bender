@@ -150,28 +150,15 @@ Declaration     :: { AST.Declaration }
     | ProcDecl                                                { $1 }
 
 ProcDecl        :: { AST.Declaration }
-    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2)  (reverse $5) AST.TUnit $8 }
-    | travel id PushScope colon PushScope Exprs PopScope PopScope                           {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2)  [] AST.TUnit $6 }
+    : ProcDescription madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P._functionCheckerHelper $1 (Just AST.TUnit) $4 $7 }
+    | ProcDescription PushScope colon PushScope Exprs PopScope PopScope                           {% P._functionCheckerHelper $1 (Just AST.TUnit) [] $5 }
+
+ProcDescription :: { U.Name }
+    : travel id                                                                             {% P.pushType AST.TUnit >> return ((TK.name . TK.tktype) $2) }
 
 FuncDecl        :: { AST.Declaration }
-    : FuncDescription about PushScope FuncArg colon PushScope Exprs PopScope PopScope       {%  do
-                                                                                                    inferedType <- P.topType                                                                                                    
-                                                                                                    let (id, mbType) = $1
-                                                                                                        actType = fromMaybe inferedType mbType
-                                                                                                    _ <- P.popType
-                                                                                                    P.checkDecls $ AST.Func id (reverse $4) actType $7
-                                                                                            }
-    | FuncDescription PushScope colon PushScope Exprs PopScope PopScope                     {%  do
-                                                                                                    inferedType <- P.topType
-                                                                                                    let (id, mbType) = $1
-                                                                                                        actType = fromMaybe inferedType mbType
-                                                                                                    _ <- P.popType
-                                                                                                    P.checkDecls $ AST.Func id [] actType $5 
-                                                                                            }
---    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope       {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 $10 }
---    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                     {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 $8 }
---    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope               {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (AST.expType $8) $8 }
---    | book id PushScope colon PushScope Exprs PopScope PopScope                             {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (AST.expType $6) $6 }
+    : FuncDescription about PushScope FuncArg colon PushScope Exprs PopScope PopScope       {% P._functionCheckerHelper (fst $1) (snd $1) $4 $7 }
+    | FuncDescription PushScope colon PushScope Exprs PopScope PopScope                     {% P._functionCheckerHelper (fst $1) (snd $1) [] $5 }
 
 FuncDescription :: { (U.Name, Maybe AST.Type) }
     : book id of Type                                                                       {% P.pushType $4 >> return ((TK.name . TK.tktype) $2, Just $4) }
@@ -299,7 +286,7 @@ Expr            :: { AST.Expr }
     -- >> Control Flow -----------------------------------------------------------------------------------
 --    | toBeContinued Expr                                { AST.Continue  $2 }
 --    | burst Expr                                        { AST.Break     $2 }
---    | return Expr                                       { AST.Return    $2 }
+    | return Expr                                       {% P.checkExpr $ AST.Return $2 (AST.expType $2) }
 --    | toBeContinuedUnit                                 { AST.Continue  AST.ConstUnit }
 --    | burstUnit                                         { AST.Break     AST.ConstUnit }
 --    | returnUnit                                        { AST.Return    AST.ConstUnit }
