@@ -5,7 +5,7 @@
 module FrontEnd.AST where
 
 import qualified FrontEnd.Utils as U
-
+import Data.List as L
 
 -- | Type Definition
 data Type = TFloat
@@ -422,3 +422,23 @@ identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
 identShowProgram :: Program -> String
 identShowProgram program = --"~  AST  ~\n"
   concatMap (identShowDeclaration 2) (decls program)
+
+
+simplePrint :: Type -> String
+simplePrint TFloat               = "Float"
+simplePrint TInt                 = "Int"
+simplePrint TChar                = "Char"
+simplePrint TString              = "String"
+simplePrint TBool                = "Bool"
+simplePrint (TArray aType sz)    = "Array of (" ++ simplePrint aType ++ ") of size " ++ show sz
+simplePrint (TPtr pType)         = "Pointer of (" ++ simplePrint pType ++ ")"
+simplePrint TUnit                = "Unit"
+simplePrint (TReference rType)   = "Reference of (" ++ simplePrint rType ++ ")"
+simplePrint (CustomType tName _) = "Custom type '" ++ tName ++ "'"
+simplePrint TypeError            = "Type error"
+simplePrint TVoid                = "Void"
+
+simpleListPrint :: [Type] -> String
+simpleListPrint ts = "[" ++ tsPrinted ++ "]"
+  where
+    tsPrinted = L.intercalate ", " (map simplePrint ts) 

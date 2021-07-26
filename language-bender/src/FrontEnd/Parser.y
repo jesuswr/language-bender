@@ -344,7 +344,7 @@ Type            :: { AST.Type }
     | earth                                             { AST.TChar }
     | metal                                             { AST.TString }   
     | fire                                              { AST.TBool }
-    | id                                                {% P.getCustomType ((TK.name . TK.tktype) $1) >>= P.checkType }
+    | id                                                {% P.getCustomType ((TK.name . TK.tktype) $1) }
     | Type nation Expr year                             {% P.checkType $ AST.TArray $1 $3}
     | Type art                                          { AST.TPtr $1 }
 

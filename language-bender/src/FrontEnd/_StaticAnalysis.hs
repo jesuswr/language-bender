@@ -78,7 +78,7 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
         Nothing -> addStaticError . SE.SymbolNotInScope $ refId
         Just ST.Symbol{ST.symType = ST.Variable{}} -> return ()
         Just ST.Symbol{ST.symType = ST.Reference{}} -> return ()
-        _       -> addStaticError . SE.ReferencingNonVariable $ refId
+        _       -> addStaticError . SE.ReferencingNonVariable $ sid refId
 
     -- Get reference type:
     let refType = case refSym of

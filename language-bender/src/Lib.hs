@@ -76,7 +76,7 @@ langBender = do
                         print symT
                     
                     M.unless (null errors) $ do
-                        putStrLn "~ Errors ~\n"
+                        putStrLn "~ Parse Errors ~\n"
                         mapM_ print errors
                         putStrLn "\n"
 
@@ -87,6 +87,7 @@ helpMsg = "~ lbend ~ A language bender compiler.\n"
     ++ "Usage: stack exec -- lbend <bend file> [options]\n"
     ++ "Options:\n"
     ++ "--help         show this help.\n"
+    ++ "-v             print lexer and parser info even when errors occur.\n"
     ++ "-lex           print lexer output.\n"
     ++ "-par           print parser output.\n"
     ++ "-jlex          just use the Lexer in the input.\n"
