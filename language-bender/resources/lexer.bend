@@ -307,25 +307,25 @@ Only the Avatar, master of all four elements, could stop them.
 -- -.
 
 
-travel main:
-.-
-	in fibonacci book with 42, 65 ...
-	~
--.
+-- travel main:
+-- .-
+-- 	in fibonacci book with 42, 65 ...
+-- 	~
+-- -.
 
-book fibonacci of air about air bender n:
-.-
-	-- if n is equal to 0:
-	-- 	this story comes to an end 0 ~ .
-	-- if n is equal to 1:
-	-- 	this story comes to an end 1 ~ .
+-- book fibonacci of air about air bender n:
+-- .-
+-- 	-- if n is equal to 0:
+-- 	-- 	this story comes to an end 0 ~ .
+-- 	-- if n is equal to 1:
+-- 	-- 	this story comes to an end 1 ~ .
 
-	-- this story comes to an end
-	-- 	in fibonacci book with n but 1 ... 
-	-- 	and then 
-	-- 	in fibonacci book with n but 2 ...
-	0
--.
+-- 	-- this story comes to an end
+-- 	-- 	in fibonacci book with n but 1 ... 
+-- 	-- 	and then 
+-- 	-- 	in fibonacci book with n but 2 ...
+-- 	0
+-- -.
 
 
 -- book ola:
@@ -334,12 +334,12 @@ book fibonacci of air about air bender n:
 
 -- book bebe: 4.
 
-element solazo is compound by caloron skill of water, calor skill of air.
+-- element solazo is compound by caloron skill of water, calor skill of air.
 
-book args:
-.-
-	learning solazo control using 2.3 right now.
--.
+-- book args:
+-- .-
+-- 	learning solazo control using 2.3 right now.
+-- -.
 
 -- element solazo2 is compound by calor skill of nada, calor skill of air.
 
@@ -364,3 +364,9 @@ book args:
 -- 	disciple 3 of toph.
 -- 	master of 12.5, 2, 12.9, 3, 3 right now.
 -- -.
+
+book notValidFunc:
+.-
+    energy bx allows b0 technique of air bending.
+    bender a is in bx book with 1 ...
+-.

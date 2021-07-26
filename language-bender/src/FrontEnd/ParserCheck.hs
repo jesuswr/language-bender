@@ -426,12 +426,12 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
             return AST.TypeError
 
     -- Get the types the arguments should have
-    let args = case mbSym of
+    let (args, isFunc) = case mbSym of
             Just sym -> do
                 if ST.isFunction sym || ST.isProc sym
-                    then (ST.args . ST.symType) sym
-                    else []
-            _ -> []
+                    then ((ST.args . ST.symType) sym, True)
+                    else ([], False)
+            _ -> ([], False)
 
         argsTypes = map AST.argType args
 
@@ -441,14 +441,14 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
 
         numberOfArgs = length _actualArgs
 
-    M.when (numberOfArgs > maxNumOfArgs) $ do
+    M.when (numberOfArgs > maxNumOfArgs && isFunc) $ do
         addStaticError SE.TooManyArguments{
             SE.refTo = _fname,
             SE.expectedNumOfArgs=maxNumOfArgs,
             SE.actualNumOfArgs=numberOfArgs
         }
 
-    M.when (numberOfArgs < minNumOfArgs) $ do
+    M.when (numberOfArgs < minNumOfArgs && isFunc) $ do
         addStaticError SE.FewArguments{
             SE.refTo = _fname,
             SE.expectedNumOfArgs=maxNumOfArgs,
