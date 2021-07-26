@@ -310,6 +310,7 @@ Only the Avatar, master of all four elements, could stop them.
 travel main:
 .-
 	in fibonacci book with 42, 65 ...
+	~
 -.
 
 book fibonacci of air about air bender n:

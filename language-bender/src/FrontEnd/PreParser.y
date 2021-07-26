@@ -15,6 +15,7 @@ import qualified FrontEnd.StaticErrors  as SE
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
 import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
+import Data.Functor((<&>))
 
 }
 
@@ -143,21 +144,21 @@ Declarations
     | Declarations Declaration dot                                                       { }
 
 Declaration     :: { () } 
-    : element id compoundBy PushScope StructIdDecls PopScope                             {% M.void . P.preCheckDecls $ AST.Struct ((TK.name . TK.tktype) $2) [] }
-    | energy id allows PushScope UnionIdDecls PopScope                                   {% M.void . P.preCheckDecls $ AST.Union  ((TK.name . TK.tktype) $2) [] }
+    : element id compoundBy PushScope StructIdDecls PopScope                             {% P.preCheckDecls $ AST.Struct ((TK.name . TK.tktype) $2) [] }
+    | energy id allows PushScope UnionIdDecls PopScope                                   {% P.preCheckDecls $ AST.Union  ((TK.name . TK.tktype) $2) [] }
     | VarDecl                                                                            { () }
     | FuncDecl                                                                           { () }
     | ProcDecl                                                                           { () }
 
 ProcDecl        :: { () }
-    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope         {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
-    | travel id PushScope colon PushScope Exprs PopScope PopScope                        {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope         {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
+    | travel id PushScope colon PushScope Exprs PopScope PopScope                        {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
 
 FuncDecl        :: { () }
-    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope    {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 (AST.ConstUnit AST.TUnit) }
-    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                  {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 (AST.ConstUnit AST.TUnit) }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
-    | book id PushScope colon PushScope Exprs PopScope PopScope                          {% M.void . P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
+    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope    {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 (AST.ConstUnit AST.TUnit) }
+    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                  {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 (AST.ConstUnit AST.TUnit) }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
+    | book id PushScope colon PushScope Exprs PopScope PopScope                          {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
 
 FuncArg         :: { [AST.FuncArg] }
     : FuncDefArgDecl                                                                     { $1 }
@@ -318,14 +319,15 @@ ExprList
 
     -- >> Types -------------------------------------------------------------------------------------
 Type            :: { AST.Type }
-    : water                                                                              { AST.TFloat }
-    | air                                                                                { AST.TInt }
-    | earth                                                                              { AST.TChar }
-    | metal                                                                              { AST.TString }   
-    | fire                                                                               { AST.TBool }
-    | id                                                                                 {% P.checkType $  AST.CustomType ((TK.name . TK.tktype) $1) }
-    | Type nation Expr year                                                              {% P.checkType $  AST.TArray $1 (AST.ConstInt 0 AST.TInt)}
-    | Type art                                                                           { AST.TPtr $1 }
+    : water                                             { AST.TFloat }
+    | air                                               { AST.TInt }
+    | earth                                             { AST.TChar }
+    | metal                                             { AST.TString }   
+    | fire                                              { AST.TBool }
+    | id                                                {% P.getCustomType ((TK.name . TK.tktype) $1) }
+    | Type nation Expr year                             { AST.TArray $1 (AST.ConstInt 0 AST.TInt)}
+    | Type art                                          { AST.TPtr $1 }
+
 
     -- >> Auxiliar Rules ----------------------------------------------------------------------------
 

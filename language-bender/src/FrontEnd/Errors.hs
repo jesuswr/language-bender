@@ -14,7 +14,7 @@ data LexerError = InvalidToken   { token :: String }
 
 -- CLI error
 data CliError = NoArgs
-              | InvalidFileName
+              | NoFileName
               | DoesNotExistFileName
               deriving (Eq)
 
@@ -50,7 +50,7 @@ instance Show CliError where
     
     show NoArgs = "No arguments given\nUsage: For basic information, try the `--help' option."
     
-    show InvalidFileName = "The given file name its not valid."
+    show NoFileName = "No file name was given."
     
     show DoesNotExistFileName = "The given file name doesn't exist." 
 

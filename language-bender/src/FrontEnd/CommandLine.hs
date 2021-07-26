@@ -6,6 +6,7 @@ import qualified FrontEnd.Errors as E
 data Opts = Opts {
         fileName :: String,
         help     :: Bool,
+        verbose  :: Bool,
         justLex  :: Bool,
         justPar  :: Bool,
         printLex :: Bool,
@@ -22,13 +23,14 @@ processArgs :: [String] -> IO (Either E.Error Result)
 processArgs args
     | null args =
         return $ Left (E.CliError E.NoArgs)
-    | (not $ elem "--help" args) && (not $ validFileName (head args)) =
-        return $ Left (E.CliError E.InvalidFileName) 
+    | (not $ elem "--help" args) && (not $ foldl (\b arg -> validFileName arg || b) False args) =
+        return $ Left (E.CliError E.NoFileName) 
     | otherwise = do
 
         let opts = Opts {
-                fileName = name,
+                fileName = "",
                 help     = False,
+                verbose  = False,
                 justLex  = False,
                 justPar  = False,
                 printLex = False,
@@ -39,22 +41,22 @@ processArgs args
         if (elem "--help" args) then
             return . Right $ Result opts{help=True} []
         else do
+            let (newOpts, warnings) = processFlags (args) opts []
+            
+            let name = fileName newOpts
 
             fileExist <- doesFileExist name
+
+            if not fileExist then
+                return $ Left (E.CliError E.DoesNotExistFileName)
+            else 
+                if null $ objFile newOpts then
+                    return . Right $ Result newOpts{objFile = take (length name - 5) name} warnings
+                else
+                    return . Right $ Result newOpts warnings
+
             
-            if not fileExist 
-                then
-                    return $ Left (E.CliError E.DoesNotExistFileName)
-                else do
                     
-                    let (newOpts, warnings) = processFlags (tail args) opts []
-                    
-                    if null $ objFile newOpts then
-                        return . Right $ Result newOpts{objFile = fileName opts} warnings
-                    else
-                        return . Right $ Result newOpts warnings
-        where
-            name = head args
 
 
 
@@ -63,6 +65,8 @@ processFlags [] opts warnings =
     (opts, warnings)
 processFlags ("--help":xs) opts warnings =
     processFlags xs (opts{help = True}) warnings
+processFlags ("-v":xs) opts warnings =
+    processFlags xs (opts{verbose = True}) warnings
 processFlags ("-lex":xs) opts warnings =
     processFlags xs (opts{printLex = True}) warnings
 processFlags ("-par":xs) opts warnings =
@@ -83,9 +87,12 @@ processFlags ("-o":xs) opts warnings
         noObjFileName = (E.CliWarning E.NoObjFileName)
         unvalidFileName s = (E.CliWarning (E.InvalidObjFileName s))
 processFlags (x:xs) opts warnings =
-    processFlags xs opts (unknownArg x:warnings)
-    where
-        unknownArg s = (E.CliWarning (E.UnknownArg s))
+    if (validFileName x) && (null (fileName opts)) then
+        processFlags xs (opts{fileName = x}) warnings
+    else
+        processFlags xs opts (unknownArg x:warnings)
+        where
+            unknownArg s = (E.CliWarning (E.UnknownArg s))
 
 
 validObjFileName :: String -> Bool

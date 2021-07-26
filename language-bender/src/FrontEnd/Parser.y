@@ -154,11 +154,28 @@ ProcDecl        :: { AST.Declaration }
     | travel id PushScope colon PushScope Exprs PopScope PopScope                           {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2)  [] AST.TUnit $6 }
 
 FuncDecl        :: { AST.Declaration }
-    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope       {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 $10 }
-    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                     {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 $8 }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope               {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (AST.expType $8) $8 }
-    | book id PushScope colon PushScope Exprs PopScope PopScope                             {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (AST.expType $6) $6 }
---
+    : FuncDescription about PushScope FuncArg colon PushScope Exprs PopScope PopScope       {%  do
+                                                                                                    inferedType <- P.topType                                                                                                    
+                                                                                                    let (id, mbType) = $1
+                                                                                                        actType = fromMaybe inferedType mbType
+                                                                                                    _ <- P.popType
+                                                                                                    P.checkDecls $ AST.Func id (reverse $4) actType $7
+                                                                                            }
+    | FuncDescription PushScope colon PushScope Exprs PopScope PopScope                     {%  do
+                                                                                                    inferedType <- P.topType
+                                                                                                    let (id, mbType) = $1
+                                                                                                        actType = fromMaybe inferedType mbType
+                                                                                                    _ <- P.popType
+                                                                                                    P.checkDecls $ AST.Func id [] actType $5 
+                                                                                            }
+--    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope       {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 $10 }
+--    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                     {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 $8 }
+--    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope               {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) (AST.expType $8) $8 }
+--    | book id PushScope colon PushScope Exprs PopScope PopScope                             {% P.checkDecls $ AST.Func ((TK.name . TK.tktype) $2) [] (AST.expType $6) $6 }
+
+FuncDescription :: { (U.Name, Maybe AST.Type) }
+    : book id of Type                                                                       {% P.pushType $4 >> return ((TK.name . TK.tktype) $2, Just $4) }
+    | book id                                                                               {% P.pushType AST.TVoid >> return ((TK.name . TK.tktype) $2, Nothing) }
 
 FuncArg         :: { [AST.FuncArg] }
     : FuncDefArgDecl                                    { $1 }
@@ -167,8 +184,8 @@ FuncArg         :: { [AST.FuncArg] }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : SingleDefArgDecl                                  { [$1] }
-    | FuncDefArgDecl comma Type bender id Assign        { (AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Just $6)):$1 }
-    | FuncDefArgDecl comma Type '&' bender id Assign    { (AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Just $7)):$1 }
+    | FuncDefArgDecl comma Type bender id Assign        {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Just $6)) >>= (return . (:$1)) }
+    | FuncDefArgDecl comma Type '&' bender id Assign    {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Just $7)) >>= (return . (:$1)) }
 
 SingleDefArgDecl :: { AST.FuncArg }
     : Type bender id Assign                             {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Just $4) }
@@ -340,7 +357,7 @@ Type            :: { AST.Type }
     | earth                                             { AST.TChar }
     | metal                                             { AST.TString }   
     | fire                                              { AST.TBool }
-    | id                                                {% P.checkType $ AST.CustomType ((TK.name . TK.tktype) $1) }
+    | id                                                {% P.getCustomType ((TK.name . TK.tktype) $1) }
     | Type nation Expr year                             {% P.checkType $ AST.TArray $1 $3}
     | Type art                                          { AST.TPtr $1 }
 

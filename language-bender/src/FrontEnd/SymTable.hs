@@ -172,7 +172,9 @@ findSymbol' id st f = res
                         [] -> Nothing
                         ss -> Just $ maxInScope ss
 
-
+-- | Find a symbol in a specific scope
+findSymbolInScope :: Identifier -> Scope -> SymTable -> Maybe Symbol
+findSymbolInScope id scp st = findSymbol' id st ((==scp) . scope)
 
 -- | Tells if a symbol is a variable or not:
 isVariable :: Symbol -> Bool 
@@ -211,7 +213,7 @@ getIdType _ Type{unType = t} = t
 getIdType _ Procedure{} = AST.TUnit
 getIdType _ Function{retType = t} = t
 getIdType _ Reference{refType = t} = t
-getIdType nm _ = AST.CustomType{AST.tName=nm}
+getIdType nm _ = AST.CustomType{AST.tName=nm, AST.scope = -1}
 
 
 -- < Pretty Printing > --------------------------------------------
@@ -268,4 +270,4 @@ _showSignature _args _retType = "(" ++ (if null _args then "" else concat ((U.tr
 -- | Return struct and union subnames as str
 _showSubFields :: [(U.Name , AST.Type)] -> String 
 _showSubFields  [] = "{}"
-_showSubFields  ((name, t):nts) = "{ " ++ name ++ " :: " ++ show t ++ concat [", " ++ name ++ " :: " ++ show t | (name, t) <- nts] ++ " }"
+_showSubFields  ((name, t):nts) = "{ " ++ name ++ " :: " ++ (U.trim . show $ t) ++ concat [", " ++ name ++ " :: " ++ (U.trim . show $ t) | (name, t) <- nts] ++ " }"

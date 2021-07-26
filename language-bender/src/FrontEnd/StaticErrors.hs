@@ -29,3 +29,4 @@ data StaticError = SymbolNotInScope         { symName :: U.Name }
                  deriving(Eq, Show)  
 
 
+ 
