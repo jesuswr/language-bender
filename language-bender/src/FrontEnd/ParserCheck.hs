@@ -716,7 +716,7 @@ checkExpr a@AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = do
     let arrExprType = AST.expType _expr
     -- check _expr is array type
     aType <- case arrExprType of
-        ta@AST.TArray{} -> return ta
+        ta@AST.TArray {AST.arrType=_arrType} -> return _arrType
         _ -> do
             addStaticError $ SE.NonArrayExpr arrExprType
             return AST.TypeError
