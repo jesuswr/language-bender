@@ -27,13 +27,14 @@ data ParsingState =
     State
     { symTable :: ST.SymTable
     , expectedTypeStack :: [AST.Type]
+    , expectedLoopTypeStack :: [AST.Type]
     } deriving(Eq, Show)
 
 -- -------------------------------------------------------------------
 -- >> Commons -------------------------------------------------------
 
 startingState :: ParsingState
-startingState = State ST.newTable [AST.TUnit]
+startingState = State ST.newTable [AST.TUnit] [AST.TUnit]
 
 -- | Add error to state of RWST
 addStaticError :: SE.StaticError -> ParserState ()
@@ -89,6 +90,36 @@ replaceType newType = do
 -- | Get top of the type stack 
 topType :: ParserState AST.Type
 topType = RWS.get <&> head . expectedTypeStack
+
+-- | Add this type to the stack of expected loop types
+pushLoopType :: AST.Type -> ParserState ()
+pushLoopType t = do
+    s@State{expectedLoopTypeStack = stk} <- RWS.get
+    RWS.put s{expectedLoopTypeStack = t:stk}
+
+-- | Pop type from top of loop stack 
+popLoopType :: ParserState ()
+popLoopType = do
+    s@State{expectedLoopTypeStack = stk} <- RWS.get
+
+    case stk of
+            [s]  -> return ()
+            t:ts -> RWS.put s{expectedLoopTypeStack=ts}
+            _ -> error "Error in ParserState: Inconsistent state, stack of expected types should not be empty"
+
+-- | Replace type at the top of the loop stack with a new one
+replaceLoopType :: AST.Type -> ParserState ()
+replaceLoopType newType = do
+    s@State{expectedLoopTypeStack=stk} <- RWS.get
+
+    case stk of
+        [s] -> error "Error in ParserState: You shouldn't be replacing base expected type"
+        AST.TVoid:ts -> RWS.put s{expectedLoopTypeStack=newType:ts}
+        _ -> return ()
+
+-- | Get top of the loop type stack 
+topLoopType :: ParserState AST.Type
+topLoopType = RWS.get <&> head . expectedLoopTypeStack
 
 -- --------------------------------------------------------------------
 -- >> PreParser ------------------------------------------------------
@@ -510,13 +541,6 @@ checkExpr i@AST.If {AST.cond=_cond, AST.accExpr=_accExpr, AST.failExpr=_failExpr
 checkExpr e@AST.ExprBlock {AST.exprs=_exprs} =
     return e
 
---  Check break 
-checkExpr b@AST.Break {AST.expr=_expr} =
-    return b
-
---  Check continue 
-checkExpr c@AST.Continue {AST.expr=_expr} =
-    return c
 
 --  Check Declarations
 checkExpr d@AST.Declaration {AST.decl=_decl} =
@@ -831,6 +855,36 @@ checkExpr r@AST.Return {AST.expr = _expr} = do
 
     return r
 
+--  Check break 
+checkExpr b@AST.Break {AST.expr=_expr} = do
+
+    -- Get expected type from expected types stack
+    expectedType <- topLoopType
+    -- check type of expression matches the expected one
+    let retType = AST.expType _expr
+
+    matching <- _checkTypeMatch' [expectedType] retType
+
+    -- Replace expected type when typematch found
+    M.when matching $ replaceLoopType retType
+
+    return b
+
+--  Check continue 
+checkExpr c@AST.Continue {AST.expr=_expr} = do
+
+    -- Get expected type from expected types stack
+    expectedType <- topLoopType
+    -- check type of expression matches the expected one
+    let retType = AST.expType _expr
+
+    matching <- _checkTypeMatch' [expectedType] retType
+
+    -- Replace expected type when typematch found
+    M.when matching $ replaceLoopType retType
+
+    return c
+
 checkExpr x = return x
 
 -- | Checks if a given type is a valid one 
@@ -1053,3 +1107,42 @@ _functionCheckerHelper id mbType args body = do
     matching <- _checkTypeMatch' [inferedType] (AST.expType body)
 
     checkDecls $ AST.Func id (reverse args) inferedType' body
+
+-- | utility function to perform some operations needed before checking a for loop
+_forCheckerHelper :: U.Name 
+                  -> AST.Expr
+                  -> AST.Expr
+                  -> AST.Expr
+                  -> AST.Expr
+                  -> AST.Type
+                  -> ParserState AST.Expr
+_forCheckerHelper itName step start end body _ = do
+    inferedType <- topLoopType
+    popLoopType
+
+    let inferedType' = if inferedType == AST.TVoid 
+                            then AST.expType body
+                            else inferedType
+
+    -- Check if body type matches expected type 
+    matching <- _checkTypeMatch' [inferedType] (AST.expType body)
+
+    checkExpr $ AST.For itName step start end body inferedType'
+
+-- | utility function to perform some operations needed before checking a while loop
+_whileCheckerHelper :: AST.Expr
+                    -> AST.Expr
+                    -> AST.Type
+                    -> ParserState AST.Expr
+_whileCheckerHelper cond body _ = do
+    inferedType <- topLoopType
+    popLoopType
+
+    let inferedType' = if inferedType == AST.TVoid 
+                            then AST.expType body
+                            else inferedType
+
+    -- Check if body type matches expected type 
+    matching <- _checkTypeMatch' [inferedType] (AST.expType body)
+
+    checkExpr $ AST.While cond body inferedType'

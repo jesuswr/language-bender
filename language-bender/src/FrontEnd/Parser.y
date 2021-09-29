@@ -229,9 +229,9 @@ Expr            :: { AST.Expr }
    
     | ForDescription colon PushScope Expr PopScope PopScope {% do
                                                                 let (_id,_step,_start,_end) = $1
-                                                                P.checkExpr $ AST.For _id _step _start _end $4 AST.TypeError
+                                                                P._forCheckerHelper _id _step _start _end $4 AST.TVoid
                                                             }
-    | while Expr doing colon PushScope Expr PopScope                                   {% P.checkExpr $ AST.While $2 $6 AST.TypeError }
+    | WhileDescription colon PushScope Expr PopScope                                   {% P._whileCheckerHelper $1 $4 AST.TVoid }
     | if  Expr colon PushScope Expr PopScope otherwise PushScope Expr PopScope         {% P.checkExpr $ AST.If $2 $5 $9 AST.TypeError }
     | if  Expr colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope      {% P.checkExpr $ AST.If $2 $5 $9 AST.TypeError }
     | if  Expr colon PushScope Expr PopScope                                           {% P.checkExpr $ AST.If $2 $5 (AST.ConstUnit AST.TUnit) AST.TypeError }
@@ -285,11 +285,11 @@ Expr            :: { AST.Expr }
     | Expr unit                                         {% P.checkExpr $ AST.Op1 AST.UnitOperator $1 AST.TypeError }
 
     -- >> Control Flow -----------------------------------------------------------------------------------
---    | toBeContinued Expr                                { AST.Continue  $2 }
---    | burst Expr                                        { AST.Break     $2 }
+    | toBeContinued Expr                                {% P.checkExpr $ AST.Continue $2 (AST.expType $2) }
+    | burst Expr                                        {% P.checkExpr $ AST.Break $2 (AST.expType $2) }
     | return Expr                                       {% P.checkExpr $ AST.Return $2 (AST.expType $2) }
---    | toBeContinuedUnit                                 { AST.Continue  AST.ConstUnit }
---    | burstUnit                                         { AST.Break     AST.ConstUnit }
+    | toBeContinuedUnit                                 {% P.checkExpr $ AST.Continue (AST.ConstUnit AST.TUnit) AST.TUnit }
+    | burstUnit                                         {% P.checkExpr $ AST.Break (AST.ConstUnit AST.TUnit) AST.TUnit }
     | returnUnit                                        {% P.checkExpr $ AST.Return  (AST.ConstUnit AST.TUnit) AST.TUnit }
     
 
@@ -297,10 +297,17 @@ Expr            :: { AST.Expr }
 
 ForDescription  ::  { (String, AST.Expr, AST.Expr, AST.Expr) }
     : opening Expr of id chakrasFrom Expr to Expr       {% do
+                                                            P.pushLoopType $ AST.TVoid
                                                             P.pushEmptyScope
                                                             P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $4) (AST.expType $6) (Just $6) False
                                                             return (((TK.name . TK.tktype) $4), $2, $6, $8)
                                                         }
+WhileDescription :: { AST.Expr }
+    : while Expr doing                                  {% do
+                                                            P.pushLoopType $ AST.TVoid 
+                                                            return $2
+                                                        }
+
 
     -- >> Evaluable and none evaluable expressions > -----------------------------------------------------
 Exprs           ::  { AST.Expr }
