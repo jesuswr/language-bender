@@ -58,6 +58,7 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
     allows              { TK.Token _ TK.TKallows }
     techniqueOf         { TK.Token _ TK.TKtechniqueOf }
     bending             { TK.Token _ TK.TKbending }
+    purity              { TK.Token _ TK.TKpurity}
     techniqueFrom       { TK.Token _ TK.TKtechniqueFrom }
     using               { TK.Token _ TK.TKusing }
     quotmark_s          { TK.Token _ TK.TKquotmark_s }
@@ -260,7 +261,7 @@ Expr            :: { AST.Expr }
     | true                                              { AST.ConstTrue AST.TBool }
     | false                                             { AST.ConstFalse AST.TBool }
     | char                                              { AST.ConstChar $1 AST.TChar }
-    | string                                            { AST.ConstString $1 AST.TString }
+    | string                                            { AST.ConstString $1 (AST.TArray AST.TChar (AST.ConstInt (length $1) AST.TInt )) }
     | null                                              { AST.ConstNull (AST.TPtr AST.TVoid) }
 
     -- >> Binary Expressions --------------------------------------------------------------------------
@@ -350,7 +351,7 @@ Type            :: { AST.Type }
     : water                                             { AST.TFloat }
     | air                                               { AST.TInt }
     | earth                                             { AST.TChar }
-    | metal                                             { AST.TString }   
+    | metal Expr purity                                 { % P.checkType $ AST.TArray AST.TChar $2 }  -- arreglar docs  
     | fire                                              { AST.TBool }
     | id                                                {% P.getCustomType ((TK.name . TK.tktype) $1) }
     | Type nation Expr year                             {% P.checkType $ AST.TArray $1 $3}

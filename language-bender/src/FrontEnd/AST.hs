@@ -11,7 +11,6 @@ import Data.List as L
 data Type = TFloat
           | TInt 
           | TChar 
-          | TString
           | TBool
           | TArray { arrType :: Type, size :: Expr }
           | TPtr   { ptrType :: Type }
@@ -57,7 +56,7 @@ data Opr1 = Negation
 -- | Possible expressions. Remember, everything its an expression
 data Expr   = ConstChar       { cVal :: String, expType :: Type }
             | ConstString     { sVal :: String, expType :: Type }
-            | ConstInt        { iVal :: Int,expType :: Type }
+            | ConstInt        { iVal :: Int, expType :: Type }
             | ConstFloat      { fVal :: Float, expType :: Type }
             | ConstTrue       { expType :: Type }
             | ConstFalse      { expType :: Type }
@@ -191,9 +190,6 @@ identShowType ident TInt = "\n" ++
 
 identShowType ident TChar = "\n" ++
   replicate ident ' ' ++ "Type: Char\n"
-
-identShowType ident TString = "\n" ++
-  replicate ident ' ' ++ "Type: String\n"
 
 identShowType ident TBool = "\n" ++
   replicate ident ' ' ++ "Type: Bool\n"
@@ -428,7 +424,6 @@ simplePrint :: Type -> String
 simplePrint TFloat               = "Float"
 simplePrint TInt                 = "Int"
 simplePrint TChar                = "Char"
-simplePrint TString              = "String"
 simplePrint TBool                = "Bool"
 simplePrint (TArray aType sz)    = "Array of (" ++ simplePrint aType ++ ") of size " ++ show sz
 simplePrint (TPtr pType)         = "Pointer of (" ++ simplePrint pType ++ ")"

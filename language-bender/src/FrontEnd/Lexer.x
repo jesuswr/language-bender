@@ -79,7 +79,8 @@ tokens :-
                 -- char
 <0>     earth                                            { pushTK TKearth }
                 -- string
-<0>     metal                                            { pushTK TKmetal }
+<0>     metal @w with                                    { pushTK TKmetal }
+<0>     purity                                           { pushTK TKpurity }
 
                 -- array 
 <0>     nation @w since                                  { pushTK TKnation }

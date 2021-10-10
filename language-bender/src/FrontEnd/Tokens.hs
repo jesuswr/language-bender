@@ -34,6 +34,7 @@ data TokenType =
     TKmetal                              |
     TKnation                             |
     TKyear                               |
+    TKpurity                             |
     TKmasterOf                           |
     TKRightNow                           |
     TKdisciple                           |

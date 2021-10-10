@@ -157,7 +157,7 @@ preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
 
     let sym = ST.Symbol {
             ST.identifier=_argName,
-            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
+            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False, ST.offset = 0} , --arreglar despues
             ST.scope=0,
             ST.enrtyType=Nothing
         }
@@ -174,7 +174,7 @@ checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
 
     let sym = ST.Symbol {
             ST.identifier=_argName,
-            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False} ,
+            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False, ST.offset = 0} , --arreglar despues
             ST.scope=0,
             ST.enrtyType=Nothing
         }
@@ -189,7 +189,7 @@ checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
 checkField :: [(String, AST.Type)] -> ParserState [(String, AST.Type)]
 checkField l@((nm, t):fields) = do
 
-    let newSymT = ST.Variable{ ST.varType = t, ST.initVal = Nothing, ST.isConst = False }
+    let newSymT = ST.Variable{ ST.varType = t, ST.initVal = Nothing, ST.isConst = False , ST.offset = 0}  --arreglar despues
         newSym = ST.Symbol
             { ST.identifier = nm
             , ST.symType = newSymT
@@ -942,15 +942,16 @@ declToSym decl = ST.Symbol {
             ST.Variable {
                 ST.varType=_varType,
                 ST.initVal=_initVal,
-                ST.isConst=_isConst
+                ST.isConst=_isConst,
+                ST.offset = 0 --arreglar despues
             }
 
         declToSymType AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=AST.TypeError, ST.refScope=0}
 
 
-        declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields}
+        declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields, ST.width = 0} --arreglar despues
 
-        declToSymType AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields}
+        declToSymType AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields, ST.width = 0} --arreglar despues
 
         declToSymType AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body} =
             ST.Function {

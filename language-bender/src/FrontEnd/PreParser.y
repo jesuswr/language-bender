@@ -44,6 +44,7 @@ import Data.Functor((<&>))
     false               { TK.Token _ TK.TKfireMaster }
     earth               { TK.Token _ TK.TKearth }
     metal               { TK.Token _ TK.TKmetal }
+    purity              { TK.Token _ TK.TKpurity}
     nation              { TK.Token _ TK.TKnation }
     year                { TK.Token _ TK.TKyear }
     masterOf            { TK.Token _ TK.TKmasterOf }
@@ -323,7 +324,7 @@ Type            :: { AST.Type }
     : water                                             { AST.TFloat }
     | air                                               { AST.TInt }
     | earth                                             { AST.TChar }
-    | metal                                             { AST.TString }   
+    | metal Expr purity                                 { AST.TArray AST.TChar (AST.ConstInt 0 AST.TInt) }   
     | fire                                              { AST.TBool }
     | id                                                {% P.getCustomType ((TK.name . TK.tktype) $1) }
     | Type nation Expr year                             { AST.TArray $1 (AST.ConstInt 0 AST.TInt)}
