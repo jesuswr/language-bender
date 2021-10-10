@@ -21,6 +21,8 @@ import           Data.Maybe(isNothing, fromJust)
 type Scope = Int 
 -- | Stack of currently available scopes 
 type ScopeStack = [Scope]
+-- | Stack of current offsets 
+type OffsetStack = [Scope]
 -- | name of a symbol  
 type Identifier = String                        
 -- | Map from ids to its corresponding symbol data. Multiple symbols may have the same name, that's why we keep a 
@@ -52,6 +54,7 @@ data Symbol = Symbol
 data SymTable = SymTable
     { stDict :: Dictionary              -- ^ dict of valid symbols
     , stScopeStk :: ScopeStack          -- ^ stack of scopes
+    , stOffsetStk :: OffsetStack        -- ^ stack of offsets 
     , stNextScope :: Int                -- ^ current scope 
     } deriving (Eq)
 
@@ -62,8 +65,21 @@ newTable :: SymTable
 newTable = SymTable{
     stDict = M.empty,
     stScopeStk = [0],
+    stOffsetStk = [0],
     stNextScope = 1
 }
+
+pushOffset :: SymTable -> Int -> SymTable
+pushOffset st@SymTable{stOffsetStk = stk} o = st{stOffsetStk = o:stk}
+
+popOffset :: SymTable -> SymTable
+popOffset st@SymTable{stOffsetStk = stk} = st{stOffsetStk = tail stk}
+
+getCurrentOffset :: SymTable -> Int
+getCurrentOffset st@SymTable{stOffsetStk = stk} = head stk
+
+updateOffset :: SymTable -> Int -> SymTable
+updateOffset st@SymTable{stOffsetStk = stk} newOffset = st{stOffsetStk = newOffset:(tail stk)}
 
 -- | Push a new scope in the given table
 pushEmptyScope :: SymTable -> SymTable

@@ -1147,3 +1147,40 @@ _whileCheckerHelper cond body _ = do
     matching <- _checkTypeMatch' [inferedType] (AST.expType body)
 
     checkExpr $ AST.While cond body inferedType'
+
+
+-- OFFSET THINGS
+getOffset :: Int -> Int -> Int
+getOffset currOffset align = newOffset
+    where
+        newOffset = ((currOffset + align - 1) `div` align) * align
+
+getNextOffset :: Int -> Int -> Int -> Int
+getNextOffset currOffset align width = newOffset
+    where
+        newOffset = getOffset currOffset align + width
+
+pushOffset :: Int -> ParserState()
+pushOffset o = do
+    s@State{symTable = st} <- RWS.get
+    RWS.put s{symTable = ST.pushOffset st 0}
+
+popOffset :: ParserState()
+popOffset = do
+    s@State{symTable = st} <- RWS.get
+    RWS.put s{symTable = ST.popOffset st}
+
+getCurrentOffset :: ParserState Int
+getCurrentOffset = do
+    s@State{symTable = st} <- RWS.get
+    return $ ST.getCurrentOffset st
+
+-- esta te devuelve el offset de la variable y actualiza el tope de la pila
+updateOffset :: Int -> Int -> ParserState Int
+updateOffset align width = do 
+    s@State{symTable = st} <- RWS.get
+    let currOffset = ST.getCurrentOffset st
+    let ret = getOffset currOffset align
+    popOffset
+    pushOffset $ getNextOffset currOffset align width
+    return ret
