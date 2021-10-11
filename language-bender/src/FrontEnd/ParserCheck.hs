@@ -255,13 +255,13 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     return r
 
 -- Check union definition 
-checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
+checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields, AST.width=_w} = do
 
     --  Create symbol type
     let symbol = declToSym u
 
     -- check if add symbol is possible 
-    updateSymbol symbol
+    updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w}}
 
     return u
 
@@ -1052,7 +1052,7 @@ typeMatch t1 t2 = t2 `elem` getCastClass t1
 -- return the list of cast-able types with each other
 -- that contains the given type
 getCastClass :: AST.Type -> [AST.Type]
-getCastClass AST.TInt   = [AST.TFloat, AST.TInt]
+getCastClass AST.TInt   = [AST.TInt, AST.TFloat]
 getCastClass AST.TFloat = [AST.TFloat, AST.TInt]
 getCastClass t          = [t]
 

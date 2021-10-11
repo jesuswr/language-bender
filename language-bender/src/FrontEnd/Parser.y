@@ -146,10 +146,17 @@ Declarations    :: { [AST.Declaration] }
 
 Declaration     :: { AST.Declaration }
     : VarDecl                                                 { $1 }
-    | element id compoundBy PushScope StructIdDecls PopScope  {% P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $5) }
-    | energy id allows PushScope UnionIdDecls PopScope        {% P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2) (reverse $5) }
+    | element id compoundBy PushScope StructIdDecls StructOffset PopScope  {% P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $5) $6 }
+    | energy id allows PushScope UnionIdDecls PopScope        {% do
+                                                                 currSt@P.State{P.symTable = st} <- RWS.get
+                                                                 P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2 ) (reverse $5) (ST.getMaxSize st $5) 
+                                                              }
     | FuncDecl                                                { $1 }
     | ProcDecl                                                { $1 }
+
+StructOffset :: { Int }
+    : {- empty -}                                             {% P.getCurrentOffset }
+
 
 ProcDecl        :: { AST.Declaration }
     : ProcDescription madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P._functionCheckerHelper $1 (Just AST.TUnit) $4 $7 }
@@ -300,6 +307,7 @@ ForDescription  ::  { (String, AST.Expr, AST.Expr, AST.Expr) }
     : opening Expr of id chakrasFrom Expr to Expr       {% do
                                                             P.pushLoopType $ AST.TVoid
                                                             P.pushEmptyScope
+                                                            P.pushOffset 0
                                                             P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $4) (AST.expType $6) (Just $6) False
                                                             return (((TK.name . TK.tktype) $4), $2, $6, $8)
                                                         }
@@ -361,10 +369,10 @@ Type            :: { AST.Type }
     -- >> Auxiliar Rules ----------------------------------------------------------------------------
 
 PushScope 
-    : {- empty -}                                       {% P.pushEmptyScope }
+    : {- empty -}                                       {% P.pushEmptyScope >> P.pushOffset 0 }
 
 PopScope
-    : {- empty -}                                       {% P.popEmptyScope }
+    : {- empty -}                                       {% P.popEmptyScope >> P.popOffset }
 
 
 {

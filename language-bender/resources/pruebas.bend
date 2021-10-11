@@ -1,4 +1,7 @@
--- element lava is compound by super_fire skill of fire, bedrock skill of earth.
+--element lava is compound by super_fire skill of fire, bedrock skill of earth.
+
+
+energy nature allows tornado technique of air nation since 5 and then 5 years bending, blood_bending technique of water bending.
 
 -- bender x of lava.
 
@@ -18,4 +21,4 @@
 
 -- bender aang is to be continued 3.
 -- bender aang is burst 3.
-bender y of metal with 4 purity is "hola".
+--bender y of metal with 4 purity is "hola".

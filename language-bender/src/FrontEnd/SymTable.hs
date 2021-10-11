@@ -63,11 +63,20 @@ data SymTable = SymTable
 -- | Create a new empty table
 newTable :: SymTable
 newTable = SymTable{
-    stDict = M.empty,
+    stDict = initDic,
     stScopeStk = [0],
     stOffsetStk = [0],
     stNextScope = 1
 }
+
+initDic :: Dictionary
+initDic = M.fromList [("air", [Symbol "air" (Type AST.TInt 4) 0 Nothing])
+                    , ("water", [Symbol "water" (Type AST.TFloat 4) 0 Nothing])
+                    , ("fire", [Symbol "fire" (Type AST.TBool 1) 0 Nothing])
+                    , ("earth", [Symbol "earth" (Type AST.TChar 1) 0 Nothing])
+                    , ("art", [Symbol "art" (Type (AST.TPtr AST.TVoid) 4) 0 Nothing])
+                    , ("reincarnation", [Symbol "reincarnation" (Type (AST.TPtr AST.TVoid) 4) 0 Nothing])
+                    ]
 
 pushOffset :: SymTable -> Int -> SymTable
 pushOffset st@SymTable{stOffsetStk = stk} o = st{stOffsetStk = o:stk}
@@ -80,6 +89,31 @@ getCurrentOffset st@SymTable{stOffsetStk = stk} = head stk
 
 updateOffset :: SymTable -> Int -> SymTable
 updateOffset st@SymTable{stOffsetStk = stk} newOffset = st{stOffsetStk = newOffset:(tail stk)}
+
+getMaxSize :: SymTable -> [(U.Name, AST.Type)] -> Int
+getMaxSize st x = maximum $ map (getTypeSize st . snd) x
+
+getTypeSize :: SymTable -> AST.Type -> Int
+getTypeSize st AST.TArray{AST.arrType = t, AST.size = s} = 
+    case s of
+        AST.ConstInt val _ -> val * (getTypeSize st t) -- no dope vector
+        _                  -> 8 -- dope vector
+getTypeSize st AST.CustomType{AST.tName = n, AST.scope = s} = 
+    case findSymbolInScope n s st of
+        Nothing  -> 0
+        Just sym -> 
+            case symType sym of 
+                Type _ w       -> w
+                StructType _ w -> w
+                UnionType _ w  -> w
+                _              -> 0
+getTypeSize st t = 
+    case findSymbolInScope (AST.getTypeId t) 0 st of
+        Nothing  -> 0
+        Just sym ->
+            case symType sym of 
+                Type _ w -> w
+                _        -> 0
 
 -- | Push a new scope in the given table
 pushEmptyScope :: SymTable -> SymTable
@@ -255,11 +289,11 @@ instance Show SymType where
             (if _isConst then "Const " else "") ++  "Var => " ++ (init . tail . show) _varType ++ 
             (if isNothing _initVal then "" else  " = initial value")
 
-    show Type {unType=_unType} = "Type => " ++ show _unType
+    show Type {unType=_unType, width=_w} = "Type with width " ++ show _w ++ " => " ++ show _unType
 
-    show UnionType {fields=_fields}  = "Union => " ++ _showSubFields _fields
+    show UnionType {fields=_fields, width=_w}  = "Union with width " ++ show _w ++ " => " ++ _showSubFields _fields
 
-    show StructType {fields=_fields} = "Struct => " ++ _showSubFields _fields
+    show StructType {fields=_fields, width=_w} = "Struct with width " ++ show _w ++ " => " ++ _showSubFields _fields
 
     show Reference {refName=_refName, refType=_refType, refScope=_refScope} = 
         "Reference => &(" ++ _refName ++ "[" ++ show _refScope ++ "]" ++ " :: " ++ show _refType ++ ")"

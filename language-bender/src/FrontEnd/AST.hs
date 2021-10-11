@@ -8,14 +8,14 @@ import qualified FrontEnd.Utils as U
 import Data.List as L
 
 -- | Type Definition
-data Type = TFloat
-          | TInt 
-          | TChar 
-          | TBool
+data Type = TFloat --32
+          | TInt --32
+          | TChar --8
+          | TBool --8
           | TArray { arrType :: Type, size :: Expr }
-          | TPtr   { ptrType :: Type }
+          | TPtr   { ptrType :: Type } --32  
           | TUnit 
-          | TReference { refType :: Type }
+          | TReference { refType :: Type } --32 
           | CustomType { tName :: U.Name, scope :: Int }
           | TypeError
           | TVoid
@@ -26,8 +26,8 @@ data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe 
 -- | Declaration of new things
 data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal :: Maybe Expr, isConst :: Bool }
                     | Reference { decName :: U.Name, refName :: U.Name }
-                    | Union     { decName :: U.Name, fields :: [(U.Name, Type)] }
-                    | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] }
+                    | Union     { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int }
+                    | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int }
                     | Func      { decName :: U.Name, args :: [FuncArg], retType :: Type , body :: Expr }
                     deriving(Eq)
 
@@ -388,12 +388,12 @@ identShowDeclaration ident (Reference name refNm) = "\n" ++
   replicate ident ' ' ++ "Declaration of Reference with name '" 
   ++ name ++ "', referring '" ++ refNm ++ "'\n" 
 
-identShowDeclaration ident (Union name fs) = "\n" ++
+identShowDeclaration ident (Union name fs _) = "\n" ++
   replicate ident ' ' ++ "Declaration of Union '" ++ name ++ "'\n"
   ++ "\n" ++ replicate ident ' ' ++ "with fields: \n"
   ++ concatMap (identShowField (ident + 2)) fs
 
-identShowDeclaration ident (Struct name fs) = 
+identShowDeclaration ident (Struct name fs _) = 
   replicate ident ' ' ++ "Declaration of Struct '" ++ name ++ "'\n"
   ++ "\n" ++ replicate ident ' ' ++ "with fields: \n"
   ++ concatMap (identShowField (ident + 2)) fs
@@ -437,3 +437,13 @@ simpleListPrint :: [Type] -> String
 simpleListPrint ts = tsPrinted
   where
     tsPrinted = L.intercalate ", " (map simplePrint ts) 
+
+getTypeId :: Type -> U.Name
+getTypeId TFloat = "water"
+getTypeId TInt = "air"
+getTypeId TChar = "earth"
+getTypeId TBool = "fire"
+getTypeId TPtr{} = "art"
+getTypeId TReference{} = "reincarnation"
+getTypeId (CustomType name _) = name
+getTypeId _ = ""
