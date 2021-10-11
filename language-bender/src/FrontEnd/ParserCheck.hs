@@ -188,11 +188,16 @@ checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
 
 checkField :: [(String, AST.Type)] -> ParserState [(String, AST.Type)]
 checkField l@((nm, t):fields) = do
+    currSt@State{symTable = st} <- RWS.get
 
     let newSymT = ST.Variable{ ST.varType = t, ST.initVal = Nothing, ST.isConst = False , ST.offset = 0}  --arreglar despues
-        newSym = ST.Symbol
+        width = ST.getTypeSize st t
+        align = ST.getTypeAlign st t
+    o <- updateOffset align width
+
+    let newSym = ST.Symbol
             { ST.identifier = nm
-            , ST.symType = newSymT
+            , ST.symType = newSymT{ST.offset=o}
             , ST.scope = 0
             , ST.enrtyType = Nothing
             }
@@ -206,15 +211,22 @@ checkDecls :: AST.Declaration -> ParserState AST.Declaration
 
 -- Check Variable Declaration 
 checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = ival, AST.isConst = const} = do
+    currSt@State{symTable = st} <- RWS.get
 
     -- Create a new symbol
     let newSym = declToSym v
 
+    let width = ST.getTypeSize st t
+        align = ST.getTypeAlign st t
+    o <- updateOffset align width
+
     -- Add new variable to symbol table 
-    tryAddSymbol newSym
+    tryAddSymbol newSym{ST.symType=(ST.symType newSym){ST.offset=o}}
 
     -- check initial value if provided 
     M.forM_ ival (_checkTypeMatch'' t)
+
+
 
     return v
 
@@ -225,6 +237,10 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
 
     let refSym = ST.findSymbol refId  st
         currScope = ST.stCurrScope st
+
+    let width = ST.getTypeSize st (AST.TReference AST.TVoid)
+        align = ST.getTypeAlign st (AST.TReference AST.TVoid)
+    o <- updateOffset align width
 
     -- Check if referenced symbol exists and it's a variable
     case refSym of
@@ -245,34 +261,34 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
             Just ST.Symbol{ST.symType = ST.Reference{ST.refName=nm}} -> nm
             _ -> refId
 
-        newType = ST.Reference refId' refType refScope
+        newType = ST.Reference refId' refType refScope o
     -- create new symbol 
         newSym = ST.Symbol {ST.identifier=sid, ST.symType=newType, ST.scope=currScope, ST.enrtyType=Nothing}
-
+    
     -- try to add symbol 
     tryAddSymbol newSym
 
     return r
 
 -- Check union definition 
-checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields, AST.width=_w} = do
+checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields, AST.width=_w, AST.align=_a} = do
 
     --  Create symbol type
     let symbol = declToSym u
 
     -- check if add symbol is possible 
-    updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w}}
+    updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w, ST.align=_a}}
 
     return u
 
 -- Check Struct definition 
-checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields} = do
+checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields, AST.width=_w, AST.align=_a} = do
 
     --  Create symbol 
     let symbol = declToSym s
 
     -- check if add symbol is possible 
-    updateSymbol symbol
+    updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w, ST.align=_a}}
 
     return s
 
@@ -946,12 +962,12 @@ declToSym decl = ST.Symbol {
                 ST.offset = 0 --arreglar despues
             }
 
-        declToSymType AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=AST.TypeError, ST.refScope=0}
+        declToSymType AST.Reference {AST.refName=_refName} = ST.Reference {ST.refName=_refName, ST.refType=AST.TypeError, ST.refScope=0, ST.offset=0 }
 
 
-        declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields, ST.width = 0} --arreglar despues
+        declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields, ST.width = 0, ST.align = 0} --arreglar despues
 
-        declToSymType AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields, ST.width = 0} --arreglar despues
+        declToSymType AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields, ST.width = 0, ST.align = 0} --arreglar despues
 
         declToSymType AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body} =
             ST.Function {
@@ -1163,7 +1179,7 @@ getNextOffset currOffset align width = newOffset
 pushOffset :: Int -> ParserState()
 pushOffset o = do
     s@State{symTable = st} <- RWS.get
-    RWS.put s{symTable = ST.pushOffset st 0}
+    RWS.put s{symTable = ST.pushOffset st o}
 
 popOffset :: ParserState()
 popOffset = do

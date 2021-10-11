@@ -146,8 +146,8 @@ Declarations
     | Declarations Declaration dot                                                       { }
 
 Declaration     :: { () } 
-    : element id compoundBy PushScope StructIdDecls PopScope                             {% P.preCheckDecls $ AST.Struct ((TK.name . TK.tktype) $2) [] 0 }
-    | energy id allows PushScope UnionIdDecls PopScope                                   {% P.preCheckDecls $ AST.Union  ((TK.name . TK.tktype) $2) [] 0 }
+    : element id compoundBy PushScope StructIdDecls PopScope                             {% P.preCheckDecls $ AST.Struct ((TK.name . TK.tktype) $2) [] 0 0 }
+    | energy id allows PushScope UnionIdDecls PopScope                                   {% P.preCheckDecls $ AST.Union  ((TK.name . TK.tktype) $2) [] 0 0 }
     | VarDecl                                                                            { () }
     | FuncDecl                                                                           { () }
     | ProcDecl                                                                           { () }

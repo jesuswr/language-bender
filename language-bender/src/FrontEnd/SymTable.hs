@@ -34,12 +34,12 @@ type Dictionary = M.Map Identifier [Symbol]
 -- | Symbol Type with its corresponding data
 data SymType   
     = Variable      { varType :: AST.Type, initVal :: Maybe AST.Expr, isConst :: Bool, offset :: Int }
-    | Type          { unType :: AST.Type , width :: Int }
-    | StructType    { fields :: [(U.Name, AST.Type)] , width :: Int }
-    | UnionType     { fields :: [(U.Name, AST.Type)] , width :: Int }
+    | Type          { unType :: AST.Type , width :: Int, align :: Int }
+    | StructType    { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int }
+    | UnionType     { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int }
     | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
     | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
-    | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int }
+    | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int, offset :: Int}
     deriving (Eq)
 
 -- | Symbol Data type
@@ -70,12 +70,12 @@ newTable = SymTable{
 }
 
 initDic :: Dictionary
-initDic = M.fromList [("air", [Symbol "air" (Type AST.TInt 4) 0 Nothing])
-                    , ("water", [Symbol "water" (Type AST.TFloat 4) 0 Nothing])
-                    , ("fire", [Symbol "fire" (Type AST.TBool 1) 0 Nothing])
-                    , ("earth", [Symbol "earth" (Type AST.TChar 1) 0 Nothing])
-                    , ("art", [Symbol "art" (Type (AST.TPtr AST.TVoid) 4) 0 Nothing])
-                    , ("reincarnation", [Symbol "reincarnation" (Type (AST.TPtr AST.TVoid) 4) 0 Nothing])
+initDic = M.fromList [("air", [Symbol "air" (Type AST.TInt 4 4) 0 Nothing])
+                    , ("water", [Symbol "water" (Type AST.TFloat 4 4) 0 Nothing])
+                    , ("fire", [Symbol "fire" (Type AST.TBool 1 1) 0 Nothing])
+                    , ("earth", [Symbol "earth" (Type AST.TChar 1 1) 0 Nothing])
+                    , ("art", [Symbol "art" (Type (AST.TPtr AST.TVoid) 4 4) 0 Nothing])
+                    , ("reincarnation", [Symbol "reincarnation" (Type (AST.TPtr AST.TVoid) 4 4) 0 Nothing])
                     ]
 
 pushOffset :: SymTable -> Int -> SymTable
@@ -103,17 +103,36 @@ getTypeSize st AST.CustomType{AST.tName = n, AST.scope = s} =
         Nothing  -> 0
         Just sym -> 
             case symType sym of 
-                Type _ w       -> w
-                StructType _ w -> w
-                UnionType _ w  -> w
-                _              -> 0
+                Type _ w _       -> w
+                StructType _ w _ -> w
+                UnionType _ w _  -> w
+                _                -> 0
 getTypeSize st t = 
     case findSymbolInScope (AST.getTypeId t) 0 st of
         Nothing  -> 0
         Just sym ->
             case symType sym of 
-                Type _ w -> w
-                _        -> 0
+                Type _ w _ -> w
+                _          -> 0
+
+getTypeAlign :: SymTable -> AST.Type -> Int
+getTypeAlign st AST.TArray{AST.arrType = t, AST.size = s} = getTypeAlign st t
+getTypeAlign st AST.CustomType{AST.tName = n, AST.scope = s} = 
+    case findSymbolInScope n s st of
+        Nothing  -> 1
+        Just sym -> 
+            case symType sym of 
+                Type _ _ a       -> a
+                StructType _ _ a -> a
+                UnionType _ _ a  -> a
+                _                -> 1
+getTypeAlign st t = 
+    case findSymbolInScope (AST.getTypeId t) 0 st of
+        Nothing  -> 1
+        Just sym ->
+            case symType sym of 
+                Type _ _ a -> a
+                _          -> 1
 
 -- | Push a new scope in the given table
 pushEmptyScope :: SymTable -> SymTable
@@ -285,18 +304,18 @@ instance Show SymType where
 
     show Procedure {args=_args}                  = "Proc => " ++ _showSignature _args AST.TUnit 
 
-    show Variable {varType=_varType, initVal=_initVal, isConst=_isConst} = 
-            (if _isConst then "Const " else "") ++  "Var => " ++ (init . tail . show) _varType ++ 
+    show Variable {varType=_varType, initVal=_initVal, isConst=_isConst, offset=_o} = 
+            (if _isConst then "Const " else "") ++  "Var with offset " ++ show _o ++ " => " ++ (init . tail . show) _varType ++ 
             (if isNothing _initVal then "" else  " = initial value")
 
-    show Type {unType=_unType, width=_w} = "Type with width " ++ show _w ++ " => " ++ show _unType
+    show Type {unType=_unType, width=_w, align=_a} = "Type with width " ++ show _w ++ " and align " ++ show _a ++ " => " ++ show _unType
 
-    show UnionType {fields=_fields, width=_w}  = "Union with width " ++ show _w ++ " => " ++ _showSubFields _fields
+    show UnionType {fields=_fields, width=_w, align=_a}  = "Union with width " ++ show _w ++ " and align " ++ show _a ++ " => " ++ _showSubFields _fields
 
-    show StructType {fields=_fields, width=_w} = "Struct with width " ++ show _w ++ " => " ++ _showSubFields _fields
+    show StructType {fields=_fields, width=_w, align=_a} = "Struct with width " ++ show _w ++ " and align " ++ show _a ++ " => " ++ _showSubFields _fields
 
-    show Reference {refName=_refName, refType=_refType, refScope=_refScope} = 
-        "Reference => &(" ++ _refName ++ "[" ++ show _refScope ++ "]" ++ " :: " ++ show _refType ++ ")"
+    show Reference {refName=_refName, refType=_refType, refScope=_refScope, offset=_o} = 
+        "Reference with offset " ++ show _o ++ " => &(" ++ _refName ++ "[" ++ show _refScope ++ "]" ++ " :: " ++ show _refType ++ ")"
 
 -- | Print scope stack 
 _printScopeStack :: ScopeStack -> String

@@ -146,10 +146,13 @@ Declarations    :: { [AST.Declaration] }
 
 Declaration     :: { AST.Declaration }
     : VarDecl                                                 { $1 }
-    | element id compoundBy PushScope StructIdDecls StructOffset PopScope  {% P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $5) $6 }
+    | element id compoundBy PushScope StructIdDecls StructOffset PopScope  {% do
+                                                                                currSt@P.State{P.symTable = st} <- RWS.get
+                                                                                P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $5) $6 (((ST.getTypeAlign st) . snd . last) $5)
+                                                                            }
     | energy id allows PushScope UnionIdDecls PopScope        {% do
                                                                  currSt@P.State{P.symTable = st} <- RWS.get
-                                                                 P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2 ) (reverse $5) (ST.getMaxSize st $5) 
+                                                                 P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2 ) (reverse $5) (ST.getMaxSize st $5)  (foldl lcm 1 (map ((ST.getTypeAlign st) . snd) $5) )
                                                               }
     | FuncDecl                                                { $1 }
     | ProcDecl                                                { $1 }
