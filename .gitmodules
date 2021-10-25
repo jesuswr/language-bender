@@ -1,0 +1,3 @@
+[submodule "language-bender/src/TACTypes"]
+	path = language-bender/src/TACTypes
+	url = https://github.com/LDiazN/TACTypes.git
