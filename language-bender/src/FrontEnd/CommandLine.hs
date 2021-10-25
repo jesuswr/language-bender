@@ -9,6 +9,7 @@ data Opts = Opts {
         verbose  :: Bool,
         justLex  :: Bool,
         justPar  :: Bool,
+        tac      :: Bool,
         printLex :: Bool,
         printPar :: Bool,
         objFile  :: String
@@ -23,8 +24,8 @@ processArgs :: [String] -> IO (Either E.Error Result)
 processArgs args
     | null args =
         return $ Left (E.CliError E.NoArgs)
-    | (not $ elem "--help" args) && (not $ foldl (\b arg -> validFileName arg || b) False args) =
-        return $ Left (E.CliError E.NoFileName) 
+    | notElem "--help" args && not (foldl (\b arg -> validFileName arg || b) False args) =
+        return $ Left (E.CliError E.NoFileName)
     | otherwise = do
 
         let opts = Opts {
@@ -33,30 +34,31 @@ processArgs args
                 verbose  = False,
                 justLex  = False,
                 justPar  = False,
+                tac      = False,
                 printLex = False,
                 printPar = False,
                 objFile  = ""
         }
-        
-        if (elem "--help" args) then
+
+        if "--help" `elem` args then
             return . Right $ Result opts{help=True} []
         else do
-            let (newOpts, warnings) = processFlags (args) opts []
-            
+            let (newOpts, warnings) = processFlags args opts []
+
             let name = fileName newOpts
 
             fileExist <- doesFileExist name
 
             if not fileExist then
                 return $ Left (E.CliError E.DoesNotExistFileName)
-            else 
+            else
                 if null $ objFile newOpts then
                     return . Right $ Result newOpts{objFile = take (length name - 5) name} warnings
                 else
                     return . Right $ Result newOpts warnings
 
-            
-                    
+
+
 
 
 
@@ -75,6 +77,8 @@ processFlags ("-jlex":xs) opts warnings =
     processFlags xs (opts{justLex = True}) warnings
 processFlags ("-jpar":xs) opts warnings =
     processFlags xs (opts{justPar = True}) warnings
+processFlags ("-tac":xs) opts warnings =
+    processFlags xs (opts{tac = True}) warnings
 processFlags ("-o":xs) opts warnings
     | null xs =
         processFlags xs opts (noObjFileName:warnings)
@@ -84,15 +88,15 @@ processFlags ("-o":xs) opts warnings
         processFlags (tail xs) (opts{objFile = name}) warnings
     where
         name = head xs
-        noObjFileName = (E.CliWarning E.NoObjFileName)
-        unvalidFileName s = (E.CliWarning (E.InvalidObjFileName s))
+        noObjFileName = E.CliWarning E.NoObjFileName
+        unvalidFileName s = E.CliWarning (E.InvalidObjFileName s)
 processFlags (x:xs) opts warnings =
-    if (validFileName x) && (null (fileName opts)) then
+    if validFileName x && null (fileName opts) then
         processFlags xs (opts{fileName = x}) warnings
     else
         processFlags xs opts (unknownArg x:warnings)
         where
-            unknownArg s = (E.CliWarning (E.UnknownArg s))
+            unknownArg s = E.CliWarning (E.UnknownArg s)
 
 
 validObjFileName :: String -> Bool

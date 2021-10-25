@@ -1,8 +1,6 @@
 -- Parser Functions and types for static analisys and type checking.
 module FrontEnd.ParserCheck where
 
-
-
 -- <Language Bender Imports> ------------------------------------
 import qualified FrontEnd.StaticErrors  as SE
 import qualified FrontEnd.AST           as AST
