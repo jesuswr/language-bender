@@ -146,21 +146,21 @@ Declarations
     | Declarations Declaration dot                                                       { }
 
 Declaration     :: { () } 
-    : element id compoundBy PushScope StructIdDecls PopScope                             {% P.preCheckDecls $ AST.Struct ((TK.name . TK.tktype) $2) [] 0 0 }
-    | energy id allows PushScope UnionIdDecls PopScope                                   {% P.preCheckDecls $ AST.Union  ((TK.name . TK.tktype) $2) [] 0 0 }
+    : element id compoundBy PushScope StructIdDecls PopScope                             {% P.preCheckDecls $ AST.Struct ((TK.name . TK.tktype) $2) [] 0 0 0 }
+    | energy id allows PushScope UnionIdDecls PopScope                                   {% P.preCheckDecls $ AST.Union  ((TK.name . TK.tktype) $2) [] 0 0 0 }
     | VarDecl                                                                            { () }
     | FuncDecl                                                                           { () }
     | ProcDecl                                                                           { () }
 
 ProcDecl        :: { () }
-    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope         {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) }
-    | travel id PushScope colon PushScope Exprs PopScope PopScope                        {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) }
+    : travel id madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope         {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TUnit (AST.ConstUnit AST.TUnit) 0 }
+    | travel id PushScope colon PushScope Exprs PopScope PopScope                        {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TUnit (AST.ConstUnit AST.TUnit) 0 }
 
 FuncDecl        :: { () }
-    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope    {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 (AST.ConstUnit AST.TUnit) }
-    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                  {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 (AST.ConstUnit AST.TUnit) }
-    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TVoid (AST.ConstUnit AST.TUnit) }
-    | book id PushScope colon PushScope Exprs PopScope PopScope                          {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TVoid (AST.ConstUnit AST.TUnit) }
+    : book id of Type about PushScope FuncArg colon PushScope Exprs PopScope PopScope    {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $7) $4 (AST.ConstUnit AST.TUnit) 0 }
+    | book id of Type PushScope colon PushScope Exprs PopScope PopScope                  {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] $4 (AST.ConstUnit AST.TUnit) 0 }
+    | book id about PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) (reverse $5) AST.TVoid (AST.ConstUnit AST.TUnit) 0 }
+    | book id PushScope colon PushScope Exprs PopScope PopScope                          {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TVoid (AST.ConstUnit AST.TUnit) 0 }
 
 FuncArg         :: { [AST.FuncArg] }
     : FuncDefArgDecl                                                                     { $1 }
@@ -169,21 +169,21 @@ FuncArg         :: { [AST.FuncArg] }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : SingleDefArgDecl                                                                   { [$1] }
-    | FuncDefArgDecl comma Type bender id Assign                                         {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing) >>= (return . (:$1)) }
-    | FuncDefArgDecl comma Type '&' bender id Assign                                     {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing) >>= (return . (:$1)) }
+    | FuncDefArgDecl comma Type bender id Assign                                         {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing 0) >>= (return . (:$1)) }
+    | FuncDefArgDecl comma Type '&' bender id Assign                                     {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing 0) >>= (return . (:$1)) }
 
 SingleDefArgDecl :: { AST.FuncArg }
-    : Type bender id Assign                                                              {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing }
-    | Type '&' bender id Assign                                                          {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing }
+    : Type bender id Assign                                                              {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing 0 }
+    | Type '&' bender id Assign                                                          {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing 0 }
 
 FuncArgDecl     :: { [AST.FuncArg] }
     : SingleFuncArgDecl                                                                  { [$1] }
-    | FuncArgDecl comma Type bender id                                                   {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing) >>= (return . (:$1)) }
-    | FuncArgDecl comma Type '&' bender id                                               {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing) >>= (return . (:$1)) }
+    | FuncArgDecl comma Type bender id                                                   {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing 0) >>= (return . (:$1)) }
+    | FuncArgDecl comma Type '&' bender id                                               {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing 0) >>= (return . (:$1)) }
 
 SingleFuncArgDecl :: { AST.FuncArg }
-    : Type bender id                                                                     {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing }
-    | Type '&' bender id                                                                 {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing }
+    : Type bender id                                                                     {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing 0 }
+    | Type '&' bender id                                                                 {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing 0 }
 
 StructIdDecls   
     : id skillOf Type                                                                    {}
@@ -347,10 +347,9 @@ parseError []       = P.addStaticError SE.UnexpectedEOF >> (fail . show) SE.Unex
 parseError rem@(tk:tks) = P.addStaticError (SE.ParseError rem)    >> (fail $ "parse error in "++ (show tk)) -- (fail . show) (SE.ParseError rem)
 
 
--- could use execRWST instead of runRWST
+-- Run the preparser
 runPreParse :: [TK.Token] -> IO (P.ParsingState, P.ErrorLog)
-runPreParse tks = do
-    (_, s, e) <- RWS.runRWST (preParseTokens tks) () P.startingState
-    return (s, e)
+runPreParse tks =
+    RWS.execRWST (preParseTokens tks) () P.startingState
 
 }

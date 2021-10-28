@@ -151,7 +151,7 @@ preCheckDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
 
 
 preCheckFunArg :: AST.FuncArg -> ParserState AST.FuncArg
-preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
+preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal _) = do
 
     let sym = ST.Symbol {
             ST.identifier=_argName,
@@ -168,7 +168,7 @@ preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
 -- >> Parser ---------------------------------------------------------
 
 checkFunArg :: AST.FuncArg -> ParserState AST.FuncArg
-checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
+checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal _) = do
 
     let sym = ST.Symbol {
             ST.identifier=_argName,
@@ -181,8 +181,10 @@ checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal) = do
         _checkTypeMatch'' _argType (fromMaybe (AST.ConstUnit AST.TUnit) _defaultVal)
         return ()
 
+    currScope <- getScope
+
     updateSymbol sym
-    return arg
+    return arg{AST._declScope = currScope}
 
 checkField :: [(String, AST.Type)] -> ParserState [(String, AST.Type)]
 checkField l@((nm, t):fields) = do
@@ -224,17 +226,19 @@ checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = iv
     -- check initial value if provided 
     M.forM_ ival (_checkTypeMatch'' t)
 
+    currScope <- getScope
 
-
-    return v
+    return v{ AST.declScope = currScope }
 
 -- Check reference Declaration 
 checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     -- Get current state
     currSt@State{symTable = st} <- RWS.get
 
+    currScope <- getScope
+
     let refSym = ST.findSymbol refId  st
-        currScope = ST.stCurrScope st
+        -- currScope = ST.stCurrScope st
 
     let width = ST.getTypeSize st (AST.TReference AST.TVoid)
         align = ST.getTypeAlign st (AST.TReference AST.TVoid)
@@ -266,7 +270,7 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     -- try to add symbol 
     tryAddSymbol newSym
 
-    return r
+    return r{ AST.declScope = currScope}
 
 -- Check union definition 
 checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields, AST.width=_w, AST.align=_a} = do
@@ -277,7 +281,9 @@ checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields, AST.width=_w, 
     -- check if add symbol is possible 
     updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w, ST.align=_a}}
 
-    return u
+    currScope <- getScope
+
+    return u{ AST.declScope = currScope }
 
 -- Check Struct definition 
 checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields, AST.width=_w, AST.align=_a} = do
@@ -288,7 +294,9 @@ checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields, AST.width=_w,
     -- check if add symbol is possible 
     updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w, ST.align=_a}}
 
-    return s
+    currScope <- getScope
+
+    return s{ AST.declScope = currScope }
 
 -- Check function declaration
 checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
@@ -300,7 +308,9 @@ checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retTyp
     let sym = declToSym f
     updateSymbol sym
 
-    return f
+    currScope <- getScope
+
+    return f{ AST.declScope = currScope }
 
 
 -- | Check if a given expression uses valid names only
@@ -314,7 +324,9 @@ checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
     -- set new type 
     new_type <- getTypeOfId _name
 
-    return i{AST.expType = new_type}
+    currScope <- getScope
+
+    return i{AST.expType = new_type, AST.declScope_ = currScope}
 
 -- Check assign expression 
 checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
@@ -332,7 +344,9 @@ checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
         then var_type
         else AST.TypeError
 
-    return a{AST.expType = assgType}
+    currScope <- getScope
+
+    return a{AST.expType = assgType, AST.declScope_ = currScope}
 
 -- Check assign to struct
 checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AST.tag=_tag} = do
@@ -509,7 +523,9 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
     -- Check that the types in _actualArgs match
     checkExprList argsTypes _actualArgs
 
-    return f{AST.expType = fType}
+    currScope <- getScope
+
+    return f{AST.expType = fType, AST.declScope_ = currScope}
 
 --  Check for
 checkExpr f@AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody} = do
@@ -1121,7 +1137,7 @@ _functionCheckerHelper id mbType args body = do
     -- Check if body type matches expected type 
     matching <- _checkTypeMatch' [inferedType] (AST.expType body)
 
-    checkDecls $ AST.Func id (reverse args) inferedType' body
+    checkDecls $ AST.Func id (reverse args) inferedType' body 0
 
 -- | utility function to perform some operations needed before checking a for loop
 _forCheckerHelper :: U.Name 
