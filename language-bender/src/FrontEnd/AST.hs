@@ -21,14 +21,14 @@ data Type = TFloat --32
           | TVoid
           deriving(Eq)
 
-data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr } deriving(Eq)
+data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe Expr, _declScope :: Int } deriving(Eq)
 
 -- | Declaration of new things
-data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal :: Maybe Expr, isConst :: Bool }
-                    | Reference { decName :: U.Name, refName :: U.Name }
-                    | Union     { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int }
-                    | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int }
-                    | Func      { decName :: U.Name, args :: [FuncArg], retType :: Type , body :: Expr }
+data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal :: Maybe Expr, isConst :: Bool, declScope :: Int }
+                    | Reference { decName :: U.Name, refName :: U.Name, declScope :: Int }
+                    | Union     { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int, declScope :: Int }
+                    | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int, declScope :: Int }
+                    | Func      { decName :: U.Name, args :: [FuncArg], retType :: Type , body :: Expr, declScope :: Int }
                     deriving(Eq)
 
 -- | Binary Operators
@@ -64,11 +64,11 @@ data Expr   = ConstChar       { cVal :: String, expType :: Type }
             | ConstUnion      { unionName :: U.Name, tag :: U.Name, value :: Expr, expType :: Type }
             | ConstUnit       { expType :: Type }
             | ConstNull       { expType :: Type }
-            | Id              { name :: U.Name, position :: U.Position, expType :: Type}
-            | Assign          { variable :: U.Name, value :: Expr, expType :: Type}
+            | Id              { name :: U.Name, position :: U.Position, expType :: Type, declScope_ :: Int}
+            | Assign          { variable :: U.Name, value :: Expr, expType :: Type, declScope_ :: Int}
             | StructAssign    { struct :: Expr, tag :: U.Name, value :: Expr, expType :: Type}
             | StructAccess    { struct :: Expr, tag :: U.Name, expType :: Type }
-            | FunCall         { fname :: U.Name, actualArgs :: [Expr], expType :: Type}
+            | FunCall         { fname :: U.Name, actualArgs :: [Expr], expType :: Type, declScope_ :: Int}
             | For             { iteratorName :: U.Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr, expType :: Type }
             | While           { cond :: Expr, cicBody :: Expr, expType :: Type}
             | If              { cond :: Expr, accExpr :: Expr, failExpr :: Expr, expType :: Type }
@@ -171,7 +171,7 @@ identShowOpr2 ident Or =
 
 
 identShowFuncArg :: Int -> FuncArg -> String
-identShowFuncArg ident (FuncArg nm t def) = "\n" ++
+identShowFuncArg ident (FuncArg nm t def _) = "\n" ++
   replicate ident ' ' ++ "Func Arg: " ++ nm ++ " of type: "
   ++ ( init . tail $ identShowType (ident + 2) t) 
   ++ (case def of
@@ -258,10 +258,10 @@ identShowExpr ident (ConstUnit _) = "\n" ++
 identShowExpr ident (ConstNull _) = "\n" ++
   replicate ident ' ' ++ "Null\n"
 
-identShowExpr ident (Id nm pos_ _) = "\n" ++
+identShowExpr ident (Id nm pos_ _ _) = "\n" ++
   replicate ident ' ' ++ "Identifier: " ++ nm ++ "\n"
 
-identShowExpr ident (Assign nm val _) = "\n" ++
+identShowExpr ident (Assign nm val _ _) = "\n" ++
   replicate ident ' ' ++ "Assignment: " ++ nm ++ " <- \n"
   ++ identShowExpr (ident + 2) val
 
@@ -276,7 +276,7 @@ identShowExpr ident (StructAccess stru tag_ _) = "\n" ++
   ++ identShowExpr (ident + 2) stru
   ++ "\n" ++ replicate ident ' ' ++ " with tag '" ++ tag_ ++ "'\n"
 
-identShowExpr ident (FunCall fnm args_ _) = "\n" ++
+identShowExpr ident (FunCall fnm args_ _ _) = "\n" ++
   replicate ident ' ' ++ "Function/Procedure call: " ++ fnm ++ "\n"
   ++ "\n" ++ replicate ident ' ' ++ "with arguments:\n"
   ++ concatMap (identShowExpr (ident + 2)) args_ 
@@ -373,7 +373,7 @@ identShowField ident (name, t) = "\n" ++
 
 identShowDeclaration :: Int -> Declaration -> String
 
-identShowDeclaration ident (Variable name varT initV isCst) = "\n" ++
+identShowDeclaration ident (Variable name varT initV isCst _) = "\n" ++
   replicate ident ' ' ++ "Declaration of variable '" ++ name ++ "'\n"
   ++ replicate ident ' ' ++ "is Constant: " ++ show isCst ++ "\n"
   ++ (case initV of 
@@ -384,21 +384,21 @@ identShowDeclaration ident (Variable name varT initV isCst) = "\n" ++
   ++  "\n" ++ replicate ident ' ' ++ "Of type:\n"
       ++ identShowType (ident + 2) varT
 
-identShowDeclaration ident (Reference name refNm) = "\n" ++
+identShowDeclaration ident (Reference name refNm _) = "\n" ++
   replicate ident ' ' ++ "Declaration of Reference with name '" 
   ++ name ++ "', referring '" ++ refNm ++ "'\n" 
 
-identShowDeclaration ident (Union name fs _ _) = "\n" ++
+identShowDeclaration ident (Union name fs _ _ _) = "\n" ++
   replicate ident ' ' ++ "Declaration of Union '" ++ name ++ "'\n"
   ++ "\n" ++ replicate ident ' ' ++ "with fields: \n"
   ++ concatMap (identShowField (ident + 2)) fs
 
-identShowDeclaration ident (Struct name fs _ _) = 
+identShowDeclaration ident (Struct name fs _ _ _) = 
   replicate ident ' ' ++ "Declaration of Struct '" ++ name ++ "'\n"
   ++ "\n" ++ replicate ident ' ' ++ "with fields: \n"
   ++ concatMap (identShowField (ident + 2)) fs
 
-identShowDeclaration ident (Func name param retT bodyExp) = "\n" ++
+identShowDeclaration ident (Func name param retT bodyExp _) = "\n" ++
   case retT of    
     TUnit ->
       replicate ident ' ' ++ "Declaration of Procedure '" ++ name ++ "'\n"

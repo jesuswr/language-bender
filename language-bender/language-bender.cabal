@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      BackEnd.TacGenerator
       FrontEnd.AST
       FrontEnd.CommandLine
       FrontEnd.Errors
@@ -39,7 +40,9 @@ library
       FrontEnd.Tokens
       FrontEnd.Utils
       Lib
+      TACTypes.TAC
       Utils.Constants
+      Utils.Types
   other-modules:
       Paths_language_bender
   hs-source-dirs:

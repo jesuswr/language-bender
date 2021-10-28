@@ -148,11 +148,11 @@ Declaration     :: { AST.Declaration }
     : VarDecl                                                 { $1 }
     | element id compoundBy PushScope StructIdDecls StructOffset PopScope  {% do
                                                                                 currSt@P.State{P.symTable = st} <- RWS.get
-                                                                                P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $5) $6 (((ST.getTypeAlign st) . snd . last) $5)
+                                                                                P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $5) $6 (((ST.getTypeAlign st) . snd . last) $5) 0
                                                                             }
     | energy id allows PushScope UnionIdDecls PopScope        {% do
                                                                  currSt@P.State{P.symTable = st} <- RWS.get
-                                                                 P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2 ) (reverse $5) (ST.getMaxSize st $5)  (foldl lcm 1 (map ((ST.getTypeAlign st) . snd) $5) )
+                                                                 P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2 ) (reverse $5) (ST.getMaxSize st $5)  (foldl lcm 1 (map ((ST.getTypeAlign st) . snd) $5) ) 0
                                                               }
     | FuncDecl                                                { $1 }
     | ProcDecl                                                { $1 }
@@ -183,21 +183,21 @@ FuncArg         :: { [AST.FuncArg] }
 
 FuncDefArgDecl :: { [AST.FuncArg] }
     : SingleDefArgDecl                                  { [$1] }
-    | FuncDefArgDecl comma Type bender id Assign        {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Just $6)) >>= (return . (:$1)) }
-    | FuncDefArgDecl comma Type '&' bender id Assign    {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Just $7)) >>= (return . (:$1)) }
+    | FuncDefArgDecl comma Type bender id Assign        {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Just $6) 0) >>= (return . (:$1)) }
+    | FuncDefArgDecl comma Type '&' bender id Assign    {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Just $7) 0) >>= (return . (:$1)) }
 
 SingleDefArgDecl :: { AST.FuncArg }
-    : Type bender id Assign                             {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Just $4) }
-    | Type '&' bender id Assign                         {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) (Just $5) }
+    : Type bender id Assign                             {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Just $4) 0 }
+    | Type '&' bender id Assign                         {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) (Just $5) 0 }
 
 FuncArgDecl     :: { [AST.FuncArg] }
     : SingleFuncArgDecl                                 { [$1] }
-    | FuncArgDecl comma Type bender id                  {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing) >>= (return . (:$1)) }
-    | FuncArgDecl comma Type '&' bender id              {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing) >>= (return . (:$1)) }
+    | FuncArgDecl comma Type bender id                  {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing 0) >>= (return . (:$1)) }
+    | FuncArgDecl comma Type '&' bender id              {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing 0) >>= (return . (:$1)) }
 
 SingleFuncArgDecl :: { AST.FuncArg }
-    : Type bender id                                    {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing }
-    | Type '&' bender id                                {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing }
+    : Type bender id                                    {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing 0 }
+    | Type '&' bender id                                {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing 0 }
 
 --
 
@@ -212,21 +212,21 @@ UnionIdDecls    :: { [(String, AST.Type)] }
 --
 
 VarDecl         :: { AST.Declaration }
-    : bender id of Type                                 {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) $4 Nothing False }
-    | bender id of Type Assign                          {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) $4 (Just $5) False }
-    | bender id Assign                                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) (AST.expType $3) (Just $3) False }
-    | eternal bender id of Type Assign                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) $5 (Just $6) True }
-    | eternal bender id Assign                          {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) (AST.expType $4) (Just $4) True }
-    | bender id is reincarnationOf id                   {% P.checkDecls $ AST.Reference ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $5) }
+    : bender id of Type                                 {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) $4 Nothing False 0 }
+    | bender id of Type Assign                          {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) $4 (Just $5) False 0 }
+    | bender id Assign                                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) (AST.expType $3) (Just $3) False 0 }
+    | eternal bender id of Type Assign                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) $5 (Just $6) True 0 }
+    | eternal bender id Assign                          {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) (AST.expType $4) (Just $4) True 0 }
+    | bender id is reincarnationOf id                   {% P.checkDecls $ AST.Reference ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $5) 0 }
     
 
     -- >> Expressions --------------------------------------------------------------------------
 
 Expr            :: { AST.Expr }  
     : '(' Expr ')'                                      { $2 }
-    | id                                                {% P.checkExpr $ AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) AST.TypeError }
+    | id                                                {% P.checkExpr $ AST.Id ((TK.name . TK.tktype) $1) (TK.pos $1) AST.TypeError 0 }
     | ExprBlock                                         { $1 }
-    | id Assign                                         {% P.checkExpr $ AST.Assign ((TK.name . TK.tktype) $1) $2 AST.TypeError }
+    | id Assign                                         {% P.checkExpr $ AST.Assign ((TK.name . TK.tktype) $1) $2 AST.TypeError 0 }
    
     | Expr quotmark_s id Assign                         {% P.checkExpr $ AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 AST.TypeError }
     | using Expr quotmark_s id skill                    {% P.checkExpr $ AST.StructAccess $2 ((TK.name . TK.tktype) $4) AST.TypeError }
@@ -250,15 +250,15 @@ Expr            :: { AST.Expr }
     | if  Expr dot colon PushScope Expr PopScope dotOtherwise PushScope Expr PopScope  {% P.checkExpr $ AST.If $2 $6 $10 AST.TypeError }
     | if  Expr dot colon PushScope Expr PopScope                                       {% P.checkExpr $ AST.If $2 $6 (AST.ConstUnit AST.TUnit) AST.TypeError }
   
-    | in id bookWith ExprList elipsis                   {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError }
-    | in id bookWith elipsis                            {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError }
-    | id bookWith ExprList elipsis                      {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError }
-    | id bookWith elipsis                               {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError }
+    | in id bookWith ExprList elipsis                   {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError 0 }
+    | in id bookWith elipsis                            {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError 0 }
+    | id bookWith ExprList elipsis                      {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError 0 }
+    | id bookWith elipsis                               {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError 0 }
 
-    | in id travelWith ExprList elipsis                 {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError }
-    | in id travelWith elipsis                          {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError }
-    | id travelWith ExprList elipsis                    {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError }
-    | id travelWith elipsis                             {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError }
+    | in id travelWith ExprList elipsis                 {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) (reverse $4) AST.TypeError 0 }
+    | in id travelWith elipsis                          {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $2) [] AST.TypeError 0 }
+    | id travelWith ExprList elipsis                    {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) (reverse $3) AST.TypeError 0 }
+    | id travelWith elipsis                             {% P.checkExpr $ AST.FunCall ((TK.name . TK.tktype) $1) [] AST.TypeError 0 }
 
     | born Type member                                  {% P.checkExpr $ AST.New $2 AST.TypeError }
     | Expr died                                         {% P.checkExpr $ AST.Delete $1 AST.TUnit }
@@ -311,7 +311,7 @@ ForDescription  ::  { (String, AST.Expr, AST.Expr, AST.Expr) }
                                                             P.pushLoopType $ AST.TVoid
                                                             P.pushEmptyScope
                                                             P.pushOffset 0
-                                                            P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $4) (AST.expType $6) (Just $6) False
+                                                            P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $4) (AST.expType $6) (Just $6) False 0
                                                             return (((TK.name . TK.tktype) $4), $2, $6, $8)
                                                         }
 WhileDescription :: { AST.Expr }
