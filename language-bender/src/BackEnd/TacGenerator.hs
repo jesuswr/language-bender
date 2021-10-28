@@ -35,7 +35,7 @@ getNextTemp = do
     return $ "T" ++ (show n) 
 
 -- | write TAC instruccion
-writeTac :: TAC.TACCode -> GeneratorMonad ()
+writeTac :: TAC.TACCode TAC.TypeInfo -> GeneratorMonad ()
 writeTac tacInst = do
     RWS.tell [tacInst]
 
