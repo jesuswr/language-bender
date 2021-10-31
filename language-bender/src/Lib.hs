@@ -14,6 +14,7 @@ import qualified    FrontEnd.ParserCheck as PC
 import qualified    FrontEnd.SymTable    as ST
 import qualified    Utils.Constants
 import qualified    Control.Monad        as M
+import qualified    BackEnd.TacGenerator as TG
 
 langBender :: IO ()
 langBender = do
@@ -82,6 +83,11 @@ langBender = do
                         putStrLn "~ Parse Errors ~\n"
                         mapM_ print errors
                         putStrLn "\n"
+
+                    (gs, tac) <- TG.generateTac symT ast
+                    print tac
+                    return ()
+
 
 
 
