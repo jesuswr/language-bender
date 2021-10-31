@@ -111,7 +111,9 @@ genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope} = do
     writeTac (TAC.TACCode TAC.MetaLabel (Just (TAC.LVLabel (getTacId name scope))) Nothing Nothing)
     -- generate tac code for function body
     genTacExpr body
+    -- falta un return? agarrar lo que devuelva el cuerpo de la func y retornar eso?
     return()
+
 
 
 -------------------------------------------------------
@@ -140,14 +142,14 @@ genTacExpr AST.ConstTrue{} = do
     return (Just currId)
 
 genTacExpr AST.ConstFalse{} = do
-    -- get next temporal id and save true in it
+    -- get next temporal id and save false in it
     currId <- getNextTemp
     writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId currId)) (Just (TAC.Constant (TAC.Bool False))) Nothing)
     return (Just currId)
 
 genTacExpr AST.ConstStruct{} = undefined
 genTacExpr AST.ConstUnion{} = undefined
-genTacExpr AST.ConstUnit{} = return Nothing
+genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
 genTacExpr AST.ConstNull{} = undefined
 genTacExpr AST.Id{AST.name=name, AST.declScope_=scope} = 
     -- just return the id@scope
@@ -173,7 +175,7 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     outLabel <- getNextLabelTemp
     resultId <- getNextTemp
 
-    -- get conditional and negate it
+    -- get conditional and negate it, so we can choose to go to the else
     Just condId <- genTacExpr cond
     condNegId <- getNextTemp
     writeTac (TAC.TACCode TAC.Neg (Just (TAC.LVId condNegId)) (Just (TAC.RVId condId)) Nothing)
@@ -193,8 +195,9 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     -- jump to the out label
     writeTac (TAC.TACCode TAC.Goto (Just (TAC.LVLabel outLabel)) Nothing Nothing)
 
-    -- gen code for else
+    -- create else label
     writeTac (TAC.TACCode TAC.MetaLabel (Just (TAC.LVLabel elseLabel)) Nothing Nothing)
+    -- gen code for else
     elseResultId <- genTacExpr failExpr
     -- if the type of the if-else its not unit, assign the return type
     M.when (expType /= AST.TUnit) $ 
