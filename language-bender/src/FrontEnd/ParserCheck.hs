@@ -528,7 +528,13 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
     return f{AST.expType = fType, AST.declScope_ = currScope}
 
 --  Check for
-checkExpr f@AST.For {AST.iteratorName=_iteratorName, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody} = do
+checkExpr f@AST.For {AST.iteratorSym = _iteratorSym, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody} = do
+
+    -- Check declaration of iterator
+    case _iteratorSym of 
+        AST.Variable {AST.varType=AST.TInt}   -> return ()
+        AST.Variable {AST.varType=AST.TFloat} -> return ()
+        s                 -> error $ "Inconsistent AST: Iterator declaration should be a numeric variable.\n\tActual declaration: " ++ show s
 
     -- Check that _step, _start and _end are of integer type
     checkExprList [AST.TInt, AST.TInt, AST.TInt] [_step, _start, _end]
@@ -1140,14 +1146,14 @@ _functionCheckerHelper id mbType args body = do
     checkDecls $ AST.Func id (reverse args) inferedType' body 0
 
 -- | utility function to perform some operations needed before checking a for loop
-_forCheckerHelper :: U.Name 
+_forCheckerHelper :: AST.Declaration  
                   -> AST.Expr
                   -> AST.Expr
                   -> AST.Expr
                   -> AST.Expr
                   -> AST.Type
                   -> ParserState AST.Expr
-_forCheckerHelper itName step start end body _ = do
+_forCheckerHelper itSym step start end body _ = do
     inferedType <- topLoopType
     popLoopType
 
@@ -1158,7 +1164,7 @@ _forCheckerHelper itName step start end body _ = do
     -- Check if body type matches expected type 
     matching <- _checkTypeMatch' [inferedType] (AST.expType body)
 
-    checkExpr $ AST.For itName step start end body inferedType'
+    checkExpr $ AST.For itSym step start end body inferedType'
 
 -- | utility function to perform some operations needed before checking a while loop
 _whileCheckerHelper :: AST.Expr

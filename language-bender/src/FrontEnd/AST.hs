@@ -69,7 +69,7 @@ data Expr   = ConstChar       { cVal :: String, expType :: Type }
             | StructAssign    { struct :: Expr, tag :: U.Name, value :: Expr, expType :: Type}
             | StructAccess    { struct :: Expr, tag :: U.Name, expType :: Type }
             | FunCall         { fname :: U.Name, actualArgs :: [Expr], expType :: Type, declScope_ :: Int}
-            | For             { iteratorName :: U.Name, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr, expType :: Type }
+            | For             { iteratorSym :: Declaration, step :: Expr, start :: Expr, end :: Expr, cicBody :: Expr, expType :: Type }
             | While           { cond :: Expr, cicBody :: Expr, expType :: Type}
             | If              { cond :: Expr, accExpr :: Expr, failExpr :: Expr, expType :: Type }
             | ExprBlock       { exprs :: [Expr], expType :: Type }
@@ -281,7 +281,7 @@ identShowExpr ident (FunCall fnm args_ _ _) = "\n" ++
   ++ "\n" ++ replicate ident ' ' ++ "with arguments:\n"
   ++ concatMap (identShowExpr (ident + 2)) args_ 
 
-identShowExpr ident (For it step_ start_ end_ bodyExp _) = "\n" ++
+identShowExpr ident (For Variable {decName=it} step_ start_ end_ bodyExp _) = "\n" ++
   replicate ident ' ' ++ "For loop with iteration variable: " ++ it ++ "\n"
   ++ "\n" ++ replicate ident ' ' ++ "with step of:\n"
   ++ identShowExpr (ident + 2) step_ 

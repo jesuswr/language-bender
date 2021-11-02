@@ -49,6 +49,11 @@ getNextTemp = do
     RWS.put s{nextTemporal = n+1}
     return $ "T" ++ show n
 
+getNextTemp' :: String -> GeneratorMonad String
+getNextTemp' prefix = do
+    t <- getNextTemp
+    return $ prefix ++ "@" ++ t
+
 -- | get next label temporal variable
 getNextLabelTemp :: GeneratorMonad String
 getNextLabelTemp = do
@@ -204,7 +209,68 @@ genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = d
 genTacExpr AST.StructAssign{} = undefined
 genTacExpr AST.StructAccess{} = undefined
 genTacExpr AST.FunCall{} = undefined
-genTacExpr AST.For{} = undefined
+genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody, AST.expType=_expType} = do
+    {-
+        For template:
+            # Generate code for start, end, and step expressions
+            for_start@t0 := start_expr_return_id
+            for_end@t1   := end_expr_return_id
+            for_step@t2  := step_expr_return_id
+        @label for_start@l0
+            # Check that the for can start
+            t0 := for_start@t0 < for_end@t0
+            t1 := ! t0
+            goif for_end@l1 t1
+
+            # Generate code for iterator body
+            for_result@t3 := body_result_id # only needed when the for returns something
+            for_start@t0 := for_start@t0 + for_step@t2
+            goto for_start@l0
+
+        @label for_end@l1
+   -}
+    -- Generate needed labels
+    forStartLabel <- getNextLabelTemp' "for_start"
+    forEndLabel   <- getNextLabelTemp' "for_end"
+
+    -- Generate needed temporals
+    forResultId   <- getNextTemp' "for_result"
+    mbStartResultId <- genTacExpr _start
+    mbEndResultId   <- genTacExpr _end
+    mbStepResultId  <- genTacExpr _step
+
+    -- Consistency checking
+    let startResultId = case mbStartResultId of
+            Just startResultId -> startResultId
+            _                  -> error "Inconsistent AST: Start expression should return some numeric value, and it's returning nothing"
+
+    let endResultId = case mbEndResultId of
+            Just endResultId   -> endResultId
+            _                  -> error "Inconsistent AST: End expression should return some numeric value, and it's returning nothing"
+    let steptResultId = case mbStepResultId of
+            Just steptResultId -> steptResultId
+            _                  -> error "Inconsistent AST: Step expression should return some numeric value, and it's returning nothing"
+
+    -- Put start label
+    writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.LVLabel forStartLabel) []
+
+    -- Put result value
+    mbOutResultId <- genTacExpr _cicBody
+
+
+    -- Put End Label
+    writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.LVLabel forEndLabel) []
+
+    -- Return consistency checking
+    case (mbOutResultId, _expType) of 
+        (Just outResultId, AST.TUnit) -> error "Inconsistent TAC Generator: should return nothing when body expression returns Unit"
+        (Nothing, t)                  -> error "Inconsistent TAC Generator: should provide a return id when body expression returns something different from Unit"
+        (Just outResultId, _)         -> writeTac $ TAC.newTAC TAC.Assign (TAC.LVLabel forResultId) []
+
+    case _expType of 
+        AST.TUnit -> return Nothing
+        _         -> return $ Just forResultId 
+
 genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType} = do
     {-
         While template:
