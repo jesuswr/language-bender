@@ -12,14 +12,22 @@ import qualified TACTypes.TAC as TAC
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
+import Data.Functor((<&>))
 
 -- >> Data ------------------------------------------------------
 
+type Id = String
+type Label = String
+
 -- | Stateful information required by the conversion process
 data GeneratorState = State
-                    { nextTemporal :: Int
-                    , nextLabelTemporal :: Int
-                    -- , symTable :: ST.SymTable
+                    { nextTemporal :: Int             -- ^ Available id for the next temporal symbol name
+                    , nextLabelTemporal :: Int        -- ^ Available id for the next temporal label 
+                    , returnIdStack :: [Maybe Id]     -- ^ A stack of ids, 
+                                                      -- meaning that the head id is the id where the next result should be stored. 
+                                                      -- When "Nothing" is stacked, it means that it expects unit, 
+                                                      -- so no result should be returned anywhere
+                    , nextIterLabelStack :: [Label]      -- ^ Stack of ids for the next label to go when you end a for or while instruction
                     }
 
 -- | Monad used to keep a state when traversing the AST to generate the code
@@ -31,16 +39,23 @@ type GeneratorMonad = RWS.RWST () [TAC.TACCode] GeneratorState IO
 -- | get next temporal variable
 getNextTemp :: GeneratorMonad String
 getNextTemp = do
-    State{nextTemporal = n, nextLabelTemporal = m} <- RWS.get
-    RWS.put State{nextTemporal = (n+1), nextLabelTemporal = m}
-    return $ "T" ++ (show n) 
+    s@State{nextTemporal = n, nextLabelTemporal = m} <- RWS.get
+    RWS.put s{nextTemporal = n+1}
+    return $ "T" ++ show n
 
 -- | get next label temporal variable
 getNextLabelTemp :: GeneratorMonad String
 getNextLabelTemp = do
-    State{nextTemporal = m, nextLabelTemporal = n} <- RWS.get
-    RWS.put State{nextTemporal = m, nextLabelTemporal = (n+1)}
-    return $ "L" ++ (show n) 
+    s@State{nextTemporal = m, nextLabelTemporal = n} <- RWS.get
+    RWS.put s{nextLabelTemporal = n+1}
+    return $ "L" ++ show n
+
+-- | Generate the next label with a prefix
+getNextLabelTemp' :: String -> GeneratorMonad String
+getNextLabelTemp' prefix = do
+    l <- getNextLabelTemp
+
+    return $ prefix ++ "@" ++ l
 
 -- | write TAC instruccion
 writeTac :: TAC.TACCode -> GeneratorMonad ()
@@ -49,13 +64,48 @@ writeTac tacInst = do
 
 -- | Initial Generator State
 initialGenState :: GeneratorState
-initialGenState = State{nextTemporal = 0, nextLabelTemporal = 0}
+initialGenState = State{nextTemporal = 0, nextLabelTemporal = 0, returnIdStack = [Nothing], nextIterLabelStack = []}
+
+-- | Get the id of the next expected return value
+topReturnId :: GeneratorMonad (Maybe Id)
+topReturnId = RWS.get <&> head . returnIdStack 
+
+-- | Push the next expected return id
+pushReturnId :: Maybe Id -> GeneratorMonad ()
+pushReturnId id = do
+    s@State{ returnIdStack=stk } <- RWS.get 
+    RWS.put s{returnIdStack = id:stk}
+
+-- | Remove and retrieve the next id for return
+popReturnId ::  GeneratorMonad (Maybe Id)
+popReturnId = do 
+    s@State { returnIdStack=(x:xs) } <- RWS.get 
+    RWS.put s{returnIdStack=xs}
+    return x
+
+-- | Get the id of the next expected return value
+topNexForLabel :: GeneratorMonad Label
+topNexForLabel= RWS.get <&> head . nextIterLabelStack 
+
+-- | Push the next expected return id
+pushNextForLabel :: Label -> GeneratorMonad ()
+pushNextForLabel lb = do
+    s@State{ nextIterLabelStack = stk } <- RWS.get 
+    RWS.put s{nextIterLabelStack = lb:stk}
+
+-- | Remove and retrieve the next id for return
+popNextForLabel ::  GeneratorMonad Label
+popNextForLabel = do 
+    s@State {  nextIterLabelStack = (x:xs) } <- RWS.get 
+    RWS.put s{ nextIterLabelStack = xs }
+    return x
+
 
 -- >> Auxiliar Functions ----------------------------------------
 
 -- | generate an unique tac id from a language bender id
 getTacId :: String -> Int -> String
-getTacId id scope = id ++ "@" ++ (show scope)
+getTacId id scope = id ++ "@" ++ show scope
 
 -- >> Main Function ---------------------------------------------
 
@@ -64,13 +114,13 @@ getTacId id scope = id ++ "@" ++ (show scope)
 generateTac :: ST.SymTable  -> AST.Program  -> IO (GeneratorState, TAC.TACProgram)
 generateTac symbolTable program = do
     (genState, tacCode) <- RWS.execRWST (generateTac' symbolTable program) () initialGenState
-    return (genState, TAC.TACProgram tacCode)    
+    return (genState, TAC.TACProgram tacCode)
 
 -- | Utility function to generate the actual Tac Program.
 generateTac' :: ST.SymTable  -> AST.Program  -> GeneratorMonad ()
 generateTac' symT program = do
     hasMain <- findMain symT
-    M.when hasMain $ writeTac (TAC.TACCode TAC.Goto (Just (TAC.LVLabel "main@0")) Nothing Nothing)
+    M.when hasMain $ writeTac (TAC.TACCode TAC.Goto (Just (TAC.LVLabel $ getTacId "main" 0)) Nothing Nothing)
     genTacDecls $ AST.decls program
 
 findMain :: ST.SymTable -> GeneratorMonad Bool
@@ -114,8 +164,6 @@ genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope} = do
     -- falta un return? agarrar lo que devuelva el cuerpo de la func y retornar eso?
     return()
 
-
-
 -------------------------------------------------------
 -- | generate tac for expressions ---------------------
 -- | returns the id where the result is stored ? ------
@@ -126,41 +174,42 @@ genTacExpr AST.ConstString{} = undefined
 genTacExpr AST.ConstInt{AST.iVal=val} = do
     -- get next temporal id and save the const int in it
     currId <- getNextTemp
-    writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId currId)) (Just (TAC.Constant (TAC.Int val))) Nothing)
+    writeTac  $ TAC.newTAC TAC.Assign (TAC.LVId currId)  [TAC.Constant (TAC.Int val)]
     return (Just currId)
 
 genTacExpr AST.ConstFloat{AST.fVal=val} = do
     -- get next temporal id and save the const float in it
     currId <- getNextTemp
-    writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId currId)) (Just (TAC.Constant (TAC.Float val))) Nothing)
+    writeTac $ TAC.newTAC TAC.Assign (TAC.LVId currId) [TAC.Constant (TAC.Float val)]
     return (Just currId)
 
 genTacExpr AST.ConstTrue{} = do
     -- get next temporal id and save true in it
     currId <- getNextTemp
-    writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId currId)) (Just (TAC.Constant (TAC.Bool True))) Nothing)
+    writeTac $ TAC.newTAC TAC.Assign (TAC.LVId currId) [TAC.Constant (TAC.Bool True)]
     return (Just currId)
 
 genTacExpr AST.ConstFalse{} = do
     -- get next temporal id and save false in it
     currId <- getNextTemp
-    writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId currId)) (Just (TAC.Constant (TAC.Bool False))) Nothing)
+    writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId currId)  [TAC.Constant (TAC.Bool False)]
     return (Just currId)
 
 genTacExpr AST.ConstStruct{} = undefined
 genTacExpr AST.ConstUnion{} = undefined
 genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
 genTacExpr AST.ConstNull{} = undefined
-genTacExpr AST.Id{AST.name=name, AST.declScope_=scope} = 
+genTacExpr AST.Id{AST.name=name, AST.declScope_=scope} =
     -- just return the id@scope
-    return (Just (getTacId name scope))
+    return $ Just (getTacId name scope)
+
 genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = do
     -- generate tac code for the expr
     Just valId <- genTacExpr val
     -- get var@scope
     let varId = getTacId var scope
     -- assign value to var and return the id with the result
-    writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId varId)) (Just (TAC.RVId valId)) Nothing)
+    writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId varId) [TAC.RVId valId]
     return (Just varId)
 
 genTacExpr AST.StructAssign{} = undefined
@@ -185,12 +234,13 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
 
     -- gen code for if 
     ifResultId <- genTacExpr accExpr
+
     -- if the type of the if-else its not unit, update the return type
-    M.when (expType /= AST.TUnit) $ 
-        case ifResultId of 
+    M.when (expType /= AST.TUnit) $
+        case ifResultId of
             Just _ifResultId ->
                 writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId resultId)) (Just (TAC.RVId _ifResultId)) Nothing)
-            Nothing -> 
+            Nothing ->
                 return ()
     -- jump to the out label
     writeTac (TAC.TACCode TAC.Goto (Just (TAC.LVLabel outLabel)) Nothing Nothing)
@@ -200,18 +250,18 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     -- gen code for else
     elseResultId <- genTacExpr failExpr
     -- if the type of the if-else its not unit, assign the return type
-    M.when (expType /= AST.TUnit) $ 
-        case elseResultId of 
+    M.when (expType /= AST.TUnit) $
+        case elseResultId of
             Just _elseResultId ->
                 writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId resultId)) (Just (TAC.RVId _elseResultId)) Nothing)
-            Nothing -> 
+            Nothing ->
                 return ()
 
     -- create out label
     writeTac (TAC.TACCode TAC.MetaLabel (Just (TAC.LVLabel outLabel)) Nothing Nothing)
 
     -- return result of if-else if its type its not unit
-    if (expType /= AST.TUnit) then
+    if expType /= AST.TUnit then
         return (Just resultId)
     else
         return Nothing
@@ -221,7 +271,7 @@ genTacExpr AST.ExprBlock{AST.exprs=exprs, AST.expType=expType} = do
     -- generate code for exprs in block, if type is unit return nothing
     -- else return whatever the last expr in block returns
     maybeId <- genTacBlock exprs
-    if (expType == AST.TUnit) then
+    if expType == AST.TUnit then
         return Nothing
     else
         return maybeId

@@ -24,12 +24,12 @@ langBender = do
         Left cliError -> do
             print cliError
         Right (Result opts warnings) -> do
-            M.when (not $ null warnings) $ do
+            M.unless (null warnings) $ do
                 putStrLn "lbend CLI warnings:"
                 mapM_ print warnings
                 putStrLn "\n"
 
-            if help opts then 
+            if help opts then
                 putStrLn helpMsg
             else do
                 content <- readFile (fileName opts)
@@ -70,7 +70,7 @@ langBender = do
                     let _printST2 = null errors || verbose opts
                     let printST = _printST1 && _printST2
 
-                    M.when (printST) $ do
+                    M.when printST $ do
                         putStrLn "~ AST ~"
                         print ast
                         putStrLn "~ Pre Symbol Table ~"
