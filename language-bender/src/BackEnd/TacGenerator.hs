@@ -19,15 +19,20 @@ import Data.Functor((<&>))
 type Id = String
 type Label = String
 
+-- | Data representing relevant information about the current iterator 
+--   on context, such as where to go in case of a break, or in case of 
+--   continue
+data IterData   = IterData 
+                    { breakLabel :: Label           -- ^ Where to go in case of a break
+                    , continueLabel :: Label        -- ^ Where to go in case of continue
+                    , iterReturnId  :: Maybe Id     -- ^ Where to store the result of the loop if it returns something, 
+                                                    --   some loops doesn't return anything, in which case the value is Nothing
+                    }
 -- | Stateful information required by the conversion process
 data GeneratorState = State
                     { nextTemporal :: Int             -- ^ Available id for the next temporal symbol name
                     , nextLabelTemporal :: Int        -- ^ Available id for the next temporal label 
-                    , returnIdStack :: [Maybe Id]     -- ^ A stack of ids, 
-                                                      -- meaning that the head id is the id where the next result should be stored. 
-                                                      -- When "Nothing" is stacked, it means that it expects unit, 
-                                                      -- so no result should be returned anywhere
-                    , nextIterLabelStack :: [Label]      -- ^ Stack of ids for the next label to go when you end a for or while instruction
+                    , currentIterData :: [IterData]   -- ^ Stack of data for the currently running iterator
                     }
 
 -- | Monad used to keep a state when traversing the AST to generate the code
@@ -64,40 +69,23 @@ writeTac tacInst = do
 
 -- | Initial Generator State
 initialGenState :: GeneratorState
-initialGenState = State{nextTemporal = 0, nextLabelTemporal = 0, returnIdStack = [Nothing], nextIterLabelStack = []}
+initialGenState = State{nextTemporal = 0, nextLabelTemporal = 0, currentIterData = []}
 
 -- | Get the id of the next expected return value
-topReturnId :: GeneratorMonad (Maybe Id)
-topReturnId = RWS.get <&> head . returnIdStack 
+topCurrentIterData :: GeneratorMonad IterData
+topCurrentIterData = RWS.get <&> head . currentIterData 
 
 -- | Push the next expected return id
-pushReturnId :: Maybe Id -> GeneratorMonad ()
-pushReturnId id = do
-    s@State{ returnIdStack=stk } <- RWS.get 
-    RWS.put s{returnIdStack = id:stk}
+pushNextIterData :: IterData -> GeneratorMonad ()
+pushNextIterData lb = do
+    s@State{ currentIterData = stk } <- RWS.get 
+    RWS.put s{currentIterData = lb:stk}
 
 -- | Remove and retrieve the next id for return
-popReturnId ::  GeneratorMonad (Maybe Id)
-popReturnId = do 
-    s@State { returnIdStack=(x:xs) } <- RWS.get 
-    RWS.put s{returnIdStack=xs}
-    return x
-
--- | Get the id of the next expected return value
-topNexForLabel :: GeneratorMonad Label
-topNexForLabel= RWS.get <&> head . nextIterLabelStack 
-
--- | Push the next expected return id
-pushNextForLabel :: Label -> GeneratorMonad ()
-pushNextForLabel lb = do
-    s@State{ nextIterLabelStack = stk } <- RWS.get 
-    RWS.put s{nextIterLabelStack = lb:stk}
-
--- | Remove and retrieve the next id for return
-popNextForLabel ::  GeneratorMonad Label
-popNextForLabel = do 
-    s@State {  nextIterLabelStack = (x:xs) } <- RWS.get 
-    RWS.put s{ nextIterLabelStack = xs }
+popNextIterData ::  GeneratorMonad IterData
+popNextIterData = do 
+    s@State {  currentIterData = (x:xs) } <- RWS.get 
+    RWS.put s{ currentIterData = xs }
     return x
 
 
@@ -216,18 +204,71 @@ genTacExpr AST.StructAssign{} = undefined
 genTacExpr AST.StructAccess{} = undefined
 genTacExpr AST.FunCall{} = undefined
 genTacExpr AST.For{} = undefined
-genTacExpr AST.While{} = undefined
+genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType} = do
+    {-
+        While template:
+        @label while_start@l0:
+            # code for _cond
+            t0 := _cond
+            t0 := ! t0
+            goif while_out@l1 t0
+
+            # code for _cicBody
+
+            goto while_start@l0 
+        @label while_out@l1:
+    -}
+    -- Get needed labels to select where to go
+    startLabel    <- getNextLabelTemp' "while_start"
+    outLabel      <- getNextLabelTemp' "while_out"
+    whileResultId <- getNextTemp
+
+    let whileData = IterData {breakLabel=outLabel, continueLabel=startLabel, iterReturnId=Just whileResultId}
+
+    -- Put current iterator data in the state
+    pushNextIterData whileData
+
+    -- Add label marking the while start
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.LVLabel startLabel) []
+
+    -- Generate code for condition checking 
+    Just condId <- genTacExpr _cond -- may raise error when returns Nothing, this is intended
+
+    -- Generate code to jump to the end when condition is not met
+    writeTac $ TAC.newTAC TAC.Neg  (TAC.LVId condId)      [TAC.RVId condId]
+    writeTac $ TAC.newTAC TAC.Goif (TAC.LVLabel outLabel) [TAC.RVId condId]
+
+    -- Generate code for body
+    mbBodyResultId <- genTacExpr _cicBody 
+
+    -- Update result if while loop has return type
+    M.when (_expType /= AST.TUnit) $
+        case mbBodyResultId of 
+            Just bodyResultId -> writeTac $ TAC.newTAC TAC.Assign (TAC.LVId whileResultId) [TAC.RVId bodyResultId]
+            Nothing -> error $ "Inconsistent AST: Body of while returning nothing when type of while is not Unit. \n\t" ++ "Expected return type: " ++ show _expType
+    
+    -- Add code for going to the start
+    writeTac $ TAC.newTAC TAC.Goto  (TAC.LVLabel startLabel) []
+
+    -- Remove data for this iterator instruction
+    popNextIterData
+    
+    -- Depending on the expression type, check what should return
+    case _expType of
+        AST.TUnit -> return Nothing
+        _         -> return . Just $ whileResultId
+
 
 genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST.expType=expType} = do
     -- get needed labels to select where to go
-    elseLabel <- getNextLabelTemp
-    outLabel <- getNextLabelTemp
-    resultId <- getNextTemp
+    elseLabel <- getNextLabelTemp' "if_else" 
+    outLabel <- getNextLabelTemp'  "if_out"
+    resultId <- getNextTemp        
 
     -- get conditional and negate it, so we can choose to go to the else
     Just condId <- genTacExpr cond
     condNegId <- getNextTemp
-    writeTac (TAC.TACCode TAC.Neg (Just (TAC.LVId condNegId)) (Just (TAC.RVId condId)) Nothing)
+    writeTac $ TAC.newTAC TAC.Neg (TAC.LVId condNegId) [TAC.RVId condId]
 
     -- if negated cond is true, jump to else code
     writeTac (TAC.TACCode TAC.Goif (Just (TAC.LVLabel elseLabel)) (Just (TAC.RVId condNegId)) Nothing)
@@ -239,9 +280,10 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     M.when (expType /= AST.TUnit) $
         case ifResultId of
             Just _ifResultId ->
-                writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId resultId)) (Just (TAC.RVId _ifResultId)) Nothing)
+                writeTac $ TAC.newTAC TAC.Assign (TAC.LVId resultId) [TAC.RVId _ifResultId]
             Nothing ->
-                return ()
+                error "Inconsistent AST: no result for if when it does have a return type diferent from unit"
+
     -- jump to the out label
     writeTac (TAC.TACCode TAC.Goto (Just (TAC.LVLabel outLabel)) Nothing Nothing)
 
