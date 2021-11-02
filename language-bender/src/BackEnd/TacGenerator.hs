@@ -12,6 +12,7 @@ import qualified TACTypes.TAC as TAC
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
+import Data.Maybe(fromJust)
 import Data.Functor((<&>))
 
 -- >> Data ------------------------------------------------------
@@ -223,7 +224,12 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
     outLabel      <- getNextLabelTemp' "while_out"
     whileResultId <- getNextTemp
 
-    let whileData = IterData {breakLabel=outLabel, continueLabel=startLabel, iterReturnId=Just whileResultId}
+    -- Don't add a return addres if returns nothing
+    let mbWhileResultId
+            | _expType /= AST.TUnit = Just whileResultId
+            | otherwise  = Nothing 
+
+    let whileData = IterData {breakLabel=outLabel, continueLabel=startLabel, iterReturnId = mbWhileResultId }
 
     -- Put current iterator data in the state
     pushNextIterData whileData
@@ -248,7 +254,10 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
             Nothing -> error $ "Inconsistent AST: Body of while returning nothing when type of while is not Unit. \n\t" ++ "Expected return type: " ++ show _expType
     
     -- Add code for going to the start
-    writeTac $ TAC.newTAC TAC.Goto  (TAC.LVLabel startLabel) []
+    writeTac $ TAC.newTAC TAC.Goto (TAC.LVLabel startLabel) []
+
+    -- Add goto label
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.LVLabel outLabel) []
 
     -- Remove data for this iterator instruction
     popNextIterData
@@ -319,8 +328,67 @@ genTacExpr AST.ExprBlock{AST.exprs=exprs, AST.expType=expType} = do
         return maybeId
 
 genTacExpr AST.Return{} = undefined
-genTacExpr AST.Break{} = undefined
-genTacExpr AST.Continue{} = undefined
+genTacExpr AST.Break {AST.expr=_expr, AST.expType=_expType} = do
+    {-
+        Template for break:
+            # Code for break expresion evaluation if necessary
+            iter_return_id := expr_return_id # only if type != unit
+            goto iter_out@l0
+    -}
+    -- Get data for the current iteration to break
+    iterData@IterData {breakLabel=_breakLabel, iterReturnId=_iterReturnId} <- topCurrentIterData
+
+    case _expType of
+        AST.TUnit -> return ()
+        _         ->  do  
+            -- Generate code for expression & get the return value id
+            Just expResultId <- genTacExpr _expr    -- May crash when expression return is Nothing, this is intended
+
+            let Just _iterReturnId' = _iterReturnId -- May crash when this iter is Nothing, this is intended
+
+            -- Save the expression value in the iterator return value
+            writeTac $ TAC.newTAC TAC.Assign (TAC.LVId _iterReturnId') [TAC.RVId expResultId]
+
+    -- Go to the out label
+    writeTac $ TAC.newTAC TAC.Goto  (TAC.LVLabel _breakLabel) []
+
+    -- Return value id
+    case (_expType, _iterReturnId) of 
+        (AST.TUnit, Nothing ) -> return Nothing
+        (_, Just x)           -> return $ Just x
+        _                     -> error "Inconsistent AST"
+
+
+genTacExpr AST.Continue {AST.expr=_expr, AST.expType=_expType} = do 
+    {-
+        Template for break:
+            # Code for break expresion evaluation if necessary
+            iter_return_id := expr_return_id # only if type != unit
+            goto iter_start@l0
+    -}
+    -- Get data for the current iteration to break
+    iterData@IterData {continueLabel=_continueLabel, iterReturnId=_iterReturnId} <- topCurrentIterData
+
+    case _expType of
+        AST.TUnit -> return ()
+        _         ->  do  
+            -- Generate code for expression & get the return value id
+            Just expResultId <- genTacExpr _expr    -- May crash when expression return is Nothing, this is intended
+
+            let Just _iterReturnId' = _iterReturnId -- May crash when this iter is Nothing, this is intended
+
+            -- Save the expression value in the iterator return value
+            writeTac $ TAC.newTAC TAC.Assign (TAC.LVId _iterReturnId') [TAC.RVId expResultId]
+
+    -- Go to the out label
+    writeTac $ TAC.newTAC TAC.Goto  (TAC.LVLabel _continueLabel) []
+
+    -- Return value id
+    case (_expType, _iterReturnId) of 
+        (AST.TUnit, Nothing ) -> return Nothing
+        (_, Just x)           -> return $ Just x
+        _                     -> error "Inconsistent AST"
+        
 genTacExpr AST.Declaration{AST.decl=d} = do
     genTacDecl d
     return Nothing
