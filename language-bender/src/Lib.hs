@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wall #-}
 module Lib
     (   langBender,
     ) where
@@ -8,13 +9,13 @@ import              FrontEnd.CommandLine
 import              FrontEnd.Lexer
 import qualified    FrontEnd.PreParser   as PP
 import qualified    FrontEnd.Parser      as P
-import              FrontEnd.Errors
---import              FrontEnd.StaticAnalysis as SE
 import qualified    FrontEnd.ParserCheck as PC
 import qualified    FrontEnd.SymTable    as ST
-import qualified    Utils.Constants
 import qualified    Control.Monad        as M
 import qualified    BackEnd.TacGenerator as TG
+
+-- Third party imports 
+import qualified System.Console.ANSI     as C -- colors
 
 langBender :: IO ()
 langBender = do
@@ -71,21 +72,36 @@ langBender = do
                     let printST = _printST1 && _printST2
 
                     M.when printST $ do
+
+                        C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
                         putStrLn "~ AST ~"
+                        C.setSGR [C.Reset]
+
                         print ast
+
+                        C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
                         putStrLn "~ Pre Symbol Table ~"
+                        C.setSGR [C.Reset]
+
                         print preSymT
+
+                        C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
                         putStrLn "~ Symbol Table ~"
+                        C.setSGR [C.Reset]
+
                         print symT
                         putStrLn "\n"
 
                     M.unless (null errors) $ do
+                        C.setSGR [C.SetColor C.Foreground C.Vivid C.Red]
                         putStrLn "~ Parse Errors ~\n"
+                        C.setSGR [C.Reset]
+
                         mapM_ print errors
                         putStrLn "\n"
 
-                    (gs, tac) <- TG.generateTac symT ast
-                    print tac
+                    (_, tac') <- TG.generateTac symT ast
+                    print tac'
                     return ()
 
 

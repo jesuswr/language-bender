@@ -208,7 +208,39 @@ genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = d
 
 genTacExpr AST.StructAssign{} = undefined
 genTacExpr AST.StructAccess{} = undefined
-genTacExpr AST.FunCall{} = undefined
+genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expType=_expType, AST.declScope_=_declScope_} = do
+    {-
+        Function template
+        # Compute every value corresponding to a function argument
+
+        # Stack parameters
+        param arg_0_return_id
+        . . .
+        param arg_n_return_id
+
+        # call the function 
+        ret := call function@label n
+    -}
+
+    -- Compute each argument expressions and retrieve its return labels
+    mbReturnIds <- M.mapM genTacExpr _actualArgs
+
+    -- Might crash here if some expression has no return position, this is expected. 
+    -- Every expression should return something, otherwise we have an inconsistent AST
+    let returnIds = map fromJust mbReturnIds 
+
+    -- Generate return position for this function call if it does returns something
+    fcallRetPos  <- getNextTemp' "freturn"
+
+    -- Stack parameters
+    M.forM_ returnIds (\s -> writeTac $ TAC.newTAC TAC.Param (TAC.LVId s) [])
+
+    -- Call function 
+    -- @TODO que hago cuando no retorna nada?
+    writeTac $ TAC.newTAC TAC.Call (TAC.LVId fcallRetPos) [TAC.RVLabel $ getTacId _fname _declScope_, TAC.Constant . TAC.Int . length $ _actualArgs]
+
+    return $ Just fcallRetPos
+
 genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody, AST.expType=_expType} = do
     {-
         For template:
@@ -265,7 +297,7 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
     case (mbOutResultId, _expType) of 
         (Just outResultId, AST.TUnit) -> error "Inconsistent TAC Generator: should return nothing when body expression returns Unit"
         (Nothing, t)                  -> error "Inconsistent TAC Generator: should provide a return id when body expression returns something different from Unit"
-        (Just outResultId, _)         -> writeTac $ TAC.newTAC TAC.Assign (TAC.LVLabel forResultId) []
+        (Just outResultId, _)         -> writeTac $ TAC.newTAC TAC.Assign (TAC.LVId forResultId) [TAC.RVId outResultId]
 
     case _expType of 
         AST.TUnit -> return Nothing
@@ -486,6 +518,7 @@ genTacExpr AST.Array{} = undefined
 genTacExpr AST.UnionTrying{} = undefined
 genTacExpr AST.UnionUsing{} = undefined
 genTacExpr AST.New{} = undefined
+
 genTacExpr AST.Delete{} = undefined
 genTacExpr AST.ArrayIndexing{} = undefined
 
