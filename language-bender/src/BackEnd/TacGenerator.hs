@@ -34,6 +34,7 @@ data GeneratorState = State
                     { nextTemporal :: Int             -- ^ Available id for the next temporal symbol name
                     , nextLabelTemporal :: Int        -- ^ Available id for the next temporal label 
                     , currentIterData :: [IterData]   -- ^ Stack of data for the currently running iterator
+                    , symT :: ST.SymTable
                     }
 
 -- | Monad used to keep a state when traversing the AST to generate the code
@@ -74,8 +75,8 @@ writeTac tacInst = do
     RWS.tell [tacInst]
 
 -- | Initial Generator State
-initialGenState :: GeneratorState
-initialGenState = State{nextTemporal = 0, nextLabelTemporal = 0, currentIterData = []}
+initialGenState :: ST.SymTable -> GeneratorState
+initialGenState st = State{nextTemporal = 0, nextLabelTemporal = 0, currentIterData = [], symT = st}
 
 -- | Get the id of the next expected return value
 topCurrentIterData :: GeneratorMonad IterData
@@ -107,7 +108,7 @@ getTacId id scope = id ++ "@" ++ show scope
 -- | resulting state and the generated program
 generateTac :: ST.SymTable  -> AST.Program  -> IO (GeneratorState, TAC.TACProgram)
 generateTac symbolTable program = do
-    (genState, tacCode) <- RWS.execRWST (generateTac' symbolTable program) () initialGenState
+    (genState, tacCode) <- RWS.execRWST (generateTac' symbolTable program) () (initialGenState symbolTable)
     return (genState, TAC.TACProgram tacCode)
 
 -- | Utility function to generate the actual Tac Program.
@@ -138,16 +139,28 @@ genTacDecls (d:ds) = do
 genTacDecl :: AST.Declaration -> GeneratorMonad ()
 
 -- | generate tac for variable decl
-genTacDecl AST.Variable{} = undefined
+genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope} =
+    case val of 
+        -- if there is no value to assign in the declaration do nothing
+        Nothing   -> return()
+        -- else create the code for the rvalue and assign it
+        Just expr -> do
+            maybeValId <- genTacExpr expr
+            case maybeValId of
+                Nothing -> return ()
+                Just valId -> do
+                    writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId varId) [TAC.RVId valId]
+                    return ()
+
 
 -- | gen tac for references decl
-genTacDecl AST.Reference{} = undefined
+genTacDecl AST.Reference{} = undefined -- not sure how to do this
 
 -- | gen tac for unions decl
-genTacDecl AST.Union{} = undefined
+genTacDecl AST.Union{} = return()
 
 -- | gen tac for structs decl
-genTacDecl AST.Struct{} = undefined
+genTacDecl AST.Struct{} = return()
 
 -- | gen tac for functions and procedure decls
 genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope} = do
@@ -162,7 +175,11 @@ genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope} = do
 -- | generate tac for expressions ---------------------
 -- | returns the id where the result is stored ? ------
 genTacExpr :: AST.Expr -> GeneratorMonad (Maybe String)
-genTacExpr AST.ConstChar{} = undefined
+genTacExpr AST.ConstChar{AST.cVal=val} = do
+    -- get next temporal id and save the const char in it
+    currId <- getNextTemp
+    writeTac  $ TAC.newTAC TAC.Assign (TAC.LVId currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
+    return (Just currId)
 genTacExpr AST.ConstString{} = undefined
 
 genTacExpr AST.ConstInt{AST.iVal=val} = do
@@ -206,8 +223,64 @@ genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = d
     writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId varId) [TAC.RVId valId]
     return (Just varId)
 
-genTacExpr AST.StructAssign{} = undefined
-genTacExpr AST.StructAccess{} = undefined
+genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = do
+    s@State{symT=st} <- RWS.get
+    case AST.expType struct of
+        AST.CustomType name scope -> do
+            -- get symbols for struct and tag, maybe struct not needed?
+            let maybeStruct = ST.findSymbolInScope name scope st
+                maybeTag    = ST.findSymbolInScope tag (scope + 1) st
+
+            case (maybeStruct, maybeTag) of
+                (Just structSymb, Just tagSymb) -> do
+                    -- generate code for struct expr and value expr
+                    maybeStructId <- genTacExpr struct
+                    maybeValId    <- genTacExpr value
+
+                    case (maybeStructId, maybeValId) of
+                        (Just structId, Just valId) -> do
+                            -- aqui habria que hacer structId[offset tag] = valId
+                            return Nothing
+
+                        -- if there is no id with the struct or value, error
+                        _             ->
+                            error "Deberia darme el id donde esta el struct"
+                -- if symbols for struct or tag dont exist, error
+                _ ->
+                    error "Deberia existir el struct"
+        _              -> 
+        -- if the type of the struct is not a custom type, error
+            error "Aqui deberia haber un struct"
+
+            
+genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
+    s@State{symT=st} <- RWS.get
+    case AST.expType struct of
+        AST.CustomType name scope -> do
+            -- get symbols for struct and tag, maybe struct not needed?
+            let maybeStruct = ST.findSymbolInScope name scope st
+                maybeTag    = ST.findSymbolInScope tag (scope + 1) st
+
+            case (maybeStruct, maybeTag) of
+                (Just structSymb, Just tagSymb) -> do
+                    -- generate code for struct expr and value expr
+                    maybeStructId <- genTacExpr struct
+
+                    case maybeStructId of
+                        Just structId -> do
+                            -- aqui habria que hacer return structId[offset tag]
+                            return Nothing
+
+
+                        -- if there is no id with the struct or value, error
+                        _             ->
+                            error "Deberia darme el id donde esta el struct"
+                -- if symbols for struct or tag dont exist, error
+                _ ->
+                    error "Deberia existir el struct"
+        _              -> 
+        -- if the type of the struct is not a custom type, error
+            error "Aqui deberia haber un struct"
 genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expType=_expType, AST.declScope_=_declScope_} = do
     {-
         Function template
