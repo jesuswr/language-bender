@@ -108,20 +108,21 @@ getTacId id scope = id ++ "@" ++ show scope
 -- | resulting state and the generated program
 generateTac :: ST.SymTable  -> AST.Program  -> IO (GeneratorState, TAC.TACProgram)
 generateTac symbolTable program = do
-    (genState, tacCode) <- RWS.execRWST (generateTac' symbolTable program) () (initialGenState symbolTable)
+    (genState, tacCode) <- RWS.execRWST (generateTac' program) () (initialGenState symbolTable)
     return (genState, TAC.TACProgram tacCode)
 
 -- | Utility function to generate the actual Tac Program.
-generateTac' :: ST.SymTable  -> AST.Program  -> GeneratorMonad ()
-generateTac' symT program = do
-    hasMain <- findMain symT
-    M.when hasMain $ writeTac (TAC.TACCode TAC.Goto (Just (TAC.LVLabel $ getTacId "main" 0)) Nothing Nothing)
+generateTac' :: AST.Program  -> GeneratorMonad ()
+generateTac' program = do
+    hasMain <- findMain
+    M.when hasMain $ writeTac (TAC.newTAC TAC.Goto (TAC.LVLabel $ getTacId "main" 0) [])
     genTacDecls $ AST.decls program
 
-findMain :: ST.SymTable -> GeneratorMonad Bool
-findMain symT = do
-    -- busca en la st si hay un id "main" (por ahora) que sea un procedimiento
-    let foundSym = ST.findSymbolInScope "main" 0 symT
+findMain :: GeneratorMonad Bool
+findMain = do
+    s@State{symT=st} <- RWS.get
+    -- search in st if there is a "main" id that is a procedure
+    let foundSym = ST.findSymbolInScope "main" 0 st
 
     case foundSym of
         Just ST.Symbol { ST.symType = ST.Function{} } -> return True
@@ -180,6 +181,7 @@ genTacExpr AST.ConstChar{AST.cVal=val} = do
     currId <- getNextTemp
     writeTac  $ TAC.newTAC TAC.Assign (TAC.LVId currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
     return (Just currId)
+
 genTacExpr AST.ConstString{} = undefined
 
 genTacExpr AST.ConstInt{AST.iVal=val} = do
@@ -210,6 +212,7 @@ genTacExpr AST.ConstStruct{} = undefined
 genTacExpr AST.ConstUnion{} = undefined
 genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
 genTacExpr AST.ConstNull{} = undefined
+
 genTacExpr AST.Id{AST.name=name, AST.declScope_=scope} =
     -- just return the id@scope
     return $ Just (getTacId name scope)
@@ -281,6 +284,7 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
         _              -> 
         -- if the type of the struct is not a custom type, error
             error "Aqui deberia haber un struct"
+
 genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expType=_expType, AST.declScope_=_declScope_} = do
     {-
         Function template
@@ -451,7 +455,7 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     writeTac $ TAC.newTAC TAC.Neg (TAC.LVId condNegId) [TAC.RVId condId]
 
     -- if negated cond is true, jump to else code
-    writeTac (TAC.TACCode TAC.Goif (Just (TAC.LVLabel elseLabel)) (Just (TAC.RVId condNegId)) Nothing)
+    writeTac (TAC.newTAC TAC.Goif (TAC.LVLabel elseLabel) [TAC.RVId condNegId])
 
     -- gen code for if 
     ifResultId <- genTacExpr accExpr
@@ -465,22 +469,22 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
                 error "Inconsistent AST: no result for if when it does have a return type diferent from unit"
 
     -- jump to the out label
-    writeTac (TAC.TACCode TAC.Goto (Just (TAC.LVLabel outLabel)) Nothing Nothing)
+    writeTac (TAC.newTAC TAC.Goto (TAC.LVLabel outLabel) [])
 
     -- create else label
-    writeTac (TAC.TACCode TAC.MetaLabel (Just (TAC.LVLabel elseLabel)) Nothing Nothing)
+    writeTac (TAC.newTAC TAC.MetaLabel (TAC.LVLabel elseLabel) [])
     -- gen code for else
     elseResultId <- genTacExpr failExpr
     -- if the type of the if-else its not unit, assign the return type
     M.when (expType /= AST.TUnit) $
         case elseResultId of
             Just _elseResultId ->
-                writeTac (TAC.TACCode TAC.Assign (Just (TAC.LVId resultId)) (Just (TAC.RVId _elseResultId)) Nothing)
+                writeTac (TAC.newTAC TAC.Assign (TAC.LVId resultId) [TAC.RVId _elseResultId])
             Nothing ->
-                return ()
+                error "Inconsistent AST: no result for if when it does have a return type diferent from unit"
 
     -- create out label
-    writeTac (TAC.TACCode TAC.MetaLabel (Just (TAC.LVLabel outLabel)) Nothing Nothing)
+    writeTac (TAC.newTAC TAC.MetaLabel (TAC.LVLabel outLabel) [])
 
     -- return result of if-else if its type its not unit
     if expType /= AST.TUnit then

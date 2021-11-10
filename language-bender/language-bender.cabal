@@ -41,7 +41,6 @@ library
       FrontEnd.Utils
       Lib
       TACTypes.TAC
-      TACTypes.Test
       Utils.Constants
       Utils.Types
   other-modules:
