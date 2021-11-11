@@ -38,7 +38,7 @@ data GeneratorState = State
                     }
 
 -- | Monad used to keep a state when traversing the AST to generate the code
-type GeneratorMonad = RWS.RWST () [TAC.TACCode] GeneratorState IO
+type GeneratorMonad = RWS.RWST () ([TAC.TACCode], [TAC.TACCode]) GeneratorState IO
 
 
 -- >> Handling Monad --------------------------------------------
@@ -72,7 +72,12 @@ getNextLabelTemp' prefix = do
 -- | write TAC instruccion
 writeTac :: TAC.TACCode -> GeneratorMonad ()
 writeTac tacInst = do
-    RWS.tell [tacInst]
+    RWS.tell ([], [tacInst])
+
+-- | write Static instruccion
+writeStatic :: TAC.TACCode -> GeneratorMonad ()
+writeStatic tacStatic = do
+    RWS.tell ([tacStatic], [])
 
 -- | Initial Generator State
 initialGenState :: ST.SymTable -> GeneratorState
@@ -108,8 +113,8 @@ getTacId id scope = id ++ "@" ++ show scope
 -- | resulting state and the generated program
 generateTac :: ST.SymTable  -> AST.Program  -> IO (GeneratorState, TAC.TACProgram)
 generateTac symbolTable program = do
-    (genState, tacCode) <- RWS.execRWST (generateTac' program) () (initialGenState symbolTable)
-    return (genState, TAC.TACProgram tacCode)
+    (genState, (tacStatic, tacCode)) <- RWS.execRWST (generateTac' program) () (initialGenState symbolTable)
+    return (genState, TAC.TACProgram (tacStatic ++ tacCode))
 
 -- | Utility function to generate the actual Tac Program.
 generateTac' :: AST.Program  -> GeneratorMonad ()
@@ -122,7 +127,7 @@ findMain :: GeneratorMonad Bool
 findMain = do
     s@State{symT=st} <- RWS.get
     -- search in st if there is a "main" id that is a procedure
-    let foundSym = ST.findSymbolInScope "main" 0 st
+    let foundSym = ST.findSymbolInScope' "main" 0 st
 
     case foundSym of
         Just ST.Symbol { ST.symType = ST.Function{} } -> return True
@@ -182,7 +187,14 @@ genTacExpr AST.ConstChar{AST.cVal=val} = do
     writeTac  $ TAC.newTAC TAC.Assign (TAC.LVId currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
     return (Just currId)
 
-genTacExpr AST.ConstString{} = undefined
+genTacExpr AST.ConstString{AST.sVal=str} = do
+    -- add static string
+    strLabel <- getNextLabelTemp
+    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.LVLabel strLabel) [TAC.Constant (TAC.String str)]
+    -- get next temporal  id and save the const string in it
+    currId <- getNextTemp
+    writeTac  $ TAC.newTAC TAC.Assign (TAC.LVId currId)  [TAC.RVLabel strLabel]
+    return (Just currId)
 
 genTacExpr AST.ConstInt{AST.iVal=val} = do
     -- get next temporal id and save the const int in it
@@ -231,8 +243,8 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = d
     case AST.expType struct of
         AST.CustomType name scope -> do
             -- get symbols for struct and tag, maybe struct not needed?
-            let maybeStruct = ST.findSymbolInScope name scope st
-                maybeTag    = ST.findSymbolInScope tag (scope + 1) st
+            let maybeStruct = ST.findSymbolInScope' name scope st
+                maybeTag    = ST.findSymbolInScope' tag (scope + 1) st
 
             case (maybeStruct, maybeTag) of
                 (Just structSymb, Just tagSymb) -> do
@@ -242,8 +254,10 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = d
 
                     case (maybeStructId, maybeValId) of
                         (Just structId, Just valId) -> do
-                            -- aqui habria que hacer structId[offset tag] = valId
-                            return Nothing
+                            -- structId[offset tag] = valId
+                            let offset_ = (ST.offset . ST.symType) tagSymb
+                            writeTac $ TAC.newTAC TAC.LDeref (TAC.LVId structId) [ TAC.Constant (TAC.Int offset_), TAC.RVId valId] 
+                            return (Just structId)
 
                         -- if there is no id with the struct or value, error
                         _             ->
@@ -261,8 +275,8 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
     case AST.expType struct of
         AST.CustomType name scope -> do
             -- get symbols for struct and tag, maybe struct not needed?
-            let maybeStruct = ST.findSymbolInScope name scope st
-                maybeTag    = ST.findSymbolInScope tag (scope + 1) st
+            let maybeStruct = ST.findSymbolInScope' name scope st
+                maybeTag    = ST.findSymbolInScope' tag (scope + 1) st
 
             case (maybeStruct, maybeTag) of
                 (Just structSymb, Just tagSymb) -> do
@@ -271,8 +285,11 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
 
                     case maybeStructId of
                         Just structId -> do
-                            -- aqui habria que hacer return structId[offset tag]
-                            return Nothing
+                            -- t0 := structId[offset tag]
+                            currId <- getNextTemp
+                            let offset_ = (ST.offset . ST.symType) tagSymb
+                            writeTac $ TAC.newTAC TAC.RDeref (TAC.LVId currId) [ TAC.RVId structId, TAC.Constant (TAC.Int offset_)] 
+                            return (Just currId)
 
 
                         -- if there is no id with the struct or value, error

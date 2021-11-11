@@ -244,6 +244,21 @@ findSymbol' id st f = res
 findSymbolInScope :: Identifier -> Scope -> SymTable -> Maybe Symbol
 findSymbolInScope id scp st = findSymbol' id st ((==scp) . scope)
 
+-- | Find a symbol in a specific scope, second implementation
+findSymbolInScope' :: Identifier -> Scope -> SymTable -> Maybe Symbol
+findSymbolInScope' id scp st = res
+    where 
+        maybeSyms    = M.lookup id $ stDict st  -- Related Symbols with this name
+
+        findSym  l  =  [s | s <- l, ((==scp) . scope) s] -- search for elems in scope
+
+        -- Compute result 
+        res = case maybeSyms of 
+            Nothing -> Nothing 
+            Just l  -> case findSym  l of 
+                        [] -> Nothing
+                        [s] -> Just s
+
 -- | Tells if a symbol is a variable or not:
 isVariable :: Symbol -> Bool 
 isVariable Symbol {symType = Variable{}} = True
