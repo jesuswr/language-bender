@@ -107,6 +107,10 @@ popNextIterData = do
 getTacId :: String -> Int -> String
 getTacId id scope = id ++ "@" ++ show scope
 
+getActiveUnionFieldId :: String -> Int -> String
+getActiveUnionFieldId id scope =
+    "currField@" ++ getTacId id scope
+
 -- >> Main Function ---------------------------------------------
 
 -- | Generate a Tac program using the symbol table and the AST object, returning the 
@@ -145,7 +149,28 @@ genTacDecls (d:ds) = do
 genTacDecl :: AST.Declaration -> GeneratorMonad ()
 
 -- | generate tac for variable decl
-genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope} =
+genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope, AST.varType=_varType} = do
+    
+    varId' <- getTacId varId scope
+
+    case _varType of
+        CustomType tname tscope -> do
+            
+            s@State{symT=st} <- RWS.get
+            let foundSym = ST.findSymbolInScope' tname tscope st
+
+            case foundSym of
+                ST.Union{} -> do
+                    -- create a variable to store the field active on the union
+                    -- initially it value is 0 (no field is active)
+                    actField <- getActiveUnionFieldId varId scope -- currField@varId@scope
+                    writeTac $ TAC.newTAC TAC.Assign (TAC.LVId actField) [TAC.Constant (TAC.Int 0)]
+                    return ()
+
+                _ -> return ()
+
+        _ -> return ()
+
     case val of 
         -- if there is no value to assign in the declaration do nothing
         Nothing   -> return()
@@ -155,7 +180,7 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope}
             case maybeValId of
                 Nothing -> return ()
                 Just valId -> do
-                    writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId varId) [TAC.RVId valId]
+                    writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId varId') [TAC.RVId valId]
                     return ()
 
 
