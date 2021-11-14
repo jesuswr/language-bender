@@ -151,19 +151,19 @@ genTacDecl :: AST.Declaration -> GeneratorMonad ()
 -- | generate tac for variable decl
 genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope, AST.varType=_varType} = do
     
-    varId' <- getTacId varId scope
+    let varId' = getTacId varId scope
 
     case _varType of
-        CustomType tname tscope -> do
+        AST.CustomType tname tscope -> do
             
             s@State{symT=st} <- RWS.get
             let foundSym = ST.findSymbolInScope' tname tscope st
 
             case foundSym of
-                ST.Union{} -> do
+                Just ST.Symbol{ST.symType=ST.UnionType{}} -> do
                     -- create a variable to store the field active on the union
                     -- initially it value is 0 (no field is active)
-                    actField <- getActiveUnionFieldId varId scope -- currField@varId@scope
+                    let actField = getActiveUnionFieldId varId scope -- currField@varId@scope
                     writeTac $ TAC.newTAC TAC.Assign (TAC.LVId actField) [TAC.Constant (TAC.Int 0)]
                     return ()
 
