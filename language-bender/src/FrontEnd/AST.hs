@@ -55,13 +55,13 @@ data Opr1 = Negation
 
 -- | Possible expressions. Remember, everything its an expression
 data Expr   = ConstChar       { cVal :: String, expType :: Type }
-            | ConstString     { sVal :: String, expType :: Type }
+            | LiteralString   { sVal :: String, expType :: Type }
             | ConstInt        { iVal :: Int, expType :: Type }
             | ConstFloat      { fVal :: Float, expType :: Type }
             | ConstTrue       { expType :: Type }
             | ConstFalse      { expType :: Type }
-            | ConstStruct     { structName :: U.Name, list :: [Expr], expType :: Type }
-            | ConstUnion      { unionName :: U.Name, tag :: U.Name, value :: Expr, expType :: Type }
+            | LiteralStruct   { structName :: U.Name, list :: [Expr], expType :: Type }
+            | LiteralUnion    { unionName :: U.Name, tag :: U.Name, value :: Expr, expType :: Type }
             | ConstUnit       { expType :: Type }
             | ConstNull       { expType :: Type }
             | Id              { name :: U.Name, position :: U.Position, expType :: Type, declScope_ :: Int}
@@ -226,7 +226,7 @@ identShowExpr :: Int -> Expr -> String
 identShowExpr ident (ConstChar c _) = "\n" ++
   replicate ident ' ' ++ "Literal Character: " ++ show c ++ "\n"
 
-identShowExpr ident (ConstString s _) = "\n" ++
+identShowExpr ident (LiteralString s _) = "\n" ++
   replicate ident ' ' ++ "Literal String: '" ++ s ++ "'\n"
 
 identShowExpr ident (ConstInt n _) = "\n" ++
@@ -235,7 +235,7 @@ identShowExpr ident (ConstInt n _) = "\n" ++
 identShowExpr ident (ConstFloat f _) = "\n" ++
   replicate ident ' ' ++ "Literal Float: '" ++ show f ++ "'\n"
 
-identShowExpr ident (ConstStruct stru_id exps _) = "\n" ++
+identShowExpr ident (LiteralStruct stru_id exps _) = "\n" ++
   replicate ident ' ' ++ "Literal Struct: '"++ stru_id ++ "'\n"
   ++ replicate ident ' ' ++ "with fields:\n"
   ++ concatMap (identShowExpr (ident + 2)) exps 
@@ -246,7 +246,7 @@ identShowExpr ident (ConstTrue _) = "\n" ++
 identShowExpr ident (ConstFalse _) = "\n" ++
   replicate ident ' ' ++ "Literal Bool: False\n"
 
-identShowExpr ident (ConstUnion union_id tag_ val _) = "\n" ++
+identShowExpr ident (LiteralUnion union_id tag_ val _) = "\n" ++
   replicate ident ' ' ++ "Literal Union: '" ++ union_id ++ "'\n"
   ++ replicate ident ' ' ++ "with tag: " ++ tag_ ++ "\n"
   ++ "\n" ++ replicate ident ' ' ++ "with value:\n"

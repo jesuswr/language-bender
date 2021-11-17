@@ -785,7 +785,7 @@ checkExpr a@AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = do
     return a{AST.expType = aType}
 
 -- Check Struct Literal
-checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
+checkExpr c@AST.LiteralStruct {AST.structName=_structName, AST.list=_list} = do
 
     -- Check struct name of literal struct
     mbSym <- checkSymbolDefined _structName
@@ -840,7 +840,7 @@ checkExpr c@AST.ConstStruct {AST.structName=_structName, AST.list=_list} = do
     return c'
 
 -- Check Union Literal
-checkExpr c@AST.ConstUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=_tag} = do
+checkExpr c@AST.LiteralUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=_tag} = do
 
     -- Check union name of literal union
     mbSym <- checkSymbolDefined _unionName

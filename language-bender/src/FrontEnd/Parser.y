@@ -231,12 +231,12 @@ Expr            :: { AST.Expr }
     | Expr quotmark_s id Assign                         {% P.checkExpr $ AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 AST.TypeError }
     | using Expr quotmark_s id skill                    {% P.checkExpr $ AST.StructAccess $2 ((TK.name . TK.tktype) $4) AST.TypeError }
     | learning id control using
-       ExprList rightNow                                {% P.checkExpr $ AST.ConstStruct ((TK.name . TK.tktype) $2) (reverse $5) AST.TypeError }
+       ExprList rightNow                                {% P.checkExpr $ AST.LiteralStruct ((TK.name . TK.tktype) $2) (reverse $5) AST.TypeError }
    
     | trying Expr quotmark_s id technique               {% P.checkExpr $ AST.UnionTrying $2 ((TK.name . TK.tktype) $4) AST.TypeError }
     | using Expr quotmark_s id technique                {% P.checkExpr $ AST.UnionUsing $2 ((TK.name . TK.tktype) $4) AST.TypeError }
     | learning id quotmark_s id 
-       techniqueFrom Expr                               {% P.checkExpr $ AST.ConstUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6 AST.TypeError }
+       techniqueFrom Expr                               {% P.checkExpr $ AST.LiteralUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6 AST.TypeError }
    
     | ForDescription colon PushScope Expr PopScope PopScope {% do
                                                                 let (_id,_step,_start,_end) = $1
@@ -271,7 +271,7 @@ Expr            :: { AST.Expr }
     | true                                              { AST.ConstTrue AST.TBool }
     | false                                             { AST.ConstFalse AST.TBool }
     | char                                              { AST.ConstChar $1 AST.TChar }
-    | string                                            { AST.ConstString $1 (AST.TArray AST.TChar (AST.ConstInt (length $1) AST.TInt )) }
+    | string                                            { AST.LiteralString $1 (AST.TArray AST.TChar (AST.ConstInt (length $1) AST.TInt )) }
     | null                                              { AST.ConstNull (AST.TPtr AST.TVoid) }
 
     -- >> Binary Expressions --------------------------------------------------------------------------

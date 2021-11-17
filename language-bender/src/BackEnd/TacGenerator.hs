@@ -228,7 +228,7 @@ genTacExpr AST.ConstChar{AST.cVal=val} = do
     writeTac  $ TAC.newTAC TAC.Assign (TAC.LVId currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
     return (Just currId)
 
-genTacExpr AST.ConstString{AST.sVal=str} = do
+genTacExpr AST.LiteralString{AST.sVal=str} = do
     -- add static string
     strLabel <- getNextLabelTemp
     writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.LVLabel strLabel) [TAC.Constant (TAC.String str)]
@@ -261,7 +261,7 @@ genTacExpr AST.ConstFalse{} = do
     writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId currId)  [TAC.Constant (TAC.Bool False)]
     return (Just currId)
 
-genTacExpr AST.ConstStruct{AST.structName=name, AST.list=fields, AST.expType=_expType} = do
+genTacExpr AST.LiteralStruct{AST.structName=name, AST.list=fields, AST.expType=_expType} = do
 
     s@State{symT=st} <- RWS.get
     -- create an struct, save its address in temporal and return it
@@ -273,7 +273,7 @@ genTacExpr AST.ConstStruct{AST.structName=name, AST.list=fields, AST.expType=_ex
     -- iterar por fields asignando los valores a las posiciones de memoria correspondientes. TODO
     return (Just currId)
 
-genTacExpr AST.ConstUnion{} = undefined
+genTacExpr AST.LiteralUnion{} = undefined
 genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
 genTacExpr AST.ConstNull{} = undefined
 
