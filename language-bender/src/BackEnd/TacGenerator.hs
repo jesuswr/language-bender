@@ -35,7 +35,6 @@ data GeneratorState = State
                     , nextLabelTemporal :: Int         -- ^ Available id for the next temporal label 
                     , currentIterData :: [IterData]    -- ^ Stack of data for the currently running iterator
                     , symT :: ST.SymTable              -- ^ The symbol table
-                    , offsetStack :: [(Int, AST.Type)] -- ^ Stack of offsets in case of nested variable assignment
                     }
 
 -- | Monad used to keep a state when traversing the AST to generate the code
@@ -50,7 +49,6 @@ initialGenState st = State{ nextTemporal = 0
                           , nextLabelTemporal = 0
                           , currentIterData = []
                           , symT = st
-                          , offsetStack = []
 }
 
 -- Generate ID's
@@ -110,30 +108,6 @@ popNextIterData ::  GeneratorMonad IterData
 popNextIterData = do 
     s@State {  currentIterData = (x:xs) } <- RWS.get 
     RWS.put s{ currentIterData = xs }
-    return x
-
--- Offset Stack
-
--- | Get the offset of the next expected variable assignment
-topOffsetStack :: GeneratorMonad (Int, AST.Type)
-topOffsetStack = RWS.get <&> head . offsetStack 
-
--- | Push the next expected return id
-pushOffsetStack :: String -> Int -> GeneratorMonad ()
-pushOffsetStack id scope = do
-    s@State{ offsetStack = stk, symT=st } <- RWS.get
-
-    -- get offset and type from variable ID
-    let o = ST.getVarOffset st id scope
-        t = ST.getVarType st id scope
-
-    RWS.put s{offsetStack = (o,t):stk}
-
--- | Remove and retrieve the next id for return
-popOffsetStack ::  GeneratorMonad (Int, AST.Type)
-popOffsetStack = do 
-    s@State {  offsetStack = (x:xs) } <- RWS.get 
-    RWS.put s{ offsetStack = xs }
     return x
 
 -- >> Auxiliar Functions ----------------------------------------
