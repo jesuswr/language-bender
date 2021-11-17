@@ -31,10 +31,11 @@ data IterData   = IterData
                     }
 -- | Stateful information required by the conversion process
 data GeneratorState = State
-                    { nextTemporal :: Int             -- ^ Available id for the next temporal symbol name
-                    , nextLabelTemporal :: Int        -- ^ Available id for the next temporal label 
-                    , currentIterData :: [IterData]   -- ^ Stack of data for the currently running iterator
-                    , symT :: ST.SymTable
+                    { nextTemporal :: Int              -- ^ Available id for the next temporal symbol name
+                    , nextLabelTemporal :: Int         -- ^ Available id for the next temporal label 
+                    , currentIterData :: [IterData]    -- ^ Stack of data for the currently running iterator
+                    , symT :: ST.SymTable              -- ^ The symbol table
+                    , offsetStack :: [(Int, AST.Type)] -- ^ Stack of offsets in case of nested variable assignment
                     }
 
 -- | Monad used to keep a state when traversing the AST to generate the code
@@ -42,6 +43,17 @@ type GeneratorMonad = RWS.RWST () ([TAC.TACCode], [TAC.TACCode]) GeneratorState 
 
 
 -- >> Handling Monad --------------------------------------------
+
+-- | Initial Generator State
+initialGenState :: ST.SymTable -> GeneratorState
+initialGenState st = State{ nextTemporal = 0
+                          , nextLabelTemporal = 0
+                          , currentIterData = []
+                          , symT = st
+                          , offsetStack = []
+}
+
+-- Generate ID's
 
 -- | get next temporal variable
 getNextTemp :: GeneratorMonad String
@@ -69,6 +81,8 @@ getNextLabelTemp' prefix = do
 
     return $ prefix ++ "@" ++ l
 
+-- Write TAC
+
 -- | write TAC instruccion
 writeTac :: TAC.TACCode -> GeneratorMonad ()
 writeTac tacInst = do
@@ -79,9 +93,7 @@ writeStatic :: TAC.TACCode -> GeneratorMonad ()
 writeStatic tacStatic = do
     RWS.tell ([tacStatic], [])
 
--- | Initial Generator State
-initialGenState :: ST.SymTable -> GeneratorState
-initialGenState st = State{nextTemporal = 0, nextLabelTemporal = 0, currentIterData = [], symT = st}
+-- IterData Stack
 
 -- | Get the id of the next expected return value
 topCurrentIterData :: GeneratorMonad IterData
@@ -100,13 +112,43 @@ popNextIterData = do
     RWS.put s{ currentIterData = xs }
     return x
 
+-- Offset Stack
+
+-- | Get the offset of the next expected variable assignment
+topOffsetStack :: GeneratorMonad (Int, AST.Type)
+topOffsetStack = RWS.get <&> head . offsetStack 
+
+-- | Push the next expected return id
+pushOffsetStack :: String -> Int -> GeneratorMonad ()
+pushOffsetStack id scope = do
+    s@State{ offsetStack = stk, symT=st } <- RWS.get
+
+    -- get offset and type from variable ID
+    let o = ST.getVarOffset st id scope
+        t = ST.getVarType st id scope
+
+    RWS.put s{offsetStack = (o,t):stk}
+
+-- | Remove and retrieve the next id for return
+popOffsetStack ::  GeneratorMonad (Int, AST.Type)
+popOffsetStack = do 
+    s@State {  offsetStack = (x:xs) } <- RWS.get 
+    RWS.put s{ offsetStack = xs }
+    return x
 
 -- >> Auxiliar Functions ----------------------------------------
+
+-- | Get the current BASE id. 
+-- | BASE value is updated implicitly.
+-- | Will be implemented in target code.
+base :: String
+base = TAC.base
 
 -- | generate an unique tac id from a language bender id
 getTacId :: String -> Int -> String
 getTacId id scope = id ++ "@" ++ show scope
 
+-- | generate an unique tac id to store the active field of an union
 getActiveUnionFieldId :: String -> Int -> String
 getActiveUnionFieldId id scope =
     "currField@" ++ getTacId id scope
@@ -245,7 +287,18 @@ genTacExpr AST.ConstFalse{} = do
     writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId currId)  [TAC.Constant (TAC.Bool False)]
     return (Just currId)
 
-genTacExpr AST.ConstStruct{} = undefined
+genTacExpr AST.ConstStruct{AST.structName=name, AST.list=fields, AST.expType=_expType} = do
+
+    s@State{symT=st} <- RWS.get
+    -- create an struct, save its address in temporal and return it
+    let structSz = ST.getTypeSize st _expType
+    currId <- getNextTemp' name
+    --structOffset <- getOffset ???
+
+    --writeTac $ TAC.newTAC TAC.Assign (TAC.LVId currId) [TAC.RVLabel structLabel]
+    -- iterar por fields asignando los valores a las posiciones de memoria correspondientes. TODO
+    return (Just currId)
+
 genTacExpr AST.ConstUnion{} = undefined
 genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
 genTacExpr AST.ConstNull{} = undefined

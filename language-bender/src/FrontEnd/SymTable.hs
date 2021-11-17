@@ -134,6 +134,20 @@ getTypeAlign st t =
                 Type _ _ a -> a
                 _          -> 1
 
+getVarOffset :: SymTable -> String -> Int -> Int
+getVarOffset st id scope = getVarAtrr st id scope offset
+
+getVarType ::SymTable -> String -> Int -> AST.Type
+getVarType st id scope = getVarAtrr st id scope varType
+
+getVarAtrr :: SymTable -> String -> Int -> (SymType -> a) -> a
+getVarAtrr st id scope f =
+    case findSymbolInScope' id scope st of
+        Nothing -> error (id ++ " in scope "++ show scope ++ " should exist")
+        Just sym ->
+            case symType sym of
+                v@Variable{} -> f v
+
 -- | Push a new scope in the given table
 pushEmptyScope :: SymTable -> SymTable
 pushEmptyScope st@SymTable{stNextScope = s, stScopeStk = stk} = st{stNextScope = s + 1, stScopeStk = s:stk}
