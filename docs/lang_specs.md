@@ -84,10 +84,14 @@ Tipo booleano con dos posibles valores: ```lightning master``` o ```fire master`
 
 
 #### Char
-Tipo de dato que representa un caracter (```earth```). Codificados en formato ascii.
+Tipo de dato que representa un carácter (```earth```). Codificados en formato ascii.
 
 #### String
-Alias para un arreglo de caracteres (```metal```).
+Alias para un arreglo de carácteres (```metal```). Con la siguiente sintaxis:
+```
+bender <id> of metal <size> purity
+```
+Donde ```<size>``` es el tamaño del string o arreglo de carácteres.
 
 #### Arreglo
 Los arreglos tienen tamaño constante de elaboración y se declaran como:

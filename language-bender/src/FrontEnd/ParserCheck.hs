@@ -635,17 +635,25 @@ checkExpr o@AST.Op1 {AST.op1=_operator, AST.opr=_opr} = do
 --  Check Array Literal Expression
 checkExpr a@AST.Array {AST.list=_list} = do
 
+    currSt@State{symTable = st} <- RWS.get
+
     -- Get the type of the first elem
     let t  = (AST.expType . head) _list
         sz = length _list
     -- Check all the element have the same type
         homogeneous = all (typeMatch t . AST.expType) (tail _list)
+
+    -- calculate offset
+        width = ST.getTypeSize st (AST.TArray t (AST.ConstInt sz AST.TInt))
+        align = ST.getTypeAlign st (AST.TArray t (AST.ConstInt sz AST.TInt))
+    o <- updateOffset align width
+
     -- Set the expression type
     if typeMatch t AST.TypeError || not homogeneous
         then
-            return a{AST.expType = AST.TypeError}
+            return a{AST.expType = AST.TypeError, AST.offset = o}
         else
-            return a{AST.expType = AST.TArray t (AST.ConstInt sz AST.TInt) }
+            return a{AST.expType = AST.TArray t (AST.ConstInt sz AST.TInt), AST.offset = o }
 
 
 --  Check Union type guessing (return a boolean)
@@ -787,6 +795,8 @@ checkExpr a@AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = do
 -- Check Struct Literal
 checkExpr c@AST.LiteralStruct {AST.structName=_structName, AST.list=_list} = do
 
+    currSt@State{symTable = st} <- RWS.get
+
     -- Check struct name of literal struct
     mbSym <- checkSymbolDefined _structName
 
@@ -835,12 +845,19 @@ checkExpr c@AST.LiteralStruct {AST.structName=_structName, AST.list=_list} = do
         then cStructType
         else AST.TypeError
 
-        c' = c{AST.expType = cStructType'}
+    -- calculate offset
+        width = ST.getTypeSize st cStructType'
+        align = ST.getTypeAlign st cStructType'
+    o <- updateOffset align width
+
+    let c' = c{AST.expType = cStructType', AST.offset = o}
 
     return c'
 
 -- Check Union Literal
 checkExpr c@AST.LiteralUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=_tag} = do
+
+    currSt@State{symTable = st} <- RWS.get
 
     -- Check union name of literal union
     mbSym <- checkSymbolDefined _unionName
@@ -872,8 +889,27 @@ checkExpr c@AST.LiteralUnion {AST.unionName=_unionName, AST.value=_value, AST.ta
         then cUnionType
         else AST.TypeError
 
-        c' = c{AST.expType = cUnionType'}
+    -- calculate offset
+        width = ST.getTypeSize st cUnionType'
+        align = ST.getTypeAlign st cUnionType'
+    o <- updateOffset align width
+
+    let c' = c{AST.expType = cUnionType'}
+
     return c'
+
+
+-- Check String Literal
+checkExpr s@AST.LiteralString {AST.expType = t} = do
+
+    currSt@State{symTable = st} <- RWS.get
+
+    -- calculate offset
+    let  width = ST.getTypeSize st t
+         align = ST.getTypeAlign st t
+    o <- updateOffset align width
+
+    return s{AST.offset = o}
 
 
     -- Check a return expression 

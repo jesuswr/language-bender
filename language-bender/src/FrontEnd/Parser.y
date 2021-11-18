@@ -231,12 +231,12 @@ Expr            :: { AST.Expr }
     | Expr quotmark_s id Assign                         {% P.checkExpr $ AST.StructAssign $1 ((TK.name . TK.tktype) $3) $4 AST.TypeError }
     | using Expr quotmark_s id skill                    {% P.checkExpr $ AST.StructAccess $2 ((TK.name . TK.tktype) $4) AST.TypeError }
     | learning id control using
-       ExprList rightNow                                {% P.checkExpr $ AST.LiteralStruct ((TK.name . TK.tktype) $2) (reverse $5) AST.TypeError }
+       ExprList rightNow                                {% P.checkExpr $ AST.LiteralStruct ((TK.name . TK.tktype) $2) (reverse $5) AST.TypeError 0 }
    
     | trying Expr quotmark_s id technique               {% P.checkExpr $ AST.UnionTrying $2 ((TK.name . TK.tktype) $4) AST.TypeError }
     | using Expr quotmark_s id technique                {% P.checkExpr $ AST.UnionUsing $2 ((TK.name . TK.tktype) $4) AST.TypeError }
     | learning id quotmark_s id 
-       techniqueFrom Expr                               {% P.checkExpr $ AST.LiteralUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6 AST.TypeError }
+       techniqueFrom Expr                               {% P.checkExpr $ AST.LiteralUnion ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $4) $6 AST.TypeError 0 }
    
     | ForDescription colon PushScope Expr PopScope PopScope {% do
                                                                 let (_id,_step,_start,_end) = $1
@@ -263,7 +263,7 @@ Expr            :: { AST.Expr }
     | born Type member                                  {% P.checkExpr $ AST.New $2 AST.TypeError }
     | Expr died                                         {% P.checkExpr $ AST.Delete $1 AST.TUnit }
     | disciple Expr of Expr                             {% P.checkExpr $ AST.ArrayIndexing $2 $4 AST.TypeError }
-    | masterOf ExprList rightNow                        {% P.checkExpr $ AST.Array (reverse $2) AST.TypeError }
+    | masterOf ExprList rightNow                        {% P.checkExpr $ AST.Array (reverse $2) AST.TypeError 0 }
 
     -- >> Const Values --------------------------------------------------------------------------------
     | int                                               { AST.ConstInt $1 AST.TInt }
@@ -271,7 +271,7 @@ Expr            :: { AST.Expr }
     | true                                              { AST.ConstTrue AST.TBool }
     | false                                             { AST.ConstFalse AST.TBool }
     | char                                              { AST.ConstChar $1 AST.TChar }
-    | string                                            { AST.LiteralString $1 (AST.TArray AST.TChar (AST.ConstInt (length $1) AST.TInt )) }
+    | string                                            {% P.checkExpr $ AST.LiteralString $1 (AST.TArray AST.TChar (AST.ConstInt (length $1) AST.TInt )) 0 }
     | null                                              { AST.ConstNull (AST.TPtr AST.TVoid) }
 
     -- >> Binary Expressions --------------------------------------------------------------------------

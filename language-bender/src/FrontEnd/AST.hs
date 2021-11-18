@@ -55,13 +55,13 @@ data Opr1 = Negation
 
 -- | Possible expressions. Remember, everything its an expression
 data Expr   = ConstChar       { cVal :: String, expType :: Type }
-            | LiteralString   { sVal :: String, expType :: Type }
+            | LiteralString   { sVal :: String, expType :: Type, offset :: Int }
             | ConstInt        { iVal :: Int, expType :: Type }
             | ConstFloat      { fVal :: Float, expType :: Type }
             | ConstTrue       { expType :: Type }
             | ConstFalse      { expType :: Type }
-            | LiteralStruct   { structName :: U.Name, list :: [Expr], expType :: Type }
-            | LiteralUnion    { unionName :: U.Name, tag :: U.Name, value :: Expr, expType :: Type }
+            | LiteralStruct   { structName :: U.Name, list :: [Expr], expType :: Type, offset :: Int }
+            | LiteralUnion    { unionName :: U.Name, tag :: U.Name, value :: Expr, expType :: Type, offset :: Int }
             | ConstUnit       { expType :: Type }
             | ConstNull       { expType :: Type }
             | Id              { name :: U.Name, position :: U.Position, expType :: Type, declScope_ :: Int}
@@ -79,7 +79,7 @@ data Expr   = ConstChar       { cVal :: String, expType :: Type }
             | Declaration     { decl :: Declaration, expType :: Type }
             | Op2             { op2 :: Opr2, opr1 :: Expr, opr2 :: Expr, expType :: Type }
             | Op1             { op1 :: Opr1, opr :: Expr, expType :: Type }
-            | Array           { list :: [Expr], expType :: Type }
+            | Array           { list :: [Expr], expType :: Type, offset :: Int }
             | UnionTrying     { union :: Expr, tag :: U.Name, expType :: Type }
             | UnionUsing      { union :: Expr, tag :: U.Name, expType :: Type }
             | New             { typeName :: Type, expType :: Type }
@@ -226,7 +226,7 @@ identShowExpr :: Int -> Expr -> String
 identShowExpr ident (ConstChar c _) = "\n" ++
   replicate ident ' ' ++ "Literal Character: " ++ show c ++ "\n"
 
-identShowExpr ident (LiteralString s _) = "\n" ++
+identShowExpr ident (LiteralString s _ _) = "\n" ++
   replicate ident ' ' ++ "Literal String: '" ++ s ++ "'\n"
 
 identShowExpr ident (ConstInt n _) = "\n" ++
@@ -235,7 +235,7 @@ identShowExpr ident (ConstInt n _) = "\n" ++
 identShowExpr ident (ConstFloat f _) = "\n" ++
   replicate ident ' ' ++ "Literal Float: '" ++ show f ++ "'\n"
 
-identShowExpr ident (LiteralStruct stru_id exps _) = "\n" ++
+identShowExpr ident (LiteralStruct stru_id exps _ _) = "\n" ++
   replicate ident ' ' ++ "Literal Struct: '"++ stru_id ++ "'\n"
   ++ replicate ident ' ' ++ "with fields:\n"
   ++ concatMap (identShowExpr (ident + 2)) exps 
@@ -246,7 +246,7 @@ identShowExpr ident (ConstTrue _) = "\n" ++
 identShowExpr ident (ConstFalse _) = "\n" ++
   replicate ident ' ' ++ "Literal Bool: False\n"
 
-identShowExpr ident (LiteralUnion union_id tag_ val _) = "\n" ++
+identShowExpr ident (LiteralUnion union_id tag_ val _ _) = "\n" ++
   replicate ident ' ' ++ "Literal Union: '" ++ union_id ++ "'\n"
   ++ replicate ident ' ' ++ "with tag: " ++ tag_ ++ "\n"
   ++ "\n" ++ replicate ident ' ' ++ "with value:\n"
@@ -338,7 +338,7 @@ identShowExpr ident (Op1 op opr_ _) = "\n" ++
   ++ "\n" ++ replicate ident ' ' ++ "with operand:\n"
   ++ identShowExpr (ident + 2) opr_ 
 
-identShowExpr ident (Array l _) = "\n" ++
+identShowExpr ident (Array l _ _) = "\n" ++
   replicate ident ' ' ++ "Array Literal with elements:\n"
   ++ concatMap (identShowExpr (ident + 2)) l
 
