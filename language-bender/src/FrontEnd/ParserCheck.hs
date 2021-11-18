@@ -59,6 +59,13 @@ getCustomType sid = do
              addStaticError $ SE.NotValidType{SE.nonTypeName = sid}
              return AST.TypeError
 
+-- | Check if exist nested functions and add error if so
+checkNestedFunctions :: String -> ParserState ()
+checkNestedFunctions name = do
+    s@State{expectedTypeStack = stk} <- RWS.get
+    M.when (length stk > 1) $ do
+        addStaticError $ SE.NestedFunctions{SE.symName = name}
+
 -- | Add this type to the stack of expected types
 pushType :: AST.Type -> ParserState ()
 pushType t = do

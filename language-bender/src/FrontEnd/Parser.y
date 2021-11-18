@@ -166,15 +166,15 @@ ProcDecl        :: { AST.Declaration }
     | ProcDescription PushScope PushOffset colon PushScope Exprs PopScope PopOffset PopScope                     {% P._functionCheckerHelper $1 (Just AST.TUnit) [] $6 }
 
 ProcDescription :: { U.Name }
-    : travel id                                                                             {% P.pushType AST.TUnit >> return ((TK.name . TK.tktype) $2) }
+    : travel id                                                                             {% P.pushType AST.TUnit >> P.checkNestedFunctions ((TK.name . TK.tktype) $2) >> return ((TK.name . TK.tktype) $2) }
 
 FuncDecl        :: { AST.Declaration }
     : FuncDescription about PushScope PushOffset FuncArg colon PushScope Exprs PopScope PopOffset PopScope       {% P._functionCheckerHelper (fst $1) (snd $1) $5 $8 }
     | FuncDescription PushScope PushOffset colon PushScope Exprs PopScope PopOffset PopScope                     {% P._functionCheckerHelper (fst $1) (snd $1) [] $6 }
 
 FuncDescription :: { (U.Name, Maybe AST.Type) }
-    : book id of Type                                                                       {% P.pushType $4 >> return ((TK.name . TK.tktype) $2, Just $4) }
-    | book id                                                                               {% P.pushType AST.TVoid >> return ((TK.name . TK.tktype) $2, Nothing) }
+    : book id of Type                                                                       {% P.pushType $4 >> P.checkNestedFunctions ((TK.name . TK.tktype) $2) >> return ((TK.name . TK.tktype) $2, Just $4) }
+    | book id                                                                               {% P.pushType AST.TVoid >> P.checkNestedFunctions ((TK.name . TK.tktype) $2) >> return ((TK.name . TK.tktype) $2, Nothing) }
 
 FuncArg         :: { [AST.FuncArg] }
     : FuncDefArgDecl                                    { $1 }
