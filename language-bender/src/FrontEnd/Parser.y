@@ -146,14 +146,14 @@ Declarations    :: { [AST.Declaration] }
 
 Declaration     :: { AST.Declaration }
     : VarDecl                                                 { $1 }
-    | element id compoundBy PushScope StructIdDecls StructOffset PopScope  {% do
-                                                                                currSt@P.State{P.symTable = st} <- RWS.get
-                                                                                P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $5) $6 (((ST.getTypeAlign st) . snd . last) $5) 0
-                                                                            }
-    | energy id allows PushScope UnionIdDecls PopScope        {% do
-                                                                 currSt@P.State{P.symTable = st} <- RWS.get
-                                                                 P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2 ) (reverse $5) (ST.getMaxSize st $5)  (foldl lcm 1 (map ((ST.getTypeAlign st) . snd) $5) ) 0
-                                                              }
+    | element id compoundBy PushScope PushOffset StructIdDecls StructOffset PopOffset PopScope  {% do
+                                                                                                    currSt@P.State{P.symTable = st} <- RWS.get
+                                                                                                    P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $6) $7 (((ST.getTypeAlign st) . snd . last) $6) 0
+                                                                                                }
+    | energy id allows PushScope PushOffset UnionIdDecls PopOffset PopScope         {% do
+                                                                                        currSt@P.State{P.symTable = st} <- RWS.get
+                                                                                        P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2 ) (reverse $6) (ST.getMaxSize st $6)  (foldl lcm 1 (map ((ST.getTypeAlign st) . snd) $6) ) 0
+                                                                                    }
     | FuncDecl                                                { $1 }
     | ProcDecl                                                { $1 }
 
@@ -162,15 +162,15 @@ StructOffset :: { Int }
 
 
 ProcDecl        :: { AST.Declaration }
-    : ProcDescription madeBy PushScope FuncArg colon PushScope Exprs PopScope PopScope            {% P._functionCheckerHelper $1 (Just AST.TUnit) $4 $7 }
-    | ProcDescription PushScope colon PushScope Exprs PopScope PopScope                           {% P._functionCheckerHelper $1 (Just AST.TUnit) [] $5 }
+    : ProcDescription madeBy PushScope PushOffset FuncArg colon PushScope Exprs PopScope PopOffset PopScope      {% P._functionCheckerHelper $1 (Just AST.TUnit) $5 $8 }
+    | ProcDescription PushScope PushOffset colon PushScope Exprs PopScope PopOffset PopScope                     {% P._functionCheckerHelper $1 (Just AST.TUnit) [] $6 }
 
 ProcDescription :: { U.Name }
     : travel id                                                                             {% P.pushType AST.TUnit >> return ((TK.name . TK.tktype) $2) }
 
 FuncDecl        :: { AST.Declaration }
-    : FuncDescription about PushScope FuncArg colon PushScope Exprs PopScope PopScope       {% P._functionCheckerHelper (fst $1) (snd $1) $4 $7 }
-    | FuncDescription PushScope colon PushScope Exprs PopScope PopScope                     {% P._functionCheckerHelper (fst $1) (snd $1) [] $5 }
+    : FuncDescription about PushScope PushOffset FuncArg colon PushScope Exprs PopScope PopOffset PopScope       {% P._functionCheckerHelper (fst $1) (snd $1) $5 $8 }
+    | FuncDescription PushScope PushOffset colon PushScope Exprs PopScope PopOffset PopScope                     {% P._functionCheckerHelper (fst $1) (snd $1) [] $6 }
 
 FuncDescription :: { (U.Name, Maybe AST.Type) }
     : book id of Type                                                                       {% P.pushType $4 >> return ((TK.name . TK.tktype) $2, Just $4) }
@@ -310,7 +310,7 @@ ForDescription  ::  { (AST.Declaration, AST.Expr, AST.Expr, AST.Expr) }
     : opening Expr of id chakrasFrom Expr to Expr       {% do
                                                             P.pushLoopType $ AST.TVoid
                                                             P.pushEmptyScope
-                                                            P.pushOffset 0
+                                                            -- P.pushOffset 0
                                                             let iterDecl = AST.Variable (TK.name . TK.tktype $ $4) (AST.expType $6) (Just $6) False 0  
                                                             P.checkDecls iterDecl
 
@@ -374,11 +374,16 @@ Type            :: { AST.Type }
     -- >> Auxiliar Rules ----------------------------------------------------------------------------
 
 PushScope 
-    : {- empty -}                                       {% P.pushEmptyScope >> P.pushOffset 0 }
+    : {- empty -}                                       {% P.pushEmptyScope }
 
 PopScope
-    : {- empty -}                                       {% P.popEmptyScope >> P.popOffset }
+    : {- empty -}                                       {% P.popEmptyScope }
 
+PushOffset
+    : {- empty -}                                       {% P.pushOffset 0 }
+
+PopOffset
+    : {- empty -}                                       {% P.popOffset }
 
 {
 
