@@ -23,10 +23,14 @@ langBender = do
     procArgs <- processArgs args
     case procArgs of
         Left cliError -> do
+            C.setSGR [C.SetColor C.Foreground C.Vivid C.Red]
             print cliError
+            C.setSGR [C.Reset]
         Right (Result opts warnings) -> do
             M.unless (null warnings) $ do
-                putStrLn "lbend CLI warnings:"
+                C.setSGR [C.SetColor C.Foreground C.Vivid C.Yellow]
+                putStrLn "~ lbend CLI warnings ~"
+                C.setSGR [C.Reset]
                 mapM_ print warnings
                 putStrLn "\n"
 
@@ -45,12 +49,16 @@ langBender = do
                 let printTokens = _printTokens1 && _printTokens2
 
                 M.when printTokens $ do
+                    C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
                     putStrLn "~ Tokens ~\n"
+                    C.setSGR [C.Reset]
                     mapM_ print tokens
                     putStrLn "\n"
 
                 M.unless (null lexerErrors) $ do
+                    C.setSGR [C.SetColor C.Foreground C.Vivid C.Red]
                     putStrLn "~ Lexer Errors ~\n"
+                    C.setSGR [C.Reset]
                     mapM_ print lexerErrors
 
                 M.when (null tokens) $ do
@@ -65,11 +73,12 @@ langBender = do
                     (ast, parseState, parseErrors) <- P.runParse tokens preParseState'
 
                     let symT = PC.symTable parseState
-                    let errors = preParseErrors ++ parseErrors
+                        errors = preParseErrors ++ parseErrors
+                        exist_errors = (not $ null errors) || (not $ null lexerErrors)
 
-                    let _printST1 = printPar opts || justPar opts
-                    let _printST2 = null errors || verbose opts
-                    let printST = _printST1 && _printST2
+                        _printST1 = printPar opts || justPar opts
+                        _printST2 = null errors || verbose opts
+                        printST = _printST1 && _printST2
 
                     M.when printST $ do
 
@@ -100,15 +109,22 @@ langBender = do
                         mapM_ print errors
                         putStrLn "\n"
 
-                    (_, tac') <- TG.generateTac symT ast
-                    print tac'
-                    return ()
+
+                    if justPar opts || exist_errors then return ()
+                    else do
+
+                        (_, tac') <- TG.generateTac symT ast
+                        C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
+                        putStrLn "~ TAC ~\n"
+                        C.setSGR [C.Reset]
+                        print tac'
+                        return ()
 
 
 
 
 helpMsg :: String
-helpMsg = "~ lbend ~ A language bender compiler.\n"
+helpMsg = "~ lbend ~ The Last Language Bender Compiler.\n"
     ++ "Usage: stack exec -- lbend <bend file> [options]\n"
     ++ "Options:\n"
     ++ "--help         show this help.\n"
