@@ -27,6 +27,7 @@ data StaticError = SymbolNotInScope         { symName :: U.Name }
                  | TooManyArguments         { refTo :: U.Name, expectedNumOfArgs :: Int, actualNumOfArgs :: Int }
                  | CouldNotInferType        { symName :: U.Name }
                  | NestedFunctions          { symName :: U.Name }
+                 | AssignUnit               { symName :: U.Name }
                  deriving(Eq)  
 
 
@@ -57,4 +58,5 @@ instance Show StaticError where
     show (AssignToConst name)                 = "\t~ Error: assignment of constant variable " ++ show name
     show (CouldNotInferType name)             = "\t~ Error: Could not infer type of " ++ show name
     show (NestedFunctions name)               = "\t~ Error: Nested function declaration. In declaration of " ++ show name
+    show (AssignUnit name)                    = "\t~ Error: Assignment of Unit is Forbidden. In assignment of " ++ show name
     show badArgNumbers                        = "\t~ Error: in call to '" ++ show (refTo badArgNumbers) ++ "' expected " ++ show (expectedNumOfArgs badArgNumbers) ++ " arguments but got " ++ show (actualNumOfArgs badArgNumbers)

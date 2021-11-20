@@ -63,7 +63,7 @@ getCustomType sid = do
 checkNestedFunctions :: String -> ParserState ()
 checkNestedFunctions name = do
     s@State{expectedTypeStack = stk} <- RWS.get
-    M.when (length stk > 1) $ do
+    M.when (length stk > 2) $ do
         addStaticError $ SE.NestedFunctions{SE.symName = name}
 
 -- | Add this type to the stack of expected types
@@ -231,11 +231,26 @@ checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = iv
     tryAddSymbol newSym{ST.symType=(ST.symType newSym){ST.offset=o}}
 
     -- check initial value if provided 
-    M.forM_ ival (_checkTypeMatch'' t)
+    match <- case ival of
+        Just ival_ -> _checkTypeMatch'' t ival_
+        _          -> return True
+    -- check that unit is not assigned
+    assignUnit <- case ival of
+        Just ival_ -> case AST.expType ival_ of
+            AST.TUnit -> return True
+            _      -> return False
+        _          -> return False
+
+    M.when assignUnit $ do
+        addStaticError $ SE.AssignUnit{SE.symName = sid}
+
+    let varType_ = if match && (not assignUnit)
+        then t
+        else AST.TypeError 
 
     currScope <- getScope
 
-    return v{ AST.declScope = currScope }
+    return v{ AST.declScope = currScope, AST.varType=varType_ }
 
 -- Check reference Declaration 
 checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
@@ -345,9 +360,13 @@ checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
 
     -- check that var_type and the type of _value match
     match <- _checkTypeMatch (getCastClass var_type) _value
+    -- check that unit is not assigned
+    assignUnit <- case AST.expType _value of
+        AST.TUnit -> return True
+        _         -> return False
 
     -- get return type
-    let assgType = if match
+    let assgType = if match && (not assignUnit)
         then var_type
         else AST.TypeError
 
