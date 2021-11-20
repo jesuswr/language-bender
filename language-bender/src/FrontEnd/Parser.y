@@ -174,7 +174,6 @@ FuncDecl        :: { AST.Declaration }
 
 FuncDescription :: { (U.Name, Maybe AST.Type) }
     : book id of Type                                                                       {% P.pushType $4 >> P.checkNestedFunctions ((TK.name . TK.tktype) $2) >> return ((TK.name . TK.tktype) $2, Just $4) }
-    | book id                                                                               {% P.pushType AST.TVoid >> P.checkNestedFunctions ((TK.name . TK.tktype) $2) >> return ((TK.name . TK.tktype) $2, Nothing) }
 
 FuncArg         :: { [AST.FuncArg] }
     : FuncDefArgDecl                                    { $1 }
