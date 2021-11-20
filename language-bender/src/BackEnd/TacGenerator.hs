@@ -140,7 +140,7 @@ generateTac symbolTable program = do
 generateTac' :: AST.Program  -> GeneratorMonad ()
 generateTac' program = do
     hasMain <- findMain
-    M.when hasMain $ writeTac (TAC.newTAC TAC.Goto (TAC.LVLabel $ getTacId "main" 0) [])
+    M.when hasMain $ writeTac (TAC.newTAC TAC.Goto (TAC.Label $ getTacId "main" 0) [])
     genTacDecls $ AST.decls program
 
 findMain :: GeneratorMonad Bool
@@ -180,7 +180,7 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
                     -- create a variable to store the field active on the union
                     -- initially it value is 0 (no field is active)
                     let actField = getActiveUnionFieldId varId scope -- currField@varId@scope
-                    writeTac $ TAC.newTAC TAC.Assign (TAC.LVId actField) [TAC.Constant (TAC.Int 0)]
+                    writeTac $ TAC.newTAC TAC.Assign (TAC.Id actField) [TAC.Constant (TAC.Int 0)]
                     return ()
 
                 _ -> return ()
@@ -196,7 +196,7 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
             case maybeValId of
                 Nothing -> return ()
                 Just valId -> do
-                    writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId varId') [TAC.RVId valId]
+                    writeTac $ TAC.newTAC TAC.Assign  (TAC.Id varId') [TAC.Id valId]
                     return ()
 
 
@@ -212,7 +212,7 @@ genTacDecl AST.Struct{} = return()
 -- | gen tac for functions and procedure decls
 genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope} = do
     -- fuction name label
-    writeTac (TAC.TACCode TAC.MetaLabel (Just (TAC.LVLabel (getTacId name scope))) Nothing Nothing)
+    writeTac (TAC.TACCode TAC.MetaLabel (Just (TAC.Label (getTacId name scope))) Nothing Nothing)
     -- generate tac code for function body
     genTacExpr body
     -- falta un return? agarrar lo que devuelva el cuerpo de la func y retornar eso?
@@ -225,40 +225,40 @@ genTacExpr :: AST.Expr -> GeneratorMonad (Maybe String)
 genTacExpr AST.ConstChar{AST.cVal=val} = do
     -- get next temporal id and save the const char in it
     currId <- getNextTemp
-    writeTac  $ TAC.newTAC TAC.Assign (TAC.LVId currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
+    writeTac  $ TAC.newTAC TAC.Assign (TAC.Id currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
     return (Just currId)
 
 genTacExpr AST.LiteralString{AST.sVal=str} = do
     -- add static string
     strLabel <- getNextLabelTemp
-    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.LVLabel strLabel) [TAC.Constant (TAC.String str)]
+    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Label strLabel) [TAC.Constant (TAC.String str)]
     -- get next temporal  id and save the const string in it
     currId <- getNextTemp
-    writeTac  $ TAC.newTAC TAC.Assign (TAC.LVId currId)  [TAC.RVLabel strLabel]
+    writeTac  $ TAC.newTAC TAC.Assign (TAC.Id currId)  [TAC.Label strLabel]
     return (Just currId)
 
 genTacExpr AST.ConstInt{AST.iVal=val} = do
     -- get next temporal id and save the const int in it
     currId <- getNextTemp
-    writeTac  $ TAC.newTAC TAC.Assign (TAC.LVId currId)  [TAC.Constant (TAC.Int val)]
+    writeTac  $ TAC.newTAC TAC.Assign (TAC.Id currId)  [TAC.Constant (TAC.Int val)]
     return (Just currId)
 
 genTacExpr AST.ConstFloat{AST.fVal=val} = do
     -- get next temporal id and save the const float in it
     currId <- getNextTemp
-    writeTac $ TAC.newTAC TAC.Assign (TAC.LVId currId) [TAC.Constant (TAC.Float val)]
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id currId) [TAC.Constant (TAC.Float val)]
     return (Just currId)
 
 genTacExpr AST.ConstTrue{} = do
     -- get next temporal id and save true in it
     currId <- getNextTemp
-    writeTac $ TAC.newTAC TAC.Assign (TAC.LVId currId) [TAC.Constant (TAC.Bool True)]
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id currId) [TAC.Constant (TAC.Bool True)]
     return (Just currId)
 
 genTacExpr AST.ConstFalse{} = do
     -- get next temporal id and save false in it
     currId <- getNextTemp
-    writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId currId)  [TAC.Constant (TAC.Bool False)]
+    writeTac $ TAC.newTAC TAC.Assign  (TAC.Id currId)  [TAC.Constant (TAC.Bool False)]
     return (Just currId)
 
 genTacExpr AST.LiteralStruct{AST.structName=name, AST.list=fields, AST.expType=_expType} = do
@@ -269,7 +269,7 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.list=fields, AST.expType=_
     currId <- getNextTemp' name
     --structOffset <- getOffset ???
 
-    --writeTac $ TAC.newTAC TAC.Assign (TAC.LVId currId) [TAC.RVLabel structLabel]
+    --writeTac $ TAC.newTAC TAC.Assign (TAC.Id currId) [TAC.Label structLabel]
     -- iterar por fields asignando los valores a las posiciones de memoria correspondientes. TODO
     return (Just currId)
 
@@ -287,7 +287,7 @@ genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = d
     -- get var@scope
     let varId = getTacId var scope
     -- assign value to var and return the id with the result
-    writeTac $ TAC.newTAC TAC.Assign  (TAC.LVId varId) [TAC.RVId valId]
+    writeTac $ TAC.newTAC TAC.Assign  (TAC.Id varId) [TAC.Id valId]
     return (Just varId)
 
 genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = do
@@ -308,7 +308,7 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = d
                         (Just structId, Just valId) -> do
                             -- structId[offset tag] = valId
                             let offset_ = (ST.offset . ST.symType) tagSymb
-                            writeTac $ TAC.newTAC TAC.LDeref (TAC.LVId structId) [ TAC.Constant (TAC.Int offset_), TAC.RVId valId] 
+                            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id structId) [ TAC.Constant (TAC.Int offset_), TAC.Id valId] 
                             return (Just structId)
 
                         -- if there is no id with the struct or value, error
@@ -340,7 +340,7 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
                             -- t0 := structId[offset tag]
                             currId <- getNextTemp
                             let offset_ = (ST.offset . ST.symType) tagSymb
-                            writeTac $ TAC.newTAC TAC.RDeref (TAC.LVId currId) [ TAC.RVId structId, TAC.Constant (TAC.Int offset_)] 
+                            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [ TAC.Id structId, TAC.Constant (TAC.Int offset_)] 
                             return (Just currId)
 
 
@@ -379,11 +379,11 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
     fcallRetPos  <- getNextTemp' "freturn"
 
     -- Stack parameters
-    M.forM_ returnIds (\s -> writeTac $ TAC.newTAC TAC.Param (TAC.LVId s) [])
+    M.forM_ returnIds (\s -> writeTac $ TAC.newTAC TAC.Param (TAC.Id s) [])
 
     -- Call function 
     -- @TODO que hago cuando no retorna nada?
-    writeTac $ TAC.newTAC TAC.Call (TAC.LVId fcallRetPos) [TAC.RVLabel $ getTacId _fname _declScope_, TAC.Constant . TAC.Int . length $ _actualArgs]
+    writeTac $ TAC.newTAC TAC.Call (TAC.Id fcallRetPos) [TAC.Label $ getTacId _fname _declScope_, TAC.Constant . TAC.Int . length $ _actualArgs]
 
     return $ Just fcallRetPos
 
@@ -430,20 +430,20 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
             _                  -> error "Inconsistent AST: Step expression should return some numeric value, and it's returning nothing"
 
     -- Put start label
-    writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.LVLabel forStartLabel) []
+    writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.Label forStartLabel) []
 
     -- Put result value
     mbOutResultId <- genTacExpr _cicBody
 
 
     -- Put End Label
-    writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.LVLabel forEndLabel) []
+    writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.Label forEndLabel) []
 
     -- Return consistency checking
     case (mbOutResultId, _expType) of 
         (Just outResultId, AST.TUnit) -> error "Inconsistent TAC Generator: should return nothing when body expression returns Unit"
         (Nothing, t)                  -> error "Inconsistent TAC Generator: should provide a return id when body expression returns something different from Unit"
-        (Just outResultId, _)         -> writeTac $ TAC.newTAC TAC.Assign (TAC.LVId forResultId) [TAC.RVId outResultId]
+        (Just outResultId, _)         -> writeTac $ TAC.newTAC TAC.Assign (TAC.Id forResultId) [TAC.Id outResultId]
 
     case _expType of 
         AST.TUnit -> return Nothing
@@ -479,14 +479,14 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
     pushNextIterData whileData
 
     -- Add label marking the while start
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.LVLabel startLabel) []
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label startLabel) []
 
     -- Generate code for condition checking 
     Just condId <- genTacExpr _cond -- may raise error when returns Nothing, this is intended
 
     -- Generate code to jump to the end when condition is not met
-    writeTac $ TAC.newTAC TAC.Neg  (TAC.LVId condId)      [TAC.RVId condId]
-    writeTac $ TAC.newTAC TAC.Goif (TAC.LVLabel outLabel) [TAC.RVId condId]
+    writeTac $ TAC.newTAC TAC.Neg  (TAC.Id condId)      [TAC.Id condId]
+    writeTac $ TAC.newTAC TAC.Goif (TAC.Label outLabel) [TAC.Id condId]
 
     -- Generate code for body
     mbBodyResultId <- genTacExpr _cicBody 
@@ -494,14 +494,14 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
     -- Update result if while loop has return type
     M.when (_expType /= AST.TUnit) $
         case mbBodyResultId of 
-            Just bodyResultId -> writeTac $ TAC.newTAC TAC.Assign (TAC.LVId whileResultId) [TAC.RVId bodyResultId]
+            Just bodyResultId -> writeTac $ TAC.newTAC TAC.Assign (TAC.Id whileResultId) [TAC.Id bodyResultId]
             Nothing -> error $ "Inconsistent AST: Body of while returning nothing when type of while is not Unit. \n\t" ++ "Expected return type: " ++ show _expType
     
     -- Add code for going to the start
-    writeTac $ TAC.newTAC TAC.Goto (TAC.LVLabel startLabel) []
+    writeTac $ TAC.newTAC TAC.Goto (TAC.Label startLabel) []
 
     -- Add goto label
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.LVLabel outLabel) []
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label outLabel) []
 
     -- Remove data for this iterator instruction
     popNextIterData
@@ -521,10 +521,10 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     -- get conditional and negate it, so we can choose to go to the else
     Just condId <- genTacExpr cond
     condNegId <- getNextTemp
-    writeTac $ TAC.newTAC TAC.Neg (TAC.LVId condNegId) [TAC.RVId condId]
+    writeTac $ TAC.newTAC TAC.Neg (TAC.Id condNegId) [TAC.Id condId]
 
     -- if negated cond is true, jump to else code
-    writeTac (TAC.newTAC TAC.Goif (TAC.LVLabel elseLabel) [TAC.RVId condNegId])
+    writeTac (TAC.newTAC TAC.Goif (TAC.Label elseLabel) [TAC.Id condNegId])
 
     -- gen code for if 
     ifResultId <- genTacExpr accExpr
@@ -533,27 +533,27 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     M.when (expType /= AST.TUnit) $
         case ifResultId of
             Just _ifResultId ->
-                writeTac $ TAC.newTAC TAC.Assign (TAC.LVId resultId) [TAC.RVId _ifResultId]
+                writeTac $ TAC.newTAC TAC.Assign (TAC.Id resultId) [TAC.Id _ifResultId]
             Nothing ->
                 error "Inconsistent AST: no result for if when it does have a return type diferent from unit"
 
     -- jump to the out label
-    writeTac (TAC.newTAC TAC.Goto (TAC.LVLabel outLabel) [])
+    writeTac (TAC.newTAC TAC.Goto (TAC.Label outLabel) [])
 
     -- create else label
-    writeTac (TAC.newTAC TAC.MetaLabel (TAC.LVLabel elseLabel) [])
+    writeTac (TAC.newTAC TAC.MetaLabel (TAC.Label elseLabel) [])
     -- gen code for else
     elseResultId <- genTacExpr failExpr
     -- if the type of the if-else its not unit, assign the return type
     M.when (expType /= AST.TUnit) $
         case elseResultId of
             Just _elseResultId ->
-                writeTac (TAC.newTAC TAC.Assign (TAC.LVId resultId) [TAC.RVId _elseResultId])
+                writeTac (TAC.newTAC TAC.Assign (TAC.Id resultId) [TAC.Id _elseResultId])
             Nothing ->
                 error "Inconsistent AST: no result for if when it does have a return type diferent from unit"
 
     -- create out label
-    writeTac (TAC.newTAC TAC.MetaLabel (TAC.LVLabel outLabel) [])
+    writeTac (TAC.newTAC TAC.MetaLabel (TAC.Label outLabel) [])
 
     -- return result of if-else if its type its not unit
     if expType /= AST.TUnit then
@@ -591,10 +591,10 @@ genTacExpr AST.Break {AST.expr=_expr, AST.expType=_expType} = do
             let Just _iterReturnId' = _iterReturnId -- May crash when this iter is Nothing, this is intended
 
             -- Save the expression value in the iterator return value
-            writeTac $ TAC.newTAC TAC.Assign (TAC.LVId _iterReturnId') [TAC.RVId expResultId]
+            writeTac $ TAC.newTAC TAC.Assign (TAC.Id _iterReturnId') [TAC.Id expResultId]
 
     -- Go to the out label
-    writeTac $ TAC.newTAC TAC.Goto  (TAC.LVLabel _breakLabel) []
+    writeTac $ TAC.newTAC TAC.Goto  (TAC.Label _breakLabel) []
 
     -- Return value id
     case (_expType, _iterReturnId) of 
@@ -622,10 +622,10 @@ genTacExpr AST.Continue {AST.expr=_expr, AST.expType=_expType} = do
             let Just _iterReturnId' = _iterReturnId -- May crash when this iter is Nothing, this is intended
 
             -- Save the expression value in the iterator return value
-            writeTac $ TAC.newTAC TAC.Assign (TAC.LVId _iterReturnId') [TAC.RVId expResultId]
+            writeTac $ TAC.newTAC TAC.Assign (TAC.Id _iterReturnId') [TAC.Id expResultId]
 
     -- Go to the out label
-    writeTac $ TAC.newTAC TAC.Goto  (TAC.LVLabel _continueLabel) []
+    writeTac $ TAC.newTAC TAC.Goto  (TAC.Label _continueLabel) []
 
     -- Return value id
     case (_expType, _iterReturnId) of 
@@ -644,7 +644,7 @@ genTacExpr AST.Op2{AST.op2=op, AST.opr1=l, AST.opr2=r} = do
     -- get temp id
     currId <- getNextTemp
     -- assing the op to the id and return the id
-    writeTac (TAC.TACCode (mapOp2 op) (Just (TAC.LVId currId)) (Just (TAC.RVId leftId)) (Just (TAC.RVId rightId)))
+    writeTac (TAC.TACCode (mapOp2 op) (Just (TAC.Id currId)) (Just (TAC.Id leftId)) (Just (TAC.Id rightId)))
     return (Just currId)
 
 genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
@@ -657,7 +657,7 @@ genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
         AST.UnitOperator -> return Nothing
         _                -> do
             currId <- getNextTemp
-            writeTac (TAC.TACCode (mapOp1 op) (Just (TAC.LVId currId)) (Just (TAC.RVId opId)) Nothing)
+            writeTac (TAC.TACCode (mapOp1 op) (Just (TAC.Id currId)) (Just (TAC.Id opId)) Nothing)
             return (Just currId)
 
 genTacExpr AST.Array{} = undefined
