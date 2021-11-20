@@ -8,6 +8,7 @@ module BackEnd.TacGenerator where
 import qualified FrontEnd.AST as AST
 import qualified FrontEnd.SymTable as ST
 import qualified TACTypes.TAC as TAC
+import qualified BackEnd.StdLib as STD
 
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
