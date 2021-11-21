@@ -22,13 +22,12 @@ type Scope = Int
 -- | Stack of currently available scopes 
 type ScopeStack = [Scope]
 -- | Stack of current offsets 
-type OffsetStack = [Scope]
+type OffsetStack = [Int]
 -- | name of a symbol  
 type Identifier = String                        
 -- | Map from ids to its corresponding symbol data. Multiple symbols may have the same name, that's why we keep a 
 --   list of Symbols instead of a single symbol
 type Dictionary = M.Map Identifier [Symbol] 
-    
 
 
 -- | Symbol Type with its corresponding data
@@ -39,7 +38,7 @@ data SymType
     | UnionType     { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int }
     | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
     | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
-    | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int, offset :: Int}
+    | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int, offset :: Int }
     deriving (Eq)
 
 -- | Symbol Data type

@@ -211,13 +211,28 @@ genTacDecl AST.Union{} = return()
 genTacDecl AST.Struct{} = return()
 
 -- | gen tac for functions and procedure decls
-genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope} = do
+genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope, AST.baseStackSize=stackSize} = do
     -- fuction name label
-    writeTac (TAC.TACCode TAC.MetaLabel (Just (TAC.Label (getTacId name scope))) Nothing Nothing)
+    let startFuncLabel = getTacId name scope
+        stackSize' = TAC.Constant . TAC.Int $ stackSize
+    endFuncLabel <- getNextLabelTemp' $ name ++ "_end"
+    
+    -- generate function label
+    writeTac (TAC.newTAC TAC.MetaLabel (TAC.Label startFuncLabel) [])
+
+    -- Write tack for beginFunc
+    writeTac $ TAC.newTAC TAC.MetaBeginFunc  stackSize' []
+
+    
+
+
     -- generate tac code for function body
     genTacExpr body
+    -- generate tac label for function end
+    writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.Label endFuncLabel) [] 
+    writeTac $ TAC.newTAC TAC.MetaEndFunc stackSize' []
     -- falta un return? agarrar lo que devuelva el cuerpo de la func y retornar eso?
-    return()
+    return ()
 
 -------------------------------------------------------
 -- | generate tac for expressions ---------------------

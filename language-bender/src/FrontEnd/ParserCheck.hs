@@ -1222,8 +1222,9 @@ _functionCheckerHelper  :: U.Name               -- ^ Function ID
                         -> Maybe AST.Type       -- ^ Function return type if provided 
                         -> [AST.FuncArg]        -- ^ Function args
                         -> AST.Expr             -- ^ Function Body
+                        -> Int                  -- ^ Function base stack size
                         -> ParserState AST.Declaration
-_functionCheckerHelper fid _ args body = do
+_functionCheckerHelper fid _ args body stackSize = do
 
     -- Get current type 
     inferedType <- topType
@@ -1236,7 +1237,7 @@ _functionCheckerHelper fid _ args body = do
     -- Check if body type matches expected type 
     _ <- _checkTypeMatch' [inferedType] (AST.expType body)
 
-    checkDecls $ AST.Func fid (reverse args) inferedType' body 0
+    checkDecls $ AST.Func fid (reverse args) inferedType' body 0 stackSize
 
 -- | utility function to perform some operations needed before checking a for loop
 _forCheckerHelper :: AST.Declaration  
@@ -1289,15 +1290,17 @@ getNextOffset currOffset align width = newOffset
     where
         newOffset = getOffset currOffset align + width
 
-pushOffset :: Int -> ParserState()
+pushOffset :: Int -> ParserState ()
 pushOffset o = do
     s@State{symTable = st} <- RWS.get
     RWS.put s{symTable = ST.pushOffset st o}
 
-popOffset :: ParserState()
+popOffset :: ParserState Int 
 popOffset = do
     s@State{symTable = st} <- RWS.get
+    let currOffset = ST.getCurrentOffset st
     RWS.put s{symTable = ST.popOffset st}
+    return currOffset
 
 getCurrentOffset :: ParserState Int
 getCurrentOffset = do
@@ -1310,6 +1313,6 @@ updateOffset align width = do
     State{symTable = st} <- RWS.get
     let currOffset = ST.getCurrentOffset st
     let ret = getOffset currOffset align
-    popOffset
+    _ <- popOffset
     pushOffset $ getNextOffset currOffset align width
     return ret
