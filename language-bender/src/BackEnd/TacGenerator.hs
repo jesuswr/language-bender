@@ -2,13 +2,13 @@
     The following file contains all the functions to convert the AST data type into a TAC
     code. The TAC data types can be found in src/BackEnd/TACTypes/TAC.hs
 -}
+{-# OPTIONS_GHC -Wall #-}
 module BackEnd.TacGenerator where
 
 -- <Language Bender Imports> ------------------------------------
 import qualified FrontEnd.AST as AST
 import qualified FrontEnd.SymTable as ST
 import qualified TACTypes.TAC as TAC
-import qualified BackEnd.StdLib as STD
 
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
@@ -29,12 +29,24 @@ data IterData   = IterData
                     , continueLabel :: Label        -- ^ Where to go in case of continue
                     , iterReturnId  :: Maybe Id     -- ^ Where to store the result of the loop if it returns something, 
                                                     --   some loops doesn't return anything, in which case the value is Nothing
-                    }
+                    } deriving(Eq, Show)
+
+type IterDataStack = [IterData]
+
+-- | Data representing relevant information about the current function on context
+data FuncData = FuncData 
+                { startLabel :: Label       -- ^ Start label for this function
+                , endLabel   :: Label       -- ^ End label for this function
+                }
+
+type FuncDataStack = [FuncData]
+
 -- | Stateful information required by the conversion process
 data GeneratorState = State
                     { nextTemporal :: Int              -- ^ Available id for the next temporal symbol name
                     , nextLabelTemporal :: Int         -- ^ Available id for the next temporal label 
-                    , currentIterData :: [IterData]    -- ^ Stack of data for the currently running iterator
+                    , currentIterData :: IterDataStack    -- ^ Stack of data for the currently running iterator
+                    , currentFuncData :: FuncDataStack    -- ^ Stack of data for the currently running iterator
                     , symT :: ST.SymTable              -- ^ The symbol table
                     }
 
@@ -49,15 +61,16 @@ initialGenState :: ST.SymTable -> GeneratorState
 initialGenState st = State{ nextTemporal = 0
                           , nextLabelTemporal = 0
                           , currentIterData = []
+                          , currentFuncData = []
                           , symT = st
-}
+                          }
 
 -- Generate ID's
 
 -- | get next temporal variable
 getNextTemp :: GeneratorMonad String
 getNextTemp = do
-    s@State{nextTemporal = n, nextLabelTemporal = m} <- RWS.get
+    s@State{nextTemporal = n, nextLabelTemporal = _} <- RWS.get
     RWS.put s{nextTemporal = n+1}
     return $ "T" ++ show n
 
@@ -69,7 +82,7 @@ getNextTemp' prefix = do
 -- | get next label temporal variable
 getNextLabelTemp :: GeneratorMonad String
 getNextLabelTemp = do
-    s@State{nextTemporal = m, nextLabelTemporal = n} <- RWS.get
+    s@State{nextTemporal = _, nextLabelTemporal = n} <- RWS.get
     RWS.put s{nextLabelTemporal = n+1}
     return $ "L" ++ show n
 
@@ -111,6 +124,25 @@ popNextIterData = do
     RWS.put s{ currentIterData = xs }
     return x
 
+-- FuncData Stack
+
+-- | Get the id of the next expected return value
+topCurrentFuncData :: GeneratorMonad FuncData
+topCurrentFuncData = RWS.get <&> head . currentFuncData 
+
+-- | Push the next expected return id
+pushNextFuncData :: FuncData -> GeneratorMonad ()
+pushNextFuncData lb = do
+    s@State{ currentFuncData = stk } <- RWS.get 
+    RWS.put s{currentFuncData = lb:stk}
+
+-- | Remove and retrieve the next id for return
+popNextFuncData ::  GeneratorMonad FuncData
+popNextFuncData = do 
+    s@State {  currentFuncData = (x:xs) } <- RWS.get 
+    RWS.put s{ currentFuncData = xs }
+    return x
+
 -- >> Auxiliar Functions ----------------------------------------
 
 -- | Get the current BASE id. 
@@ -121,12 +153,12 @@ base = TAC.base
 
 -- | generate an unique tac id from a language bender id
 getTacId :: String -> Int -> String
-getTacId id scope = id ++ "@" ++ show scope
+getTacId id' scope = id' ++ "@" ++ show scope
 
 -- | generate an unique tac id to store the active field of an union
 getActiveUnionFieldId :: String -> Int -> String
-getActiveUnionFieldId id scope =
-    "currField@" ++ getTacId id scope
+getActiveUnionFieldId id' scope =
+    "currField@" ++ getTacId id' scope
 
 -- >> Main Function ---------------------------------------------
 
@@ -146,7 +178,7 @@ generateTac' program = do
 
 findMain :: GeneratorMonad Bool
 findMain = do
-    s@State{symT=st} <- RWS.get
+    State{symT=st} <- RWS.get
     -- search in st if there is a "main" id that is a procedure
     let foundSym = ST.findSymbolInScope' "main" 0 st
 
@@ -173,7 +205,7 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
     case _varType of
         AST.CustomType tname tscope -> do
             
-            s@State{symT=st} <- RWS.get
+            State{symT=st} <- RWS.get
             let foundSym = ST.findSymbolInScope' tname tscope st
 
             case foundSym of
@@ -211,7 +243,7 @@ genTacDecl AST.Union{} = return()
 genTacDecl AST.Struct{} = return()
 
 -- | gen tac for functions and procedure decls
-genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope, AST.baseStackSize=stackSize} = do
+genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope, AST.baseStackSize=stackSize, AST.retType = _retType} = do
     {-
         Function definition template
         @label func_name@l0
@@ -227,14 +259,30 @@ genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope, AST.ba
         stackSize' = TAC.Constant . TAC.Int $ stackSize
     endFuncLabel <- getNextLabelTemp' $ name ++ "_end"
 
+    let funcData = FuncData {startLabel=startFuncLabel, endLabel=endFuncLabel}
+
     -- generate function label
     writeTac (TAC.newTAC TAC.MetaLabel (TAC.Label startFuncLabel) [TAC.Label startFuncLabel])
 
     -- Write tack for beginFunc
     writeTac $ TAC.newTAC TAC.MetaBeginFunc  stackSize' []
 
+    -- push this function as the current function in scope
+    pushNextFuncData funcData
+
     -- generate tac code for function body
-    genTacExpr body
+    mbReturn <- genTacExpr body
+
+    -- Write return if any
+    case (mbReturn, _retType) of 
+        (Nothing, AST.TUnit) -> return ()
+        (Just retId, _)      -> do 
+            writeTac $ TAC.newTAC TAC.Return  (TAC.Id retId) []
+        _ -> error "Programming error: Inconsistent AST, return addres provided on unit expression or not provided on non-unit expression"
+
+    -- Pop current function data
+    _ <- popNextFuncData
+
     -- generate tac label for function end
 
     writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.Label endFuncLabel) [] 
@@ -285,11 +333,11 @@ genTacExpr AST.ConstFalse{} = do
     writeTac $ TAC.newTAC TAC.Assign  (TAC.Id currId)  [TAC.Constant (TAC.Bool False)]
     return (Just currId)
 
-genTacExpr AST.LiteralStruct{AST.structName=name, AST.list=fields, AST.expType=_expType} = do
+genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType} = do
 
-    s@State{symT=st} <- RWS.get
+    State{symT=st} <- RWS.get
     -- create an struct, save its address in temporal and return it
-    let structSz = ST.getTypeSize st _expType
+    let _ = ST.getTypeSize st _expType
     currId <- getNextTemp' name
     --structOffset <- getOffset ???
 
@@ -315,7 +363,7 @@ genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = d
     return (Just varId)
 
 genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = do
-    s@State{symT=st} <- RWS.get
+    State{symT=st} <- RWS.get
     case AST.expType struct of
         AST.CustomType name scope -> do
             -- get symbols for struct and tag, maybe struct not needed?
@@ -323,7 +371,7 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = d
                 maybeTag    = ST.findSymbolInScope' tag (scope + 1) st
 
             case (maybeStruct, maybeTag) of
-                (Just structSymb, Just tagSymb) -> do
+                (Just _, Just tagSymb) -> do
                     -- generate code for struct expr and value expr
                     maybeStructId <- genTacExpr struct
                     maybeValId    <- genTacExpr value
@@ -347,7 +395,7 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = d
 
             
 genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
-    s@State{symT=st} <- RWS.get
+    State{symT=st} <- RWS.get
     case AST.expType struct of
         AST.CustomType name scope -> do
             -- get symbols for struct and tag, maybe struct not needed?
@@ -355,7 +403,7 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
                 maybeTag    = ST.findSymbolInScope' tag (scope + 1) st
 
             case (maybeStruct, maybeTag) of
-                (Just structSymb, Just tagSymb) -> do
+                (Just _, Just tagSymb) -> do
                     -- generate code for struct expr and value expr
                     maybeStructId <- genTacExpr struct
 
@@ -465,8 +513,8 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
 
     -- Return consistency checking
     case (mbOutResultId, _expType) of 
-        (Just outResultId, AST.TUnit) -> error "Inconsistent TAC Generator: should return nothing when body expression returns Unit"
-        (Nothing, t)                  -> error "Inconsistent TAC Generator: should provide a return id when body expression returns something different from Unit"
+        (Just _, AST.TUnit) -> error "Inconsistent TAC Generator: should return nothing when body expression returns Unit"
+        (Nothing, _)                  -> error "Inconsistent TAC Generator: should provide a return id when body expression returns something different from Unit"
         (Just outResultId, _)         -> writeTac $ TAC.newTAC TAC.Assign (TAC.Id forResultId) [TAC.Id outResultId]
 
     case _expType of 
@@ -488,7 +536,7 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
         @label while_out@l1:
     -}
     -- Get needed labels to select where to go
-    startLabel    <- getNextLabelTemp' "while_start"
+    startLabel'    <- getNextLabelTemp' "while_start"
     outLabel      <- getNextLabelTemp' "while_out"
     whileResultId <- getNextTemp
 
@@ -497,13 +545,13 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
             | _expType /= AST.TUnit = Just whileResultId
             | otherwise  = Nothing 
 
-    let whileData = IterData {breakLabel=outLabel, continueLabel=startLabel, iterReturnId = mbWhileResultId }
+    let whileData = IterData {breakLabel=outLabel, continueLabel=startLabel', iterReturnId = mbWhileResultId }
 
     -- Put current iterator data in the state
     pushNextIterData whileData
 
     -- Add label marking the while start
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label startLabel) []
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label startLabel') []
 
     -- Generate code for condition checking 
     Just condId <- genTacExpr _cond -- may raise error when returns Nothing, this is intended
@@ -522,13 +570,13 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
             Nothing -> error $ "Inconsistent AST: Body of while returning nothing when type of while is not Unit. \n\t" ++ "Expected return type: " ++ show _expType
     
     -- Add code for going to the start
-    writeTac $ TAC.newTAC TAC.Goto (TAC.Label startLabel) []
+    writeTac $ TAC.newTAC TAC.Goto (TAC.Label startLabel') []
 
     -- Add goto label
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label outLabel) []
 
     -- Remove data for this iterator instruction
-    popNextIterData
+    _ <- popNextIterData
     
     -- Depending on the expression type, check what should return
     case _expType of
@@ -595,7 +643,31 @@ genTacExpr AST.ExprBlock{AST.exprs=exprs, AST.expType=expType} = do
     else
         return maybeId
 
-genTacExpr AST.Return{} = undefined
+genTacExpr AST.Return {AST.expr=_expr, AST.expType=_expType} = do 
+    {-
+        Return template
+        <generate code for expression>
+        t0 = value, moved by value since it is just a scalar
+        return t0
+        goto endfunc@label
+    -}
+    FuncData {endLabel=_endLabel} <- topCurrentFuncData
+    mbReturnVal <- genTacExpr _expr
+
+    let tacGoToFunEnd = TAC.newTAC TAC.Goto (TAC.Label _endLabel) []
+
+    case (mbReturnVal, _expType) of 
+        (Nothing, AST.TUnit) -> do
+            -- If nothing to return, just go to the end of the function
+            writeTac tacGoToFunEnd
+            return Nothing
+        (Just returnVal, _) -> do
+            -- add return value
+            writeTac $ TAC.newTAC TAC.Return (TAC.Id returnVal) []
+            return (Just returnVal)
+        _ -> error "Inconsistent TAC generation: Either expression has no return value and type is non-unit, or type is unit and expression provides value"
+
+
 genTacExpr AST.Break {AST.expr=_expr, AST.expType=_expType} = do
     {-
         Template for break:
@@ -604,7 +676,7 @@ genTacExpr AST.Break {AST.expr=_expr, AST.expType=_expType} = do
             goto iter_out@l0
     -}
     -- Get data for the current iteration to break
-    iterData@IterData {breakLabel=_breakLabel, iterReturnId=_iterReturnId} <- topCurrentIterData
+    IterData {breakLabel=_breakLabel, iterReturnId=_iterReturnId} <- topCurrentIterData
 
     case _expType of
         AST.TUnit -> return ()
@@ -635,7 +707,7 @@ genTacExpr AST.Continue {AST.expr=_expr, AST.expType=_expType} = do
             goto iter_start@l0
     -}
     -- Get data for the current iteration to break
-    iterData@IterData {continueLabel=_continueLabel, iterReturnId=_iterReturnId} <- topCurrentIterData
+    IterData {continueLabel=_continueLabel, iterReturnId=_iterReturnId} <- topCurrentIterData
 
     case _expType of
         AST.TUnit -> return ()
@@ -673,8 +745,8 @@ genTacExpr AST.Op2{AST.op2=op, AST.opr1=l, AST.opr2=r} = do
 
 genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
     -- generate code for expr
+    RWS.liftIO . putStrLn $ "operator is: " ++ show op ++ ", and operand is: " ++ show l
     Just opId <- genTacExpr l
-
     -- if op is Unit, return nothing
     -- else assing to a temp variable and return it
     case op of
@@ -693,14 +765,13 @@ genTacExpr AST.Delete{} = undefined
 genTacExpr AST.ArrayIndexing{} = undefined
 
 
-
 -- gen code for a block, return the last id (or Nothing), because
 -- the value of a block is the value of the last expr in it
 genTacBlock :: [AST.Expr] -> GeneratorMonad (Maybe String)
 genTacBlock []  = return Nothing
 genTacBlock [e] = genTacExpr e
 genTacBlock (e:es) = do
-    genTacExpr e
+    _ <- genTacExpr e
     genTacBlock es
 
 
