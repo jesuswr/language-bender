@@ -19,6 +19,8 @@ import Data.Functor((<&>))
 
 type Id = String
 type Label = String
+type Scope = Int
+type Size = Int
 
 -- | Data representing relevant information about the current iterator 
 --   on context, such as where to go in case of a break, or in case of 
@@ -51,33 +53,64 @@ initialGenState st = State{ nextTemporal = 0
                           , symT = st
 }
 
--- Generate ID's
+-- Generate ID's and Labels
 
 -- | get next temporal variable
-getNextTemp :: GeneratorMonad String
+getNextTemp :: GeneratorMonad Id
 getNextTemp = do
     s@State{nextTemporal = n, nextLabelTemporal = m} <- RWS.get
     RWS.put s{nextTemporal = n+1}
     return $ "T" ++ show n
 
-getNextTemp' :: String -> GeneratorMonad String
+getNextTemp' :: String -> GeneratorMonad Id
 getNextTemp' prefix = do
     t <- getNextTemp
     return $ prefix ++ "@" ++ t
 
 -- | get next label temporal variable
-getNextLabelTemp :: GeneratorMonad String
+getNextLabelTemp :: GeneratorMonad Label
 getNextLabelTemp = do
     s@State{nextTemporal = m, nextLabelTemporal = n} <- RWS.get
     RWS.put s{nextLabelTemporal = n+1}
     return $ "L" ++ show n
 
 -- | Generate the next label with a prefix
-getNextLabelTemp' :: String -> GeneratorMonad String
+getNextLabelTemp' :: String -> GeneratorMonad Label
 getNextLabelTemp' prefix = do
     l <- getNextLabelTemp
 
     return $ prefix ++ "@" ++ l
+
+-- | Get the static label of an static variable
+-- | Set it if the variable does not have one already
+getVarStaticLabel :: Id -> Scope -> GeneratorMonad Label
+getVarStaticLabel id scope = do
+    s@State{symT=st} <- RWS.get
+
+    let mbLabel = ST.getVarStaticLabel st id scope
+
+    case mbLabel of
+        Just label -> return label
+        Nothing    -> do
+            label <- getNextLabelTemp' $ getTacId id scope
+            let st' = ST.setVarStaticLabel st id scope label
+                varType = ST.getVarType st id scope
+                size = ST.getTypeSize st varType
+            RWS.put s{symT=st'}
+            writeTac $ TAC.newTAC TAC.MetaStaticv (TAC.Label label) [TAC.Constant (TAC.Int size)]
+            return label
+
+-- | Get static variable address in an TAC Id
+getVarStaticAddressId :: Id -> Scope -> GeneratorMonad Id
+getVarStaticAddressId id scope = do
+    let varId = getTacId id scope
+    label <- getVarStaticLabel id scope
+    var_address <- getNextTemp' varId
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String (var_address++" := "++label++" # address of variable "++varId)) []
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id var_address) [
+        TAC.Label label
+        ]
+    return var_address
 
 -- Write TAC
 
@@ -115,17 +148,17 @@ popNextIterData = do
 -- | Get the current BASE id. 
 -- | BASE value is updated implicitly.
 -- | Will be implemented in target code.
-base :: String
+base :: Id
 base = TAC.base
 
 -- | generate an unique tac id from a language bender id
-getTacId :: String -> Int -> String
+getTacId :: Id -> Scope -> Id
 getTacId id scope = id ++ "@" ++ show scope
 
--- | generate an unique tac id to store the active field of an union
-getActiveUnionFieldId :: String -> Int -> String
-getActiveUnionFieldId id scope =
-    "currField@" ++ getTacId id scope
+-- | Copy data from one address to another
+makeCopy :: AST.Type -> Id -> Id -> Size -> GeneratorMonad ()
+makeCopy type_ to from size = do
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Copy X bytes from Y to Z")) []
 
 -- >> Main Function ---------------------------------------------
 
@@ -165,23 +198,46 @@ genTacDecls (d:ds) = do
 genTacDecl :: AST.Declaration -> GeneratorMonad ()
 
 -- | generate tac for variable decl
-genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope, AST.varType=_varType} = do
+genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope, AST.varType=_varType, AST.isConst=_isConst} = do
     
     let varId' = getTacId varId scope
+    s@State{symT=st} <- RWS.get
 
     case _varType of
-        AST.CustomType tname tscope -> do
+        AST.CustomType tname tscope -> do   
             
-            s@State{symT=st} <- RWS.get
             let foundSym = ST.findSymbolInScope' tname tscope st
 
             case foundSym of
                 Just ST.Symbol{ST.symType=ST.UnionType{}} -> do
-                    -- create a variable to store the field active on the union
+                    -- Store the field active on the union
                     -- initially it value is 0 (no field is active)
-                    let actField = getActiveUnionFieldId varId scope -- currField@varId@scope
-                    writeTac $ TAC.newTAC TAC.Assign (TAC.Id actField) [TAC.Constant (TAC.Int 0)]
-                    return ()
+                    let union_size = ST.getTypeSize st _varType
+
+                    if _isConst || scope == 0
+                        then do 
+                            -- static memory case
+                            -- Ti := LABEL # address of union
+                            union_address <- getVarStaticAddressId varId scope
+                            
+                            -- Ti[union_size - 4] := 0
+                            let actFieldOffset = union_size - 4
+                            writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Ti[union_size - 4] := 0")) []
+                            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id union_address) [
+                                TAC.Constant (TAC.Int actFieldOffset),
+                                TAC.Constant (TAC.Int 0)
+                                ]
+                        else do
+                            -- stack memory case
+                            -- base [offset_union + union_size - 4] := 0
+                            let offset_union = ST.getVarOffset st varId scope
+                            let offset_ = offset_union + union_size - 4
+                            writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("base [offset_union + union_size - 4] := 0 -- union "++varId')) []
+                            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id base) [
+                                TAC.Constant (TAC.Int offset_) ,
+                                TAC.Constant (TAC.Int 0)
+                                ]
+                            return ()
 
                 _ -> return ()
 
@@ -196,8 +252,30 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
             case maybeValId of
                 Nothing -> return ()
                 Just valId -> do
-                    writeTac $ TAC.newTAC TAC.Assign  (TAC.Id varId') [TAC.Id valId]
-                    return ()
+
+                    let varTypeSize = ST.getTypeSize st _varType
+
+                    if _isConst || scope == 0
+                        then do 
+                            -- static memory case
+                            -- Ti := LABEL # address of variable
+                            var_address <- getVarStaticAddressId varId scope
+                            
+                            -- Ti[0] := valId # copy the value
+                            makeCopy _varType var_address valId varTypeSize
+                            return ()
+                        else do
+                            -- stack memory case
+                            -- base [offset_var] := valId
+                            let offset_var = ST.getVarOffset st varId scope
+                            var_address <- getNextTemp' varId'
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id var_address) [
+                                TAC.Id base,
+                                TAC.Constant (TAC.Int offset_var)
+                                ]
+                            makeCopy _varType var_address valId varTypeSize
+                            return ()
+
 
 
 -- | gen tac for references decl
