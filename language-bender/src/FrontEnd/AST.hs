@@ -281,8 +281,8 @@ identShowExpr ident (FunCall fnm args_ _ _) = "\n" ++
   ++ "\n" ++ replicate ident ' ' ++ "with arguments:\n"
   ++ concatMap (identShowExpr (ident + 2)) args_ 
 
-identShowExpr ident (For Variable {decName=it} step_ start_ end_ bodyExp _) = "\n" ++
-  replicate ident ' ' ++ "For loop with iteration variable: " ++ it ++ "\n"
+identShowExpr ident (For Variable {decName=it, declScope=scope} step_ start_ end_ bodyExp _) = "\n" ++
+  replicate ident ' ' ++ "For loop with iteration variable: " ++ it ++ "@" ++  show scope++"\n"
   ++ "\n" ++ replicate ident ' ' ++ "with step of:\n"
   ++ identShowExpr (ident + 2) step_ 
   ++ "\n" ++ replicate ident ' ' ++ "with start:\n"

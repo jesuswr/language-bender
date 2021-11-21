@@ -481,6 +481,7 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
    -}
     -- Generate needed labels
     forStartLabel <- getNextLabelTemp' "for_start"
+    forStepLabel  <- getNextTemp'      "for_step"
     forEndLabel   <- getNextLabelTemp' "for_end"
 
     -- Generate needed temporals
@@ -489,33 +490,74 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
     mbEndResultId   <- genTacExpr _end
     mbStepResultId  <- genTacExpr _step
 
+    State {symT=_symT} <- RWS.get 
+
     -- Consistency checking
+    let (forIterName, scope) = case _iteratorSym of 
+                                    AST.Variable {AST.decName=name', AST.declScope=scope'} -> (name',scope')
+                                    _ -> error "For iterator should be a variable declaration"
+
+    let forIterOffset = ST.getVarOffset _symT forIterName scope
+
     let startResultId = case mbStartResultId of
-            Just startResultId -> startResultId
+            Just startResultId' -> startResultId'
             _                  -> error "Inconsistent AST: Start expression should return some numeric value, and it's returning nothing"
 
     let endResultId = case mbEndResultId of
-            Just endResultId   -> endResultId
+            Just endResultId'   -> endResultId'
             _                  -> error "Inconsistent AST: End expression should return some numeric value, and it's returning nothing"
-    let steptResultId = case mbStepResultId of
-            Just steptResultId -> steptResultId
+    let stepResultId = case mbStepResultId of
+            Just stepResultId' -> stepResultId'
             _                  -> error "Inconsistent AST: Step expression should return some numeric value, and it's returning nothing"
+
+
+    let forIterData = IterData {
+            breakLabel=forEndLabel, 
+            continueLabel=forStepLabel, 
+            iterReturnId= case _expType of 
+                            AST.TUnit -> Just forResultId
+                            _         -> Nothing 
+                }
+    -- Move initial value to for iterator
+    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id TAC.base) [TAC.Constant . TAC.Int $ forIterOffset, TAC.Id startResultId]
 
     -- Put start label
     writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.Label forStartLabel) []
 
+    -- Check if should keep iterating
+    tempForCheck <- getNextTemp
+    tempForIterValue <- getNextTemp' forIterName
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id tempForIterValue) [TAC.Id TAC.base, TAC.Constant . TAC.Int $ forIterOffset]
+    writeTac $ TAC.newTAC TAC.Geq (TAC.Id tempForCheck) [TAC.Id tempForIterValue, TAC.Id endResultId]
+    writeTac $ TAC.newTAC TAC.Goif  (TAC.Label forEndLabel) [TAC.Id tempForCheck]
+
+    -- Add this data as iterator data
+    pushNextIterData forIterData
+
     -- Put result value
     mbOutResultId <- genTacExpr _cicBody
 
+    -- Remove iter data
+    _ <- popNextIterData
 
+    -- Put Step label 
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label forStepLabel) []
+
+    -- Put Step code
+    writeTac $ TAC.newTAC TAC.Add  (TAC.Id tempForIterValue) [TAC.Id tempForIterValue, TAC.Id stepResultId]
+    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id TAC.base) [TAC.Constant . TAC.Int $ forIterOffset, TAC.Id tempForIterValue]
+
+    -- Go back to start
+    writeTac $ TAC.newTAC TAC.Goto (TAC.Label forStartLabel) []
+    
     -- Put End Label
     writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.Label forEndLabel) []
 
     -- Return consistency checking
     case (mbOutResultId, _expType) of 
-        (Just _, AST.TUnit) -> error "Inconsistent TAC Generator: should return nothing when body expression returns Unit"
-        (Nothing, _)                  -> error "Inconsistent TAC Generator: should provide a return id when body expression returns something different from Unit"
-        (Just outResultId, _)         -> writeTac $ TAC.newTAC TAC.Assign (TAC.Id forResultId) [TAC.Id outResultId]
+        (Nothing, AST.TUnit)   -> return ()
+        (Just outResultId, _)  -> writeTac $ TAC.newTAC TAC.Assign (TAC.Id forResultId) [TAC.Id outResultId]
+        _                      -> error "Inconsistent TAC Generator: should provide a return id when body expression returns something different from Unit"
 
     case _expType of 
         AST.TUnit -> return Nothing
@@ -745,7 +787,6 @@ genTacExpr AST.Op2{AST.op2=op, AST.opr1=l, AST.opr2=r} = do
 
 genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
     -- generate code for expr
-    RWS.liftIO . putStrLn $ "operator is: " ++ show op ++ ", and operand is: " ++ show l
     Just opId <- genTacExpr l
     -- if op is Unit, return nothing
     -- else assing to a temp variable and return it
@@ -825,7 +866,7 @@ mapOp2 AST.Or    = TAC.Or
 mapOp1 :: AST.Opr1 -> TAC.Operation
 mapOp1 AST.Negation       = TAC.Neg
 mapOp1 AST.Negative       = TAC.Minus
-mapOp1 AST.UnitOperator   = undefined -- ???
+mapOp1 AST.UnitOperator   = error "The unit operator has no tac representation. you shouldn't be asking for it"
 
 -- | gen tac for func args
 

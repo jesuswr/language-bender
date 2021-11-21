@@ -310,7 +310,8 @@ ForDescription  ::  { (AST.Declaration, AST.Expr, AST.Expr, AST.Expr) }
                                                             P.pushLoopType $ AST.TVoid
                                                             P.pushEmptyScope
                                                             -- P.pushOffset 0
-                                                            let iterDecl = AST.Variable (TK.name . TK.tktype $ $4) (AST.expType $6) (Just $6) False 0  
+                                                            scope <- P.topScope 
+                                                            let iterDecl = AST.Variable (TK.name . TK.tktype $ $4) (AST.expType $6) (Just $6) False scope  
                                                             P.checkDecls iterDecl
 
                                                             return (iterDecl, $2, $6, $8)

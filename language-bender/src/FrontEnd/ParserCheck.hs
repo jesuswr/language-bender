@@ -1124,6 +1124,10 @@ popEmptyScope = do
 
     RWS.put st{symTable = symTb'}
 
+-- | Get current scope
+topScope :: ParserState ST.Scope 
+topScope = RWS.get <&> (ST.stCurrScope . symTable)
+
 -- | Utility function to check if a given name corresponds to a valid symbol, and return it if exists
 checkSymbolDefined :: U.Name -> ParserState (Maybe ST.Symbol)
 checkSymbolDefined name = do
