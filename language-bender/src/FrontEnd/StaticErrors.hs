@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wall #-}
 module FrontEnd.StaticErrors where
 
 -- < Local Imports > ------------------------------------------------------
@@ -28,6 +29,8 @@ data StaticError = SymbolNotInScope         { symName :: U.Name }
                  | CouldNotInferType        { symName :: U.Name }
                  | NestedFunctions          { symName :: U.Name }
                  | AssignUnit               { symName :: U.Name }
+                 | NonScalarReturnType      { funcName :: U.Name, nonScalarType :: AST.Type  } -- Function with a non-scalar return type
+                 | ReturnTypeIsRef          { funcName :: U.Name, refType :: AST.Type }
                  deriving(Eq)  
 
 
@@ -47,8 +50,8 @@ instance Show StaticError where
             _               ->      
                 "\t~ Error: expected an array and got an expression of type '" ++ AST.simplePrint actType ++ "'"
     show (DuplicateNamesInCompound name)      = "\t~ Error: multiple uses of tag '" ++ name ++ "' in a compound"
-    show (UnexpectedEOF)                      = "\t~ Error: unexpected EOF while parsing"
-    show (ParseError remainingInput)          = "\t~ Error: parsing error"
+    show UnexpectedEOF                        = "\t~ Error: unexpected EOF while parsing"
+    show (ParseError _)          = "\t~ Error: parsing error"
     show (UnmatchingTypes expTypes actType)   = 
         case actType of
             AST.TypeError   ->
@@ -59,4 +62,6 @@ instance Show StaticError where
     show (CouldNotInferType name)             = "\t~ Error: Could not infer type of " ++ show name
     show (NestedFunctions name)               = "\t~ Error: Nested function declaration. In declaration of " ++ show name
     show (AssignUnit name)                    = "\t~ Error: Assignment of Unit is Forbidden. In assignment of " ++ show name
+    show (NonScalarReturnType fname nstype)   = "\t~ Error: function '" ++ fname ++ "' has a non-scalar return type of '" ++ show nstype ++ "'"
+    show (ReturnTypeIsRef fname rtype)        = "\t^ Error: function '" ++ fname ++ "' has a reference return type: " ++ show rtype
     show badArgNumbers                        = "\t~ Error: in call to '" ++ show (refTo badArgNumbers) ++ "' expected " ++ show (expectedNumOfArgs badArgNumbers) ++ " arguments but got " ++ show (actualNumOfArgs badArgNumbers)

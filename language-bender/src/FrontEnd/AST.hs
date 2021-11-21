@@ -28,7 +28,7 @@ data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal ::
                     | Reference { decName :: U.Name, refName :: U.Name, declScope :: Int }
                     | Union     { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int, declScope :: Int }
                     | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int, declScope :: Int }
-                    | Func      { decName :: U.Name, args :: [FuncArg], retType :: Type , body :: Expr, declScope :: Int }
+                    | Func      { decName :: U.Name, args :: [FuncArg], retType :: Type , body :: Expr, declScope :: Int, baseStackSize :: Int}
                     deriving(Eq)
 
 -- | Binary Operators
@@ -398,16 +398,16 @@ identShowDeclaration ident (Struct name fs _ _ _) =
   ++ "\n" ++ replicate ident ' ' ++ "with fields: \n"
   ++ concatMap (identShowField (ident + 2)) fs
 
-identShowDeclaration ident (Func name param retT bodyExp _) = "\n" ++
+identShowDeclaration ident (Func name param retT bodyExp _ stackSize) = "\n" ++
   case retT of    
     TUnit ->
-      replicate ident ' ' ++ "Declaration of Procedure '" ++ name ++ "'\n"
+      replicate ident ' ' ++ "Declaration of Procedure '" ++ name ++ "' with stack size of "++ show stackSize ++ "\n"
       ++ replicate ident ' ' ++ "with parameters: \n"
       ++ concatMap (identShowFuncArg (ident + 2)) param
       ++ "\n" ++ replicate ident ' ' ++ "with body:\n"
       ++ identShowExpr (ident + 2) bodyExp
     t->
-      replicate ident ' ' ++ "Declaration of Function '" ++ name ++ "'\n"
+      replicate ident ' ' ++ "Declaration of Function '" ++ name ++ "' with stack size of "++ show stackSize ++ "\n"
       ++ replicate ident ' ' ++ "with return type:\n"
       ++ identShowType (ident + 2) t ++ "\n"
       ++ "\n" ++ replicate ident ' ' ++ "with parameters: \n"

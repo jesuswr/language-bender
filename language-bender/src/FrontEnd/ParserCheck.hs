@@ -1,4 +1,7 @@
 -- Parser Functions and types for static analisys and type checking.
+
+{-# OPTIONS_GHC -Wall #-}
+
 module FrontEnd.ParserCheck where
 
 -- <Language Bender Imports> ------------------------------------
@@ -10,8 +13,8 @@ import qualified FrontEnd.Utils         as U
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
-import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 import Data.Functor((<&>))
+import Data.Maybe(isJust, fromMaybe)
 -- ---------------------------------------------------------------
 -- >> data ------------------------------------------------------
 
@@ -45,7 +48,7 @@ getScope = RWS.get <&> (ST.stCurrScope . symTable)
 -- | Try to get a type from a name, return type error if not possible with the current state
 getCustomType :: U.Name -> ParserState AST.Type
 getCustomType sid = do
-    st@State{symTable = symTb} <- RWS.get  -- get current symbol table
+    State{symTable = symTb} <- RWS.get  -- get current symbol table
 
     let foundType = ST.findSymbol sid symTb
 
@@ -62,7 +65,7 @@ getCustomType sid = do
 -- | Check if exist nested functions and add error if so
 checkNestedFunctions :: String -> ParserState ()
 checkNestedFunctions name = do
-    s@State{expectedTypeStack = stk} <- RWS.get
+    State{expectedTypeStack = stk} <- RWS.get
     M.when (length stk > 2) $ do
         addStaticError $ SE.NestedFunctions{SE.symName = name}
 
@@ -78,8 +81,8 @@ popType = do
     s@State{expectedTypeStack = stk} <- RWS.get
 
     case stk of
-            [s]  -> return ()
-            t:ts -> RWS.put s{expectedTypeStack=ts}
+            [_]  -> return ()
+            _:ts -> RWS.put s{expectedTypeStack=ts}
             _ -> error "Error in ParserState: Inconsistent state, stack of expected types should not be empty"
 
 -- | Replace type at the top of the stack with a new one
@@ -88,7 +91,7 @@ replaceType newType = do
     s@State{expectedTypeStack=stk} <- RWS.get
 
     case stk of
-        [s] -> error "Error in ParserState: You shouldn't be replacing base expected type"
+        [_] -> error "Error in ParserState: You shouldn't be replacing base expected type"
         AST.TVoid:ts -> RWS.put s{expectedTypeStack=newType:ts}
         _ -> return ()
 
@@ -108,8 +111,8 @@ popLoopType = do
     s@State{expectedLoopTypeStack = stk} <- RWS.get
 
     case stk of
-            [s]  -> return ()
-            t:ts -> RWS.put s{expectedLoopTypeStack=ts}
+            [_]  -> return ()
+            _:ts -> RWS.put s{expectedLoopTypeStack=ts}
             _ -> error "Error in ParserState: Inconsistent state, stack of expected types should not be empty"
 
 -- | Replace type at the top of the loop stack with a new one
@@ -118,13 +121,29 @@ replaceLoopType newType = do
     s@State{expectedLoopTypeStack=stk} <- RWS.get
 
     case stk of
-        [s] -> error "Error in ParserState: You shouldn't be replacing base expected type"
+        [_] -> error "Error in ParserState: You shouldn't be replacing base expected type"
         AST.TVoid:ts -> RWS.put s{expectedLoopTypeStack=newType:ts}
         _ -> return ()
 
 -- | Get top of the loop type stack 
 topLoopType :: ParserState AST.Type
 topLoopType = RWS.get <&> head . expectedLoopTypeStack
+
+-- | Tells if the given type is scalar or not
+isScalarType :: AST.Type -> Bool
+isScalarType AST.TFloat     = True
+isScalarType AST.TInt       = True
+isScalarType AST.TChar      = True
+isScalarType AST.TBool      = True
+isScalarType AST.TPtr{}     = True
+isScalarType AST.TUnit      = True
+isScalarType AST.TypeError  = True
+isScalarType _ = False
+
+-- | Tells if the given type is a reference
+isRef :: AST.Type -> Bool 
+isRef AST.TReference{} = True
+isRef _ = False
 
 -- --------------------------------------------------------------------
 -- >> PreParser ------------------------------------------------------
@@ -156,6 +175,7 @@ preCheckDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields} = do
     -- check if add symbol is possible 
     tryAddSymbol symbol
 
+preCheckDecls x = error $ "Could no check available for  the following object: " ++ show x
 
 preCheckFunArg :: AST.FuncArg -> ParserState AST.FuncArg
 preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal _) = do
@@ -185,7 +205,7 @@ checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal _) = do
         }
 
     M.when (isJust _defaultVal) $ do
-        _checkTypeMatch'' _argType (fromMaybe (AST.ConstUnit AST.TUnit) _defaultVal)
+        _ <- _checkTypeMatch'' _argType (fromMaybe (AST.ConstUnit AST.TUnit) _defaultVal)
         return ()
 
     currScope <- getScope
@@ -194,8 +214,8 @@ checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal _) = do
     return arg{AST._declScope = currScope}
 
 checkField :: [(String, AST.Type)] -> ParserState [(String, AST.Type)]
-checkField l@((nm, t):fields) = do
-    currSt@State{symTable = st} <- RWS.get
+checkField l@((nm, t):_) = do
+    State{symTable = st} <- RWS.get
 
     let newSymT = ST.Variable{ ST.varType = t, ST.initVal = Nothing, ST.isConst = False , ST.offset = 0, ST.staticLabel=Nothing}  --arreglar despues
         width = ST.getTypeSize st t
@@ -213,12 +233,14 @@ checkField l@((nm, t):fields) = do
 
     return l
 
+checkField x = error $ "Unsupported field variation in checkField function: " ++ show x
+
 -- | Add declarations to symbol table and check if they´re correct
 checkDecls :: AST.Declaration -> ParserState AST.Declaration
 
 -- Check Variable Declaration 
-checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = ival, AST.isConst = const} = do
-    currSt@State{symTable = st} <- RWS.get
+checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = ival} = do
+    State{symTable = st} <- RWS.get
 
     -- Create a new symbol
     let newSym = declToSym v
@@ -244,7 +266,7 @@ checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = iv
     M.when assignUnit $ do
         addStaticError $ SE.AssignUnit{SE.symName = sid}
 
-    let varType_ = if match && (not assignUnit)
+    let varType_ = if match && not assignUnit
         then t
         else AST.TypeError 
 
@@ -255,7 +277,7 @@ checkDecls v@AST.Variable{ AST.decName = sid, AST.varType =  t, AST.initVal = iv
 -- Check reference Declaration 
 checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     -- Get current state
-    currSt@State{symTable = st} <- RWS.get
+    State{symTable = st} <- RWS.get
 
     currScope <- getScope
 
@@ -324,7 +346,15 @@ checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields, AST.width=_w,
 checkDecls f@AST.Func {AST.decName=_decName, AST.args=_args, AST.retType=_retType, AST.body=_body} = do
 
     -- Check if function body matches return type
-    _checkTypeMatch'' _retType _body
+    _ <- _checkTypeMatch'' _retType _body
+
+    -- Check if return type is scalar
+    M.unless (isScalarType _retType) $ do 
+        addStaticError (SE.NonScalarReturnType _decName _retType)
+
+    -- Check if return type is reference
+    M.when (isRef _retType) $ do 
+        addStaticError (SE.ReturnTypeIsRef _decName _retType)
 
     -- Try to update function, as in the parser it just has a the signature, not the body
     let sym = declToSym f
@@ -366,7 +396,7 @@ checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
         _         -> return False
 
     -- get return type
-    let assgType = if match && (not assignUnit)
+    let assgType = if match && not assignUnit
         then var_type
         else AST.TypeError
 
@@ -383,7 +413,7 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
 
     -- Get struct name
     let (strNm, scope) = case AST.expType _struct of
-                    (AST.CustomType s scope) -> (s,scope)
+                    (AST.CustomType s scope') -> (s,scope')
                     _ -> ("$", -1)
 
     -- Get type of the struct assignment
@@ -396,7 +426,7 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
             do
 
                 -- Get current state
-                currSt@State{symTable = st} <- RWS.get
+                State{symTable = st} <- RWS.get
 
                 let structSym = ST.findSymbolInScope strNm scope st
 
@@ -405,7 +435,7 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
                     Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> do
 
                         -- get fields that has name tag
-                        let ltag = filter (\(s,t)-> s ==_tag) _fields
+                        let ltag = filter (\(s, _)-> s ==_tag) _fields
 
                         if null ltag then do
                             addStaticError . SE.SymbolNotInScope $ _tag
@@ -426,7 +456,7 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
                         addStaticError . SE.SymbolNotInScope $ strNm
                         return AST.TypeError
 
-                    xd       -> do
+                    _       -> do
                         addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
                         return AST.TypeError
 
@@ -441,7 +471,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
 
     -- Get struct name
     let (strNm, scope) = case AST.expType _struct of
-                    (AST.CustomType s scope) -> (s, scope)
+                    (AST.CustomType s scope') -> (s, scope')
                     _ -> ("$", -1)
 
     -- Get type of the struct access
@@ -454,7 +484,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
             do
 
                 -- Get current state
-                currSt@State{symTable = st} <- RWS.get
+                State{symTable = st} <- RWS.get
 
                 let structSym = ST.findSymbolInScope strNm scope st
 
@@ -463,7 +493,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
                     Just ST.Symbol{ST.symType = ST.StructType{ST.fields=_fields}} -> do
 
                         -- get fields that has name tag
-                        let ltag = filter (\(s,t)-> s ==_tag) _fields
+                        let ltag = filter (\(s,_)-> s ==_tag) _fields
 
                         if null ltag then do
                             addStaticError . SE.SymbolNotInScope $ _tag
@@ -475,7 +505,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
                         addStaticError . SE.SymbolNotInScope $ strNm
                         return AST.TypeError
 
-                    xd       -> do
+                    _       -> do
                         addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
                         return AST.TypeError
 
@@ -547,7 +577,7 @@ checkExpr f@AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs} = do
         }
 
     -- Check that the types in _actualArgs match
-    checkExprList argsTypes _actualArgs
+    _ <- checkExprList argsTypes _actualArgs
 
     currScope <- getScope
 
@@ -563,7 +593,7 @@ checkExpr f@AST.For {AST.iteratorSym = _iteratorSym, AST.step=_step, AST.start=_
         s                 -> error $ "Inconsistent AST: Iterator declaration should be a numeric variable.\n\tActual declaration: " ++ show s
 
     -- Check that _step, _start and _end are of integer type
-    checkExprList [AST.TInt, AST.TInt, AST.TInt] [_step, _start, _end]
+    _ <- checkExprList [AST.TInt, AST.TInt, AST.TInt] [_step, _start, _end]
 
     -- Set return type as the return type of the body
     let f' = f{AST.expType = AST.expType _cicBody}
@@ -574,7 +604,7 @@ checkExpr f@AST.For {AST.iteratorSym = _iteratorSym, AST.step=_step, AST.start=_
 checkExpr w@AST.While {AST.cond=_cond, AST.cicBody=_cicBody} = do
 
     -- check condition expression is boolean
-    _checkTypeMatch'' AST.TBool _cond
+    _ <- _checkTypeMatch'' AST.TBool _cond
 
     -- Set return type as the return type of the body
     let w' = w{AST.expType = AST.expType _cicBody}
@@ -585,7 +615,7 @@ checkExpr w@AST.While {AST.cond=_cond, AST.cicBody=_cicBody} = do
 checkExpr i@AST.If {AST.cond=_cond, AST.accExpr=_accExpr, AST.failExpr=_failExpr} = do
 
     -- check condition expression is boolean
-    _checkTypeMatch'' AST.TBool _cond
+    _ <- _checkTypeMatch'' AST.TBool _cond
 
     -- Check _accExpr expression and _failExpr expression has the same type
     match <- _checkTypeMatch' (getCastClass $ AST.expType _accExpr) (AST.expType _failExpr)
@@ -657,11 +687,12 @@ checkExpr o@AST.Op1 {AST.op1=_operator, AST.opr=_opr} = do
   where
     getOPTypes AST.Negation = [AST.TBool]
     getOPTypes AST.Negative = [AST.TFloat, AST.TInt]
+    getOPTypes x = error $ "Un suported Opr1 variation in getOPTypes: " ++ show x
 
 --  Check Array Literal Expression
 checkExpr a@AST.Array {AST.list=_list} = do
 
-    currSt@State{symTable = st} <- RWS.get
+    State{symTable = st} <- RWS.get
 
     -- Get the type of the first elem
     let t  = (AST.expType . head) _list
@@ -690,7 +721,7 @@ checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
 
     -- Get union name
     let (unionNm, scope) = case AST.expType _union of
-                    (AST.CustomType s scope) -> (s, scope)
+                    (AST.CustomType s scope') -> (s, scope')
                     _ -> ("$", -1)
 
     -- Get type of the union trying
@@ -703,7 +734,7 @@ checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
             do
 
                 -- Get current state
-                currSt@State{symTable = st} <- RWS.get
+                State{symTable = st} <- RWS.get
 
                 let unionSym = ST.findSymbolInScope unionNm scope st
 
@@ -712,7 +743,7 @@ checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
                     Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> do
 
                         -- get fields that has name tag
-                        let ltag = filter (\(s,t)-> s ==_tag) _fields
+                        let ltag = filter (\(s, _)-> s ==_tag) _fields
 
                         if null ltag then do
                             addStaticError . SE.SymbolNotInScope $ _tag
@@ -724,7 +755,7 @@ checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
                         addStaticError . SE.SymbolNotInScope $ unionNm
                         return AST.TypeError
 
-                    xd       -> do
+                    _       -> do
                         addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>" (-1)] (AST.expType _union))
                         return AST.TypeError
 
@@ -740,7 +771,7 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
 
     -- Get union name
     let (unionNm, scope) = case AST.expType _union of
-                    AST.CustomType s scope -> (s,scope)
+                    AST.CustomType s _ -> (s,scope)
                     _ -> ("$", -1)
 
     -- Get type of the union trying
@@ -753,7 +784,7 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
             do
 
                 -- Get current state
-                currSt@State{symTable = st} <- RWS.get
+                State{symTable = st} <- RWS.get
 
                 let unionSym = ST.findSymbolInScope unionNm scope st
 
@@ -762,7 +793,7 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
                     Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} -> do
 
                         -- get fields that has name tag
-                        let ltag = filter (\(s,t)-> s ==_tag) _fields
+                        let ltag = filter (\(s, _)-> s ==_tag) _fields
 
                         if null ltag then do
                             addStaticError . SE.SymbolNotInScope $ _tag
@@ -774,7 +805,7 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
                         addStaticError . SE.SymbolNotInScope $ unionNm
                         return AST.TypeError
 
-                    xd       -> do
+                    _       -> do
                         addStaticError (SE.UnmatchingTypes [AST.CustomType "<union_type>" (-1)] (AST.expType _union))
                         return AST.TypeError
 
@@ -805,12 +836,12 @@ checkExpr d@AST.Delete {AST.ptrExpr=_ptrExpr} = do
 --  Check array index access
 checkExpr a@AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = do
     -- check index is integer type
-    _checkTypeMatch'' AST.TInt _index
+    _ <- _checkTypeMatch'' AST.TInt _index
 
     let arrExprType = AST.expType _expr
     -- check _expr is array type
     aType <- case arrExprType of
-        ta@AST.TArray {AST.arrType=_arrType} -> return _arrType
+        AST.TArray {AST.arrType=_arrType} -> return _arrType
         _ -> do
             addStaticError $ SE.NonArrayExpr arrExprType
             return AST.TypeError
@@ -821,7 +852,7 @@ checkExpr a@AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = do
 -- Check Struct Literal
 checkExpr c@AST.LiteralStruct {AST.structName=_structName, AST.list=_list} = do
 
-    currSt@State{symTable = st} <- RWS.get
+    State{symTable = st} <- RWS.get
 
     -- Check struct name of literal struct
     mbSym <- checkSymbolDefined _structName
@@ -883,7 +914,7 @@ checkExpr c@AST.LiteralStruct {AST.structName=_structName, AST.list=_list} = do
 -- Check Union Literal
 checkExpr c@AST.LiteralUnion {AST.unionName=_unionName, AST.value=_value, AST.tag=_tag} = do
 
-    currSt@State{symTable = st} <- RWS.get
+    State{symTable = st} <- RWS.get
 
     -- Check union name of literal union
     mbSym <- checkSymbolDefined _unionName
@@ -905,7 +936,7 @@ checkExpr c@AST.LiteralUnion {AST.unionName=_unionName, AST.value=_value, AST.ta
 
     let tagType = case mbSym of
             Just ST.Symbol{ST.symType = ST.UnionType{ST.fields=_fields}} ->
-                map snd $ filter (\(str,t)->str==_tag) _fields
+                map snd $ filter (\(str, _)->str==_tag) _fields
             _ -> []
 
     -- Check that the types in _value match the type of the tag
@@ -918,7 +949,7 @@ checkExpr c@AST.LiteralUnion {AST.unionName=_unionName, AST.value=_value, AST.ta
     -- calculate offset
         width = ST.getTypeSize st cUnionType'
         align = ST.getTypeAlign st cUnionType'
-    o <- updateOffset align width
+    _ <- updateOffset align width
 
     let c' = c{AST.expType = cUnionType'}
 
@@ -928,7 +959,7 @@ checkExpr c@AST.LiteralUnion {AST.unionName=_unionName, AST.value=_value, AST.ta
 -- Check String Literal
 checkExpr s@AST.LiteralString {AST.expType = t} = do
 
-    currSt@State{symTable = st} <- RWS.get
+    State{symTable = st} <- RWS.get
 
     -- calculate offset
     let  width = ST.getTypeSize st t
@@ -988,7 +1019,7 @@ checkExpr x = return x
 -- | Checks if a given type is a valid one 
 checkType :: AST.Type -> ParserState AST.Type
 checkType t@AST.CustomType {AST.tName=_tName, AST.scope = _scope} = do -- When it is a custom type
-    st@State{symTable=symTb} <- RWS.get
+    State{symTable=symTb} <- RWS.get
 
     -- try to find symbol
     let symbol =  ST.findSymbolInScope _tName _scope symTb
@@ -1006,7 +1037,7 @@ checkType t@AST.CustomType {AST.tName=_tName, AST.scope = _scope} = do -- When i
             return AST.TypeError
 
 
-checkType arrType@(AST.TArray t sz) = do
+checkType arrType@(AST.TArray _ sz) = do
 
     -- check type of array elements
     -- checkType t
@@ -1018,10 +1049,10 @@ checkType arrType@(AST.TArray t sz) = do
         AST.TInt -> return arrType
         _ -> return AST.TypeError
 
-checkType ptr@(AST.TPtr t) =
+checkType ptr@(AST.TPtr _) =
     return ptr
 
-checkType ref@(AST.TReference t) =
+checkType ref@(AST.TReference _) =
     return ref
 
 checkType x = return x
@@ -1104,7 +1135,7 @@ popEmptyScope = do
 -- | Utility function to check if a given name corresponds to a valid symbol, and return it if exists
 checkSymbolDefined :: U.Name -> ParserState (Maybe ST.Symbol)
 checkSymbolDefined name = do
-    st@State{symTable = symTb} <- RWS.get
+    State{symTable = symTb} <- RWS.get
 
     -- Try find symbol 
     case ST.findSymbol name symTb of
@@ -1125,7 +1156,7 @@ checkIdIsVarOrReference name = do -- Check that given name is a valid one and it
 -- | Return type of given id if a valid variable or reference, return type error if none of them
 getTypeOfId :: U.Name -> ParserState AST.Type
 getTypeOfId name = do
-    st@State{symTable = symTb} <- RWS.get
+    State{symTable = symTb} <- RWS.get
 
     case ST.findSymbol name symTb of
         Just ST.Symbol { ST.symType=ST.Variable {ST.varType=_varType} } -> return _varType
@@ -1199,8 +1230,9 @@ _functionCheckerHelper  :: U.Name               -- ^ Function ID
                         -> Maybe AST.Type       -- ^ Function return type if provided 
                         -> [AST.FuncArg]        -- ^ Function args
                         -> AST.Expr             -- ^ Function Body
+                        -> Int                  -- ^ Function base stack size
                         -> ParserState AST.Declaration
-_functionCheckerHelper id mbType args body = do
+_functionCheckerHelper fid _ args body stackSize = do
 
     -- Get current type 
     inferedType <- topType
@@ -1211,9 +1243,9 @@ _functionCheckerHelper id mbType args body = do
                             else inferedType
 
     -- Check if body type matches expected type 
-    matching <- _checkTypeMatch' [inferedType] (AST.expType body)
+    _ <- _checkTypeMatch' [inferedType] (AST.expType body)
 
-    checkDecls $ AST.Func id (reverse args) inferedType' body 0
+    checkDecls $ AST.Func fid (reverse args) inferedType' body 0 stackSize
 
 -- | utility function to perform some operations needed before checking a for loop
 _forCheckerHelper :: AST.Declaration  
@@ -1232,7 +1264,7 @@ _forCheckerHelper itSym step start end body _ = do
                             else inferedType
 
     -- Check if body type matches expected type 
-    matching <- _checkTypeMatch' [inferedType] (AST.expType body)
+    _ <- _checkTypeMatch' [inferedType] (AST.expType body)
 
     checkExpr $ AST.For itSym step start end body inferedType'
 
@@ -1250,7 +1282,7 @@ _whileCheckerHelper cond body _ = do
                             else inferedType
 
     -- Check if body type matches expected type 
-    matching <- _checkTypeMatch' [inferedType] (AST.expType body)
+    _ <- _checkTypeMatch' [inferedType] (AST.expType body)
 
     checkExpr $ AST.While cond body inferedType'
 
@@ -1266,27 +1298,29 @@ getNextOffset currOffset align width = newOffset
     where
         newOffset = getOffset currOffset align + width
 
-pushOffset :: Int -> ParserState()
+pushOffset :: Int -> ParserState ()
 pushOffset o = do
     s@State{symTable = st} <- RWS.get
     RWS.put s{symTable = ST.pushOffset st o}
 
-popOffset :: ParserState()
+popOffset :: ParserState Int 
 popOffset = do
     s@State{symTable = st} <- RWS.get
+    let currOffset = ST.getCurrentOffset st
     RWS.put s{symTable = ST.popOffset st}
+    return currOffset
 
 getCurrentOffset :: ParserState Int
 getCurrentOffset = do
-    s@State{symTable = st} <- RWS.get
+    State{symTable = st} <- RWS.get
     return $ ST.getCurrentOffset st
 
 -- esta te devuelve el offset de la variable y actualiza el tope de la pila
 updateOffset :: Int -> Int -> ParserState Int
 updateOffset align width = do 
-    s@State{symTable = st} <- RWS.get
+    State{symTable = st} <- RWS.get
     let currOffset = ST.getCurrentOffset st
     let ret = getOffset currOffset align
-    popOffset
+    _ <- popOffset
     pushOffset $ getNextOffset currOffset align width
     return ret
