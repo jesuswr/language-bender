@@ -20,3 +20,5 @@ book it_fib of air about air bender n:
         dp is next_dp but dp            -- f(n) = f(n+1) - f(n-1)
     -.
 -.
+
+-- falta ponerle el main que lea la entrada y llame a la func que deba
