@@ -32,13 +32,13 @@ type Dictionary = M.Map Identifier [Symbol]
 
 -- | Symbol Type with its corresponding data
 data SymType   
-    = Variable      { varType :: AST.Type, initVal :: Maybe AST.Expr, isConst :: Bool, offset :: Int }
+    = Variable      { varType :: AST.Type, initVal :: Maybe AST.Expr, isConst :: Bool, offset :: Int, staticLabel :: Maybe String }
     | Type          { unType :: AST.Type , width :: Int, align :: Int }
     | StructType    { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int }
     | UnionType     { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int }
     | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
     | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
-    | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int, offset :: Int }
+    | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int, offset :: Int, staticLabel :: Maybe String}
     deriving (Eq)
 
 -- | Symbol Data type
@@ -133,19 +133,44 @@ getTypeAlign st t =
                 Type _ _ a -> a
                 _          -> 1
 
-getVarOffset :: SymTable -> String -> Int -> Int
-getVarOffset st id scope = getVarAtrr st id scope offset
+-- Handle Variables 
 
-getVarType ::SymTable -> String -> Int -> AST.Type
-getVarType st id scope = getVarAtrr st id scope varType
-
-getVarAtrr :: SymTable -> String -> Int -> (SymType -> a) -> a
+getVarAtrr :: SymTable -> Identifier -> Int -> (SymType -> a) -> a
 getVarAtrr st id scope f =
     case findSymbolInScope' id scope st of
         Nothing -> error (id ++ " in scope "++ show scope ++ " should exist")
         Just sym ->
             case symType sym of
                 v@Variable{} -> f v
+
+getVarOffset :: SymTable -> Identifier -> Int -> Int
+getVarOffset st id scope = getVarAtrr st id scope offset
+
+getVarType ::SymTable -> Identifier -> Int -> AST.Type
+getVarType st id scope = getVarAtrr st id scope varType
+
+getVarStaticLabel :: SymTable -> Identifier -> Int -> Maybe String
+getVarStaticLabel st id scope = getVarAtrr st id scope staticLabel
+
+setVarStaticLabel :: SymTable -> Identifier -> Int -> String -> SymTable
+setVarStaticLabel st id scope label = 
+    case findSymbolInScope' id scope st of
+        Nothing -> error (id ++ " in scope "++ show scope ++ " should exist")
+        Just sym ->
+            case symType sym of
+                v@Variable{} -> st{stDict=newDict}
+                              where
+
+                                -- look for entry in dict where the symbol is stored
+                                dict = stDict st
+                                Just list =  M.lookup id dict
+                                symToInsert = sym{symType=(v{staticLabel=Just label})}
+
+                                newList = [ if sym == s then symToInsert else s | s <- list ]
+
+                                -- Create new dict
+                                newDict = M.insert id newList dict
+
 
 -- | Push a new scope in the given table
 pushEmptyScope :: SymTable -> SymTable
@@ -207,15 +232,8 @@ updateSymbol sym st = st'
         -- look for entry in dict where the symbol is stored
         dict = stDict st
         Just list =  M.lookup sname dict -- should not crash as we already looked this symbol and it's available
-        
-        -- Function to replace a symbol in a list of symbols
-        replace :: Symbol -> Symbol -> [Symbol] -> [Symbol]
-        replace _ _ [] = []
-        replace sym repl (s:ss)
-            | sym == s = repl:ss
-            | otherwise  = s : replace sym repl ss
 
-        newList = replace sym' symToInsert list
+        newList = [ if sym' == s then symToInsert else s | s <- list ]
 
         -- Create new dict
         newDict = M.insert sname newList dict
