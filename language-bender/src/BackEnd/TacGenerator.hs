@@ -759,9 +759,39 @@ genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
 genTacExpr AST.Array{} = undefined
 genTacExpr AST.UnionTrying{} = undefined
 genTacExpr AST.UnionUsing{} = undefined
-genTacExpr AST.New{} = undefined
+genTacExpr AST.New {AST.typeName=_typeName} = do
+    {-
+        New template:
+        malloc t0 size_of_type
+    -}
+    resultId <- getNextLabelTemp' "new_result"
 
-genTacExpr AST.Delete{} = undefined
+    -- Get symbol table to get size for given type
+    State {symT=_symT} <- RWS.get 
+    let typeSize = ST.getTypeSize _symT _typeName
+
+    writeTac $ TAC.newTAC TAC.Malloc (TAC.Id resultId) [TAC.Constant . TAC.Int $ typeSize]
+
+    return $ Just resultId
+
+genTacExpr AST.Delete {AST.ptrExpr=_ptrExpr} = do
+    {-
+        Delete template:
+        <generate code for ptrExpr>
+        t0 := expression result
+        delete t0
+    -}
+    -- Generate tac for expression
+    mbResult <- genTacExpr _ptrExpr
+    case mbResult of
+        Nothing -> error "Inconsistent AST: ptr expression should provide an id with the result"
+        Just result -> do
+            -- Free this address
+            writeTac $ TAC.newTAC TAC.Free  (TAC.Id result) []
+        
+    return Nothing
+
+
 genTacExpr AST.ArrayIndexing{} = undefined
 
 
