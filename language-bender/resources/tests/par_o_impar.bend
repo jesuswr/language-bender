@@ -11,3 +11,6 @@ book impar of fire about air bender n:
     otherwise if (n is equal to 1): lightning master
     otherwise (in par book with n-1 ...)
 -.
+
+
+-- falta agregar main con read y eso
