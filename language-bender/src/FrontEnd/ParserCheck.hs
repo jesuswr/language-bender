@@ -370,15 +370,19 @@ checkExpr :: AST.Expr -> ParserState AST.Expr
 -- Check Id expression:
 checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
 
+    State{symTable = st} <- RWS.get
+
     --check if a valid symbol for variable or reference
     checkIdIsVarOrReference _name
 
     -- set new type 
     new_type <- getTypeOfId _name
 
-    currScope <- getScope
+    let idScope = case ST.findSymbol _name st of
+            Just ST.Symbol{ST.scope = scope_ } -> scope_
+            Nothing -> -1
 
-    return i{AST.expType = new_type, AST.declScope_ = currScope}
+    return i{AST.expType = new_type, AST.declScope_ = idScope}
 
 -- Check assign expression 
 checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
