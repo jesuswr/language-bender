@@ -370,18 +370,24 @@ checkExpr :: AST.Expr -> ParserState AST.Expr
 -- Check Id expression:
 checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
 
+    State{symTable = st} <- RWS.get
+
     --check if a valid symbol for variable or reference
     checkIdIsVarOrReference _name
 
     -- set new type 
     new_type <- getTypeOfId _name
 
-    currScope <- getScope
+    let idScope = case ST.findSymbol _name st of
+            Just ST.Symbol{ST.scope = scope_ } -> scope_
+            Nothing -> -1
 
-    return i{AST.expType = new_type, AST.declScope_ = currScope}
+    return i{AST.expType = new_type, AST.declScope_ = idScope}
 
 -- Check assign expression 
 checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
+
+    State{symTable = st} <- RWS.get
     -- check if left hand corresponds to a variable or reference name
     checkIdIsVarOrReference _variable
 
@@ -400,9 +406,11 @@ checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
         then var_type
         else AST.TypeError
 
-    currScope <- getScope
+    let idScope = case ST.findSymbol _variable st of
+            Just ST.Symbol{ST.scope = scope_ } -> scope_
+            Nothing -> -1
 
-    return a{AST.expType = assgType, AST.declScope_ = currScope}
+    return a{AST.expType = assgType, AST.declScope_ = idScope}
 
 -- Check assign to struct
 checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AST.tag=_tag} = do
@@ -1191,10 +1199,11 @@ typeMatch t1 t2 = t2 `elem` getCastClass t1
 
 -- return the list of cast-able types with each other
 -- that contains the given type
-getCastClass :: AST.Type -> [AST.Type]
-getCastClass AST.TInt   = [AST.TInt, AST.TFloat]
-getCastClass AST.TFloat = [AST.TFloat, AST.TInt]
-getCastClass t          = [t]
+getCastClass :: AST.Type -> [AST.Type] 
+getCastClass AST.TInt           = [AST.TInt, AST.TFloat, AST.TReference AST.TInt]
+getCastClass AST.TFloat         = [AST.TFloat, AST.TInt, AST.TReference AST.TFloat]
+getCastClass (AST.TReference t) = (AST.TReference t):(getCastClass t)
+getCastClass t                  = [t, AST.TReference t]
 
 -- check that the given types match the given expressions
 checkExprList :: [AST.Type] -> [AST.Expr] -> ParserState Bool
@@ -1222,7 +1231,7 @@ _checkTypeMatch' expected exprType
         expected' = concatMap getCastClass expected
 
 _checkTypeMatch'' :: AST.Type -> AST.Expr -> ParserState Bool
-_checkTypeMatch'' t = _checkTypeMatch [t]
+_checkTypeMatch'' t e = _checkTypeMatch [t] e
 
 -- | Check if a sorted list of expression matches a sorted list of types
 _checkTypeMatchesArgs :: [[AST.Type]] -> [AST.Expr] -> ParserState Bool
