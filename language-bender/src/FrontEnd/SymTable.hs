@@ -142,6 +142,8 @@ getVarAtrr st id scope f =
         Just sym ->
             case symType sym of
                 v@Variable{} -> f v
+                r@Reference{} -> f r
+                _ -> error "This function only supports variables or references"
 
 getVarOffset :: SymTable -> Identifier -> Int -> Int
 getVarOffset st id scope = getVarAtrr st id scope offset
