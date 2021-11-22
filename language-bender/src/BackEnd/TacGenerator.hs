@@ -6,10 +6,11 @@
 module BackEnd.TacGenerator where
 
 -- <Language Bender Imports> ------------------------------------
-import qualified FrontEnd.AST as AST
+import qualified FrontEnd.AST      as AST
 import qualified FrontEnd.SymTable as ST
-import qualified TACTypes.TAC as TAC
-import qualified Utils.Constants as C
+import qualified TACTypes.TAC      as TAC
+import qualified Utils.Constants   as C
+import qualified FrontEnd.Utils    as U
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
@@ -132,7 +133,7 @@ getVarStackAddressId :: Id -> Scope -> GeneratorMonad Id
 getVarStackAddressId id' scope = do
     State{symT=st} <- RWS.get
     let offset = ST.getVarOffset st id' scope
-    var_address <- getNextTemp' varId
+    var_address <- getNextTemp' id'
     writeTac $ TAC.newTAC TAC.Add (TAC.Id var_address) [
         TAC.Id base,
         TAC.Constant $ TAC.Int offset
@@ -496,7 +497,7 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
                 Just tagSymb = ST.findSymbolInScope' field_name (scope + 1) st
                 fieldOffset = (ST.offset . ST.symType) tagSymb
 
-            from <- genTacExpr field
+            Just from <- genTacExpr field_expr
             
             fieldAddress <- getNextTemp
 
@@ -534,8 +535,8 @@ genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = d
         symType_ = ST.symType sym
 
     case symType_ of
-        ST.Reference{AST.refName=_refName,AST.refScope=_refScope,AST.refType=_refType} -> 
-            genTacExpr AST.Id{AST.name=_refName, AST.declScope_=_refScope, AST.expType=_refType, AST.position=(0,0)}
+        ST.Reference{ST.refName=_refName,ST.refScope=_refScope,ST.refType=_refType} -> 
+            genTacExpr AST.Id{AST.name=_refName, AST.declScope_=_refScope, AST.expType=_refType, AST.position=(U.Position 0 0)}
 
         ST.Variable{} -> do
 
@@ -548,7 +549,7 @@ genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = d
                     var_address <- getVarAddressId name scope
                     return (Just var_address)
 
-                AST.TArray ->  do
+                AST.TArray _ _ ->  do
                     -- get var address
                     var_address <- getVarAddressId name scope
                     return (Just var_address)
