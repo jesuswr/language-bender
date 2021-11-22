@@ -1191,10 +1191,11 @@ typeMatch t1 t2 = t2 `elem` getCastClass t1
 
 -- return the list of cast-able types with each other
 -- that contains the given type
-getCastClass :: AST.Type -> [AST.Type]
-getCastClass AST.TInt   = [AST.TInt, AST.TFloat]
-getCastClass AST.TFloat = [AST.TFloat, AST.TInt]
-getCastClass t          = [t]
+getCastClass :: AST.Type -> [AST.Type] 
+getCastClass AST.TInt           = [AST.TInt, AST.TFloat, AST.TReference AST.TInt]
+getCastClass AST.TFloat         = [AST.TFloat, AST.TInt, AST.TReference AST.TFloat]
+getCastClass (AST.TReference t) = (AST.TReference t):(getCastClass t)
+getCastClass t                  = [t, AST.TReference t]
 
 -- check that the given types match the given expressions
 checkExprList :: [AST.Type] -> [AST.Expr] -> ParserState Bool
@@ -1222,7 +1223,7 @@ _checkTypeMatch' expected exprType
         expected' = concatMap getCastClass expected
 
 _checkTypeMatch'' :: AST.Type -> AST.Expr -> ParserState Bool
-_checkTypeMatch'' t = _checkTypeMatch [t]
+_checkTypeMatch'' t e = _checkTypeMatch [t] e
 
 -- | Check if a sorted list of expression matches a sorted list of types
 _checkTypeMatchesArgs :: [[AST.Type]] -> [AST.Expr] -> ParserState Bool
