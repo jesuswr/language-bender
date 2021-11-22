@@ -1185,7 +1185,6 @@ getOperationTypes AST.Or = [AST.TBool]
 
 -- < Utility functions to check matching types > ---------------------------------------------------- 
 
-
 -- Check if two types match
 typeMatch :: AST.Type -> AST.Type -> Bool
 typeMatch t1 t2 = t2 `elem` getCastClass t1

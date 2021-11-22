@@ -9,12 +9,13 @@ module BackEnd.TacGenerator where
 import qualified FrontEnd.AST as AST
 import qualified FrontEnd.SymTable as ST
 import qualified TACTypes.TAC as TAC
-
+import qualified Utils.Constants as C
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
 import Data.Maybe(fromJust)
 import Data.Functor((<&>))
+import Data.List(elemIndex)
 
 -- >> Data ------------------------------------------------------
 
@@ -256,7 +257,7 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
 
                             -- Ti[union_size - 4] := 0
                             let actFieldOffset = union_size - 4
-                            writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Ti[union_size - 4] := 0")) []
+                            writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String "Ti[union_size - 4] := 0") []
                             writeTac $ TAC.newTAC TAC.LDeref (TAC.Id union_address) [
                                 TAC.Constant (TAC.Int actFieldOffset),
                                 TAC.Constant (TAC.Int 0)
@@ -930,7 +931,59 @@ genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
             return (Just currId)
 
 genTacExpr AST.Array{} = undefined
-genTacExpr AST.UnionTrying{} = undefined
+genTacExpr AST.UnionTrying {AST.union=_union, AST.tag=_tag, AST.expType = _expType} = do
+    {-
+        Union try template
+        # Generate code for union expression
+        # get union address depending on if it's on stack or in static memory
+        assign t0 union_address
+        
+        # now t3 has the value in BASE[offset + union_szie - 4]
+        rderef t3 t0 (union_size - word_size, this is known at compile time)
+        eq t4 t3 variant_numer
+        # return t4 as return address
+    -}
+
+    -- Get symbol table
+    State {symT=_symT} <- RWS.get 
+
+    
+    -- get union data
+    RWS.liftIO . print $ "my expression type is " ++ show _expType
+    let (tags, unionSize) = case AST.expType _union of 
+                    AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                
+                    _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
+        
+    -- get union requested variant number
+        unionVariantNum = _getTagNum _tag (map fst tags)
+
+    -- Generate code for the union expression
+    mbUnionReturnId <- genTacExpr _union
+
+    -- get actual value and sanity check
+    let unionReturnId = case mbUnionReturnId of 
+                                Just id' -> id'
+                                _       -> error "Inconsistent TAC generation in union trying expression. Expression with type 'union' should return a value"
+    -- get temporals
+    t1 <- getNextTemp
+    t2 <- getNextTemp
+
+    -- rderef t1 unionReturnId (union_size - word_size)
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t1) [TAC.Id unionReturnId, TAC.Constant . TAC.Int $ unionSize - C.wordSize]
+    -- eq t2 t1 tac_variant_num
+    writeTac $ TAC.newTAC TAC.Eq  (TAC.Id t2) [TAC.Id t1, TAC.Constant . TAC.Int $ unionVariantNum] 
+
+
+    return $ Just t2
+
+
 genTacExpr AST.UnionUsing{} = undefined
 genTacExpr AST.New {AST.typeName=_typeName} = do
     {-
@@ -999,6 +1052,15 @@ mapOp1 :: AST.Opr1 -> TAC.Operation
 mapOp1 AST.Negation       = TAC.Neg
 mapOp1 AST.Negative       = TAC.Minus
 mapOp1 AST.UnitOperator   = error "The unit operator has no tac representation. you shouldn't be asking for it"
+
+--------------------------------------------------------
+-- >> Utils --------------------------------------------
+
+-- | Util function to get the position of a string in a list of strings, useful to find the position of a union variant
+_getTagNum :: String -> [String] -> Int
+_getTagNum s ss = case elemIndex s ss of 
+                        Nothing -> error $ "Error, name '"++ s ++"' not in list of names"
+                        Just x  -> x
 
 -- | gen tac for func args
 

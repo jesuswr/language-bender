@@ -7,3 +7,7 @@ module Utils.Constants where
 
 compilerName :: String 
 compilerName = "lbend"
+
+-- | Max word size
+wordSize :: Int
+wordSize = 4
