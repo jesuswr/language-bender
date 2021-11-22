@@ -21,7 +21,7 @@ travel main:
             -- PRINT("INTRODUZCA UN NUMERO MAYOR O IGUAL QUE 0")
             bender n of air 
             -- READ(n)
-            -- PRINT(in book heron with n ...) ~
+            -- PRINT(in heron book with n ...) ~
         -.
     -.
 -.
