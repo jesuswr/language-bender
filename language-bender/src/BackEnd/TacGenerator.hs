@@ -379,13 +379,17 @@ genTacExpr AST.ConstChar{AST.cVal=val} = do
     writeTac  $ TAC.newTAC TAC.Assign (TAC.Id currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
     return (Just currId)
 
-genTacExpr AST.LiteralString{AST.sVal=str} = do
-    -- add static string
-    strLabel <- getNextLabelTemp
-    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Label strLabel) [TAC.Constant (TAC.String str)]
-    -- get next temporal  id' and save the const string in it
+genTacExpr AST.LiteralString{AST.sVal=str, AST.offset=_offset} = do
+
+    -- store the string (array of chars, dope vector)
+    -- TODO
+    
+    -- get next temporal  id' and return the string address there
     currId <- getNextTemp
-    writeTac  $ TAC.newTAC TAC.Assign (TAC.Id currId)  [TAC.Label strLabel]
+    writeTac  $ TAC.newTAC TAC.Add (TAC.Id currId)  [
+        TAC.Id base,
+        TAC.Constant $ TAC.Int _offset
+        ]
     return (Just currId)
 
 genTacExpr AST.ConstInt{AST.iVal=val} = do
@@ -412,27 +416,79 @@ genTacExpr AST.ConstFalse{} = do
     writeTac $ TAC.newTAC TAC.Assign  (TAC.Id currId)  [TAC.Constant (TAC.Bool False)]
     return (Just currId)
 
-genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType} = do
+genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list=_list, AST.offset=_offset} = do
 
     State{symT=st} <- RWS.get
     -- create an struct, save its address in temporal and return it
-    let _ = ST.getTypeSize st _expType
-    currId <- getNextTemp' name
-    --structOffset <- getOffset ???
+    
+    let AST.CustomType _ scope = _expType
+        Just symStruct = ST.findSymbolInScope' name scope st
+        fields_names = map fst $ (ST.fields . ST.symType) symStruct
+    currId <- getNextTemp
 
-    --writeTac $ TAC.newTAC TAC.Assign (TAC.Id currId) [TAC.Label structLabel]
+
+    -- currId := base + _offset # Addres of struct
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id currId) [
+        TAC.Id base,
+        TAC.Constant $ TAC.Int _offset
+        ]
+    
     -- iterar por fields asignando los valores a las posiciones de memoria correspondientes. TODO
+    M.forM_ (zip _list fields_names) (\ (field_expr, field_name) -> do
+            let t = AST.expType field_expr
+                size = ST.getTypeSize st t
+                Just tagSymb = ST.findSymbolInScope' field_name (scope + 1) st
+                fieldOffset = (ST.offset . ST.symType) tagSymb
+
+            from <- genTacExpr field
+            
+            fieldAddress <- getNextTemp
+
+            -- fieldAddress := struct_address + fieldOffset # Addres of struct
+            writeTac $ TAC.newTAC TAC.Add (TAC.Id fieldAddress) [
+                TAC.Id currId,
+                TAC.Constant $ TAC.Int fieldOffset
+                ]    
+
+
+            makeCopy t fieldAddress from size
+        ) 
+
     return (Just currId)
 
 genTacExpr AST.LiteralUnion{} = undefined
-genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
-genTacExpr AST.ConstNull{} = undefined
 
-genTacExpr AST.Id{AST.name=name, AST.declScope_=scope} =
+genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
+
+genTacExpr AST.ConstNull{} = do
+    currId <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id currId) [
+            TAC.Constant $ TAC.Int 0
+        ]
+    return (Just currId)
+
+genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} =
+    State{symT=st} <- RWS.get
+
+    let typeSize = ST.getTypeSize st _expType
+    currId <- getNextTemp' name
+
+    case _expType of
+
+        AST.CustomType -> lol
+
+        AST.TArray -> webo
+
+        _ -> case typeSize of
+                1 -> -- assign con b
+                4 -> -- assign con w
+
+
     -- just return the id'@scope
     return $ Just (getTacId name scope)
 
 genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = do
+    State{symT=st} <- RWS.get
     -- generate tac code for the expr
     Just valId <- genTacExpr val
     -- get var@scope
