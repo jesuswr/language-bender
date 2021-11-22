@@ -126,6 +126,26 @@ getVarStaticAddressId id' scope = do
         ]
     return var_address
 
+-- | Get variable stack address in an TAC Id
+getVarStackAddressId :: Id -> Scope -> GeneratorMonad Id
+getVarStackAddressId id' scope = do
+    State{symT=st} <- RWS.get
+    let offset = ST.getVarOffset st id' scope
+    var_address <- getNextTemp' varId
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id var_address) [
+        TAC.Id base,
+        TAC.Constant $ TAC.Int offset
+        ]
+    return var_address
+
+getVarAddressId :: Id -> Scope -> GeneratorMonad Id
+getVarAddressId id' scope = do
+    State{symT=st} <- RWS.get
+    let isConst = ST.getVarIsConst st id' scope
+    if isConst || scope == 0
+        then getVarStaticAddressId id' scope
+        else getVarStackAddressId id' scope
+
 -- Write TAC
 
 -- | write TAC instruccion
@@ -289,27 +309,11 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
 
                     let varTypeSize = ST.getTypeSize st _varType
 
-                    if _isConst || scope == 0
-                        then do 
-                            -- static memory case
-                            -- Ti := LABEL # address of variable
-                            var_address <- getVarStaticAddressId varId scope
-                            
-                            -- Ti[0] := valId # copy the value
-                            makeCopy _varType var_address valId varTypeSize
-                            return ()
-                        else do
-                            -- stack memory case
-                            -- base [offset_var] := valId
-                            let offset_var = ST.getVarOffset st varId scope
-                            var_address <- getNextTemp' varId'
-                            writeTac $ TAC.newTAC TAC.Add (TAC.Id var_address) [
-                                TAC.Id base,
-                                TAC.Constant (TAC.Int offset_var)
-                                ]
-                            makeCopy _varType var_address valId varTypeSize
-                            return ()
-
+                    -- ti := var_address
+                    var_address <- getVarAddressId varId scope
+                    -- ti [0] := valId # copy by value
+                    makeCopy _varType var_address valId varTypeSize
+                    return ()
 
 
 -- | gen tac for references decl
@@ -419,7 +423,6 @@ genTacExpr AST.ConstFalse{} = do
 genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list=_list, AST.offset=_offset} = do
 
     State{symT=st} <- RWS.get
-    -- create an struct, save its address in temporal and return it
     
     let AST.CustomType _ scope = _expType
         Just symStruct = ST.findSymbolInScope' name scope st
@@ -455,8 +458,11 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
         ) 
 
     return (Just currId)
+-- unionName :: U.Name, tag :: U.Name, value :: Expr, expType :: Type, offset :: Int
+genTacExpr AST.LiteralUnion{AST.unionName=name, AST.tag=_tag,AST.value=_value,AST.expType=t,AST.offset=_offset} = do
+    State{symT=st} <- RWS.get
 
-genTacExpr AST.LiteralUnion{} = undefined
+    return (Just "union xd")
 
 genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
 
@@ -467,25 +473,55 @@ genTacExpr AST.ConstNull{} = do
         ]
     return (Just currId)
 
-genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} =
+genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = do
     State{symT=st} <- RWS.get
 
     let typeSize = ST.getTypeSize st _expType
-    currId <- getNextTemp' name
+        Just sym = ST.findSymbolInScope' name scope st
+        symType_ = ST.symType sym
 
-    case _expType of
+    case symType_ of
+        ST.Reference{AST.refName=_refName,AST.refScope=_refScope,AST.refType=_refType} -> 
+            genTacExpr AST.Id{AST.name=_refName, AST.declScope_=_refScope, AST.expType=_refType, AST.position=(0,0)}
 
-        AST.CustomType -> lol
+        ST.Variable{} -> do
 
-        AST.TArray -> webo
+            let _isConst = ST.getVarIsConst st name scope
+            
+            case _expType of
 
-        _ -> case typeSize of
-                1 -> -- assign con b
-                4 -> -- assign con w
+                AST.CustomType typeName typeScope -> do
+                    -- get var address
+                    var_address <- getVarAddressId name scope
+                    return (Just var_address)
 
+                AST.TArray ->  do
+                    -- get var address
+                    var_address <- getVarAddressId name scope
+                    return (Just var_address)
 
-    -- just return the id'@scope
-    return $ Just (getTacId name scope)
+                _ -> do 
+                    -- var_address # address of variable
+                    var_address <- getVarAddressId name scope
+                    -- t1 := var_address [0]
+                    currId <- getNextTemp
+
+                    writeTac $ case typeSize of
+                        -- assign con b 
+                        1 -> TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                                TAC.Id var_address,
+                                TAC.Constant $ TAC.Int 0
+                            ]
+
+                        -- assign con w
+                        4 -> TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                                TAC.Id var_address,
+                                TAC.Constant $ TAC.Int 0
+                            ]
+
+                    return (Just currId)                            
+    
+
 
 genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = do
     State{symT=st} <- RWS.get

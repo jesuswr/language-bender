@@ -149,6 +149,9 @@ getVarOffset st id scope = getVarAtrr st id scope offset
 getVarType ::SymTable -> Identifier -> Int -> AST.Type
 getVarType st id scope = getVarAtrr st id scope varType
 
+getVarIsConst :: SymTable -> Identifier -> Int -> Bool
+getVarIsConst st id scope = getVarAtrr st id scope isConst
+
 getVarStaticLabel :: SymTable -> Identifier -> Int -> Maybe String
 getVarStaticLabel st id scope = getVarAtrr st id scope staticLabel
 
