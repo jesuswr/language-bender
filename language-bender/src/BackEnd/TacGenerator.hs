@@ -6,10 +6,11 @@
 module BackEnd.TacGenerator where
 
 -- <Language Bender Imports> ------------------------------------
-import qualified FrontEnd.AST as AST
+import qualified FrontEnd.AST      as AST
 import qualified FrontEnd.SymTable as ST
-import qualified TACTypes.TAC as TAC
-import qualified Utils.Constants as C
+import qualified TACTypes.TAC      as TAC
+import qualified Utils.Constants   as C
+import qualified FrontEnd.Utils    as U
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
@@ -112,7 +113,7 @@ getVarStaticLabel id' scope = do
                 varType = ST.getVarType st id' scope
                 size = ST.getTypeSize st varType
             RWS.put s{symT=st'}
-            writeTac $ TAC.newTAC TAC.MetaStaticv (TAC.Label label) [TAC.Constant (TAC.Int size)]
+            writeStatic $ TAC.newTAC TAC.MetaStaticv (TAC.Label label) [TAC.Constant (TAC.Int size)]
             return label
 
 -- | Get static variable address in an TAC Id
@@ -126,6 +127,26 @@ getVarStaticAddressId id' scope = do
         TAC.Label label
         ]
     return var_address
+
+-- | Get variable stack address in an TAC Id
+getVarStackAddressId :: Id -> Scope -> GeneratorMonad Id
+getVarStackAddressId id' scope = do
+    State{symT=st} <- RWS.get
+    let offset = ST.getVarOffset st id' scope
+    var_address <- getNextTemp' id'
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id var_address) [
+        TAC.Id base,
+        TAC.Constant $ TAC.Int offset
+        ]
+    return var_address
+
+getVarAddressId :: Id -> Scope -> GeneratorMonad Id
+getVarAddressId id' scope = do
+    State{symT=st} <- RWS.get
+    let isConst = ST.getVarIsConst st id' scope
+    if isConst || scope == 0
+        then getVarStaticAddressId id' scope
+        else getVarStackAddressId id' scope
 
 -- Write TAC
 
@@ -290,26 +311,11 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
 
                     let varTypeSize = ST.getTypeSize st _varType
 
-                    if _isConst || scope == 0
-                        then do
-                            -- static memory case
-                            -- Ti := LABEL # address of variable
-                            var_address <- getVarStaticAddressId varId scope
-
-                            -- Ti[0] := valId # copy the value
-                            makeCopy _varType var_address valId varTypeSize
-                            return ()
-                        else do
-                            -- stack memory case
-                            -- base [offset_var] := valId
-                            let offset_var = ST.getVarOffset st varId scope
-                            var_address <- getNextTemp' varId'
-                            writeTac $ TAC.newTAC TAC.Add (TAC.Id var_address) [
-                                TAC.Id base,
-                                TAC.Constant (TAC.Int offset_var)
-                                ]
-                            makeCopy _varType var_address valId varTypeSize
-                            return ()
+                    -- ti := var_address
+                    var_address <- getVarAddressId varId scope
+                    -- ti [0] := valId # copy by value
+                    makeCopy _varType var_address valId varTypeSize
+                    return ()
 
 
 
@@ -431,13 +437,17 @@ genTacExpr AST.ConstChar{AST.cVal=val} = do
     writeTac  $ TAC.newTAC TAC.Assign (TAC.Id currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
     return (Just currId)
 
-genTacExpr AST.LiteralString{AST.sVal=str} = do
-    -- add static string
-    strLabel <- getNextLabelTemp
-    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Label strLabel) [TAC.Constant (TAC.String str)]
-    -- get next temporal  id' and save the const string in it
+genTacExpr AST.LiteralString{AST.sVal=str, AST.offset=_offset} = do
+
+    -- store the string (array of chars, dope vector)
+    -- TODO
+    
+    -- get next temporal  id' and return the string address there
     currId <- getNextTemp
-    writeTac  $ TAC.newTAC TAC.Assign (TAC.Id currId)  [TAC.Label strLabel]
+    writeTac  $ TAC.newTAC TAC.Add (TAC.Id currId)  [
+        TAC.Id base,
+        TAC.Constant $ TAC.Int _offset
+        ]
     return (Just currId)
 
 genTacExpr AST.ConstInt{AST.iVal=val} = do
@@ -464,27 +474,111 @@ genTacExpr AST.ConstFalse{} = do
     writeTac $ TAC.newTAC TAC.Assign  (TAC.Id currId)  [TAC.Constant (TAC.Bool False)]
     return (Just currId)
 
-genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType} = do
+genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list=_list, AST.offset=_offset} = do
 
     State{symT=st} <- RWS.get
-    -- create an struct, save its address in temporal and return it
-    let _ = ST.getTypeSize st _expType
-    currId <- getNextTemp' name
-    --structOffset <- getOffset ???
+    
+    let AST.CustomType _ scope = _expType
+        Just symStruct = ST.findSymbolInScope' name scope st
+        fields_names = map fst $ (ST.fields . ST.symType) symStruct
+    currId <- getNextTemp
 
-    --writeTac $ TAC.newTAC TAC.Assign (TAC.Id currId) [TAC.Label structLabel]
+
+    -- currId := base + _offset # Addres of struct
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id currId) [
+        TAC.Id base,
+        TAC.Constant $ TAC.Int _offset
+        ]
+    
     -- iterar por fields asignando los valores a las posiciones de memoria correspondientes. TODO
+    M.forM_ (zip _list fields_names) (\ (field_expr, field_name) -> do
+            let t = AST.expType field_expr
+                size = ST.getTypeSize st t
+                Just tagSymb = ST.findSymbolInScope' field_name (scope + 1) st
+                fieldOffset = (ST.offset . ST.symType) tagSymb
+
+            Just from <- genTacExpr field_expr
+            
+            fieldAddress <- getNextTemp
+
+            -- fieldAddress := struct_address + fieldOffset # Addres of struct
+            writeTac $ TAC.newTAC TAC.Add (TAC.Id fieldAddress) [
+                TAC.Id currId,
+                TAC.Constant $ TAC.Int fieldOffset
+                ]    
+
+
+            makeCopy t fieldAddress from size
+        ) 
+
+    return (Just currId)
+-- unionName :: U.Name, tag :: U.Name, value :: Expr, expType :: Type, offset :: Int
+genTacExpr AST.LiteralUnion{AST.unionName=name, AST.tag=_tag,AST.value=_value,AST.expType=t,AST.offset=_offset} = do
+    State{symT=st} <- RWS.get
+
+    return (Just "union xd")
+
+genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
+
+genTacExpr AST.ConstNull{} = do
+    currId <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id currId) [
+            TAC.Constant $ TAC.Int 0
+        ]
     return (Just currId)
 
-genTacExpr AST.LiteralUnion{} = undefined
-genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
-genTacExpr AST.ConstNull{} = undefined
+genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = do
+    State{symT=st} <- RWS.get
 
-genTacExpr AST.Id{AST.name=name, AST.declScope_=scope} =
-    -- just return the id'@scope
-    return $ Just (getTacId name scope)
+    let typeSize = ST.getTypeSize st _expType
+        Just sym = ST.findSymbolInScope' name scope st
+        symType_ = ST.symType sym
+
+    case symType_ of
+        ST.Reference{ST.refName=_refName,ST.refScope=_refScope,ST.refType=_refType} -> 
+            genTacExpr AST.Id{AST.name=_refName, AST.declScope_=_refScope, AST.expType=_refType, AST.position=(U.Position 0 0)}
+
+        ST.Variable{} -> do
+
+            let _isConst = ST.getVarIsConst st name scope
+            
+            case _expType of
+
+                AST.CustomType typeName typeScope -> do
+                    -- get var address
+                    var_address <- getVarAddressId name scope
+                    return (Just var_address)
+
+                AST.TArray _ _ ->  do
+                    -- get var address
+                    var_address <- getVarAddressId name scope
+                    return (Just var_address)
+
+                _ -> do 
+                    -- var_address # address of variable
+                    var_address <- getVarAddressId name scope
+                    -- t1 := var_address [0]
+                    currId <- getNextTemp
+
+                    writeTac $ case typeSize of
+                        -- assign con b 
+                        1 -> TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                                TAC.Id var_address,
+                                TAC.Constant $ TAC.Int 0
+                            ]
+
+                        -- assign con w
+                        4 -> TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                                TAC.Id var_address,
+                                TAC.Constant $ TAC.Int 0
+                            ]
+
+                    return (Just currId)                            
+    
+
 
 genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = do
+    State{symT=st} <- RWS.get
     -- generate tac code for the expr
     Just valId <- genTacExpr val
     -- get var@scope
@@ -1122,71 +1216,3 @@ _getTagNum s ss = case elemIndex s ss of
                         Nothing -> error $ "Error, name '"++ s ++"' not in list of names"
                         Just x  -> x
 
--- | gen tac for func args
-
-
---------------------------------------------------------
-
--- | generate tac for Expressions ----------------------
-
--- | gen tac for literal char
-
--- | gen tac for literal string
-
--- | gen tac for literal Int
-
--- | gen tac for literal Float
-
--- | gen tac for literal True
-
--- | gen tac for literal False
-
--- | gen tac for literal struct
-
--- | gen tac for literal union
-
--- | gen tac for literal unit ??
-
--- | gen tac for literal null
-
--- | gen tac for Id
-
--- | gen tac for Assignment
-
--- | gen tac for struct assignment
-
--- | gen tac for struct access
-
--- | gen tac for function call
-
--- | gen tac for For loop
-
--- | gen tac for While loop
-
--- | gen tac for If
-
--- | gen tac for Expressions Block
-
--- | gen tac for return
-
--- | gen tac for Break
-
--- | gen tac for Continue
-
--- | gen tac for Declaration 
-
--- | gen tac for Op2
-
--- | gen tac for Op1
-
--- | gen tac for literal Array
-
--- | gen tac for Union trying
-
--- | gen tac for Union using
-
--- | gen tac for new
-
--- | gen tac for delete
-
--- | gen tac for Array indexing

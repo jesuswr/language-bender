@@ -2,10 +2,12 @@
 
 bender A is 45.
 
-book XD:
+book XD of air:
 .-
-	bender C of air.
-	bender B of air.
+	bender B is .-
 
-	C is B is A
+		bender R is reincarnation of A.
+		R
+	-.
+	B
 -.
