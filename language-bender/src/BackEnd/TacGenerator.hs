@@ -512,13 +512,31 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
         ) 
 
     return (Just currId)
--- unionName :: U.Name, tag :: U.Name, value :: Expr, expType :: Type, offset :: Int
+
 genTacExpr AST.LiteralUnion{AST.unionName=name, AST.tag=_tag,AST.value=_value,AST.expType=t,AST.offset=_offset} = do
     State{symT=st} <- RWS.get
 
-    return (Just "union xd")
+    -- gen tac for value
+    Just from <- genTacExpr _value
 
-genTacExpr AST.ConstUnit{} = return Nothing -- creo que esto iria asi
+    let AST.CustomType _ scope = t
+
+    union_address <- getNextTemp
+
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id union_address) [
+        TAC.Id base,
+        TAC.Constant $ TAC.Int _offset
+        ]
+
+    let tagType = ST.getVarType st _tag (scope+1)
+        size    = ST.getTypeSize st tagType
+
+    -- base [offset] := _value
+    makeCopy tagType union_address from size
+
+    return (Just union_address)
+
+genTacExpr AST.ConstUnit{} = return Nothing 
 
 genTacExpr AST.ConstNull{} = do
     currId <- getNextTemp
@@ -577,15 +595,30 @@ genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = d
     
 
 
-genTacExpr AST.Assign{AST.variable=var, AST.value=val, AST.declScope_=scope} = do
+genTacExpr AST.Assign{AST.variable=name, AST.value=val, AST.declScope_=scope, AST.expType=_expType} = do
     State{symT=st} <- RWS.get
-    -- generate tac code for the expr
-    Just valId <- genTacExpr val
-    -- get var@scope
-    let varId = getTacId var scope
-    -- assign value to var and return the id' with the result
-    writeTac $ TAC.newTAC TAC.Assign  (TAC.Id varId) [TAC.Id valId]
-    return (Just varId)
+
+    let Just sym = ST.findSymbolInScope' name scope st
+        symType_ = ST.symType sym
+    
+    case symType_ of
+
+        ST.Reference{ST.refName=_refName,ST.refScope=_refScope,ST.refType=_refType} -> 
+            genTacExpr AST.Assign{AST.variable=_refName, AST.declScope_=_refScope, AST.expType=_refType, AST.value=val}
+
+        ST.Variable{} -> do
+
+            -- generate tac code for the expr
+            Just valId <- genTacExpr val
+
+            let varTypeSize = ST.getTypeSize st _expType
+
+            -- ti := var_address
+            var_address <- getVarAddressId name scope
+            -- ti [0] := valId # copy by value
+            makeCopy _expType var_address valId varTypeSize
+            return (Just var_address)
+            
 
 genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = do
     State{symT=st} <- RWS.get
