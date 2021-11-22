@@ -771,7 +771,7 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
 
     -- Get union name
     let (unionNm, scope) = case AST.expType _union of
-                    AST.CustomType s _ -> (s,scope)
+                    AST.CustomType s scope' -> (s,scope')
                     _ -> ("$", -1)
 
     -- Get type of the union trying

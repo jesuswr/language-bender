@@ -192,7 +192,7 @@ getTacId id' scope = id' ++ "@" ++ show scope
 -- | Copy data from one address to another
 makeCopy :: AST.Type -> Id -> Id -> Size -> GeneratorMonad ()
 makeCopy type_ to from size = do
-    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Copy X bytes from Y to Z")) []
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Copy "++ show size ++" bytes from "++ show from ++" to " ++ show to)) []
 
 
 -- >> Main Function ---------------------------------------------
@@ -949,7 +949,6 @@ genTacExpr AST.UnionTrying {AST.union=_union, AST.tag=_tag, AST.expType = _expTy
 
     
     -- get union data
-    RWS.liftIO . print $ "my expression type is " ++ show _expType
     let (tags, unionSize) = case AST.expType _union of 
                     AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
                         case ST.findSymbolInScope' _tName _scope _symT of 
@@ -980,11 +979,72 @@ genTacExpr AST.UnionTrying {AST.union=_union, AST.tag=_tag, AST.expType = _expTy
     -- eq t2 t1 tac_variant_num
     writeTac $ TAC.newTAC TAC.Eq  (TAC.Id t2) [TAC.Id t1, TAC.Constant . TAC.Int $ unionVariantNum] 
 
-
+    -- return direction where the result is stored
     return $ Just t2
 
 
-genTacExpr AST.UnionUsing{} = undefined
+genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expType} = do 
+    {-
+        Union Using template:
+        # Generate code for union expression
+        assign t0 union_expr_result
+
+        # Check if it's a valid variant of the union
+        rderef t1 t0 (union_size - word_size, known at compile time)
+        eq t2 t1 (tag index in list of tags)
+        goif union_sucess t2
+        exit 1 # error
+        @label union_success
+        assign t3 t0 
+    -}
+    
+    -- Get tags and type
+    State {symT=_symT} <- RWS.get 
+    RWS.liftIO . print $ "im right before creating a copy"
+    let (tags, unionSize) = case AST.expType _union of 
+                    AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                
+                    _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
+        -- get union requested variant number
+        unionVariantNum = _getTagNum _tag (map fst tags)
+        unionVariantSize = ST.getTypeSize _symT (snd $ tags!!unionVariantNum)
+
+    -- Generate code for the union expression
+    mbUnionReturnId <- genTacExpr _union
+
+    -- get actual value and sanity check
+    let unionReturnId = case mbUnionReturnId of 
+                                Just id' -> id'
+                                _       -> error "Inconsistent TAC generation in union trying expression. Expression with type 'union' should return a value"
+
+    -- Temporals
+    t1 <- getNextTemp
+    t2 <- getNextTemp
+    t3 <- getNextTemp
+
+    unionSuccessLabel <- getNextLabelTemp' "union_success"
+
+    -- rdefer t1 unionResultId (union_size - word_size)
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t1) [TAC.Id unionReturnId, TAC.Constant . TAC.Int $ unionSize - C.wordSize]
+    -- eq t2 t1 unionVariantNum
+    writeTac $ TAC.newTAC TAC.Eq (TAC.Id t2) [TAC.Id t1, TAC.Constant . TAC.Int $ unionVariantNum]
+    -- goif union_success t2
+    writeTac $ TAC.newTAC TAC.Goif  (TAC.Label unionSuccessLabel) [TAC.Id t2]
+    -- exit 1 (status code error)
+    writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 1) [] 
+    -- @label union_success
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
+
+    makeCopy _expType t3 unionReturnId unionVariantSize
+
+    return $ Just t3
+
 genTacExpr AST.New {AST.typeName=_typeName} = do
     {-
         New template:
