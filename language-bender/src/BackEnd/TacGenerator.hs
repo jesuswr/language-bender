@@ -618,7 +618,7 @@ genTacExpr AST.Assign{AST.variable=name, AST.value=val, AST.declScope_=scope, AS
             -- ti [0] := valId # copy by value
             makeCopy _expType var_address valId varTypeSize
             return (Just var_address)
-            
+
 
 genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = do
     State{symT=st} <- RWS.get

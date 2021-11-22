@@ -386,6 +386,8 @@ checkExpr i@AST.Id {AST.name=_name, AST.position=_position} = do
 
 -- Check assign expression 
 checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
+
+    State{symTable = st} <- RWS.get
     -- check if left hand corresponds to a variable or reference name
     checkIdIsVarOrReference _variable
 
@@ -404,9 +406,11 @@ checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
         then var_type
         else AST.TypeError
 
-    currScope <- getScope
+    let idScope = case ST.findSymbol _variable st of
+            Just ST.Symbol{ST.scope = scope_ } -> scope_
+            Nothing -> -1
 
-    return a{AST.expType = assgType, AST.declScope_ = currScope}
+    return a{AST.expType = assgType, AST.declScope_ = idScope}
 
 -- Check assign to struct
 checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AST.tag=_tag} = do
