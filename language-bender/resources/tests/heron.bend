@@ -11,7 +11,7 @@ travel main:
 .-
     while lightning master doing:
     .-
-        -- PRINT("DE 0 PARA TERMINAR, 1 PARA FIB REC O 2 PARA FIB ITER")
+        -- PRINT("DE 0 PARA TERMINAR")
         bender finish of air is in readair travel with ....
         if (finish is equal to 0):
             burst ~

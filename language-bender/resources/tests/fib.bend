@@ -5,9 +5,9 @@ book rec_fib of air about air bender n:
     otherwise if (n is equal to 1): 
         1
     otherwise 
-        (in rec_fib book with n-1 ...) 
+        (in rec_fib book with n but 1 ...) 
             and then 
-        (in rec_fib book with n-2 ...)
+        (in rec_fib book with n but 2 ...)
 -.
 
 book it_fib of air about air bender n:
