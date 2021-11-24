@@ -79,12 +79,12 @@ initDic = M.fromList [("air", [Symbol "air" (Type AST.TInt 4 4) 0 Nothing])
                     , ("readwater",  [Symbol "readwater" (Function [] AST.TFloat (AST.ConstNull AST.TVoid)) 0 Nothing])
                     , ("readfire",   [Symbol "readfire" (Function [] AST.TBool (AST.ConstNull AST.TVoid)) 0 Nothing])
                     , ("readearth",  [Symbol "readearth" (Function [] AST.TChar (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("readmetal",  [Symbol "readmetal" (Procedure [AST.FuncArg "dest" (AST.TPtr AST.TChar) Nothing 1] (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("printair",   [Symbol "printair" (Procedure [] (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("printwater", [Symbol "printwater" (Procedure [] (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("printfire",  [Symbol "printfire" (Procedure [] (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("printearth", [Symbol "printearth" (Procedure [] (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("printmetal", [Symbol "printmetal" (Procedure [AST.FuncArg "dest" (AST.TPtr AST.TChar) Nothing 1, AST.FuncArg "n_bytes" (AST.TInt) Nothing 1] (AST.ConstNull AST.TVoid)) 0 Nothing])
+                    , ("readmetal",  [Symbol "readmetal" (Procedure [AST.FuncArg "dest" (AST.TPtr AST.TChar) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
+                    , ("printair",   [Symbol "printair" (Procedure [AST.FuncArg "var_to_print" (AST.TInt) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
+                    , ("printwater", [Symbol "printwater" (Procedure [AST.FuncArg "var_to_print" (AST.TFloat) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
+                    , ("printfire",  [Symbol "printfire" (Procedure [AST.FuncArg "var_to_print" (AST.TBool) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing]) -- creo que hay que revisar los scopes de los arg
+                    , ("printearth", [Symbol "printearth" (Procedure [AST.FuncArg "var_to_print" (AST.TChar) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
+                    , ("printmetal", [Symbol "printmetal" (Procedure [AST.FuncArg "dest" (AST.TPtr AST.TChar) Nothing 0, AST.FuncArg "n_bytes" (AST.TInt) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
                     ]
 
 pushOffset :: SymTable -> Int -> SymTable

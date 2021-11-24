@@ -26,21 +26,17 @@ travel main:
     while lightning master doing:
     .-
         -- PRINT("DE 0 PARA TERMINAR, 1 PARA FIB REC O 2 PARA FIB ITER")
-        bender finish of air.
-        -- READ(finish)
+        bender finish of air is in readair book with ....
         if (finish is equal to 0):
             burst ~
         otherwise
         .-
             -- PRINT("INTRODUZCA UN NUMERO MAYOR O IGUAL QUE 0")
-            bender n of air.
-            -- READ(n)
+            bender n of air is in readair book with ....
             if (finish is equal to 1):
-                -- PRINT(in book rec_fib with n ...)
-                to be continued ~
+                in printair travel with (in rec_fib book with n ...)...
             otherwise
-                -- PRINT(in book it_fib with n ...)
-                to be continued ~
+                in printair travel with (in it_fib book with n ...)...
         -.
     -.
 -.

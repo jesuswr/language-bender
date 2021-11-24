@@ -13,22 +13,19 @@ book impar of fire about air bender n:
 -.
 
 
--- falta agregar main con read y eso
 
 travel main:
 .-
     while lightning master doing:
     .-
         -- PRINT("DE UN NUMERO POSITIVO PARA CONTINUAR O 0 PARA SALIR")
-        bender finish of air.
-        -- READ(finish)
+        bender finish of air is in readair travel with ....
         if (finish is equal to 0):
             burst ~
         otherwise
         .-
             -- PRINT("INTRODUZCA UN NUMERO MAYOR O IGUAL QUE 0 PARA DETERMINAR SU PARIDAD")
-            bender n of air.
-            -- READ(n)
+            bender n of air is in readair travel with ....
             if (in par book with n ...):
                 -- PRINT("ES PAR")
                 to be continued ~

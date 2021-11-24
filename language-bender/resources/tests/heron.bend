@@ -11,17 +11,15 @@ travel main:
 .-
     while lightning master doing:
     .-
-        -- PRINT("DE 0 PARA TERMINAR O CUALQUIER OTRO NRO PARA CONTINUAR")
-        bender finish of air.
-        -- READ(finish)
+        -- PRINT("DE 0 PARA TERMINAR, 1 PARA FIB REC O 2 PARA FIB ITER")
+        bender finish of air is in readair travel with ....
         if (finish is equal to 0):
             burst ~
         otherwise
         .-
             -- PRINT("INTRODUZCA UN NUMERO MAYOR O IGUAL QUE 0")
-            bender n of air 
-            -- READ(n)
-            -- PRINT(in heron book with n ...) ~
+            bender n of air is in readair travel with ....
+            in printwater travel with (in heron book with n ...)...
         -.
     -.
 -.
