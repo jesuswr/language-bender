@@ -123,6 +123,8 @@ tokens :-
 <0>     and                                              { pushTK TKand }
 <0>     or                                               { pushTK TKor }
 <0>     not                                              { pushTK TKnot }
+<0>     artwork @w of                                    { pushTK TKDeref }
+<0>     really @w is                                     { pushTK TKDerefAssign }
 
                 -- conditionals
 <0>     if                                               { pushTK TKif }

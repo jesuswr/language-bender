@@ -105,7 +105,7 @@ getMaxSize st x = maximum $ map (getTypeSize st . snd) x
 getTypeSize :: SymTable -> AST.Type -> Int
 getTypeSize st AST.TArray{AST.arrType = t, AST.size = s} = 
     case s of
-        AST.ConstInt val _ -> val * (getTypeSize st t) -- no dope vector
+        AST.ConstInt val _ -> 8--val * (getTypeSize st t) -- no dope vector
         _                  -> 8 -- dope vector
 getTypeSize st AST.CustomType{AST.tName = n, AST.scope = s} = 
     case findSymbolInScope n s st of

@@ -212,9 +212,10 @@ getTacId :: Id -> Scope -> Id
 getTacId id' scope = id' ++ "@" ++ show scope
 
 -- | Copy data from one address to another
-makeCopy :: AST.Type -> Id -> Id -> Size -> GeneratorMonad ()
-makeCopy type_ to from size = do
-    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Copy "++ show size ++" bytes from "++ show from ++" to " ++ show to)) []
+makeCopy :: Id -> Id -> GeneratorMonad ()
+makeCopy dest source = do
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Copy from "++ show source ++" to " ++ show dest)) []
+    writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest) [TAC.Id source]
 
 
 -- >> Main Function ---------------------------------------------
@@ -311,12 +312,10 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
                 Nothing -> return ()
                 Just valId -> do
 
-                    let varTypeSize = ST.getTypeSize st _varType
-
                     -- ti := var_address
                     var_address <- getVarAddressId varId scope
                     -- ti [0] := valId # copy by value
-                    makeCopy _varType var_address valId varTypeSize
+                    makeCopy var_address valId
                     return ()
 
 
@@ -494,9 +493,8 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
     
     -- iterar por fields asignando los valores a las posiciones de memoria correspondientes. TODO
     M.forM_ (zip _list fields_names) (\ (field_expr, field_name) -> do
-            let t = AST.expType field_expr
-                size = ST.getTypeSize st t
-                Just tagSymb = ST.findSymbolInScope' field_name (scope + 1) st
+             
+            let Just tagSymb = ST.findSymbolInScope' field_name (scope + 1) st
                 fieldOffset = (ST.offset . ST.symType) tagSymb
 
             Just from <- genTacExpr field_expr
@@ -510,7 +508,7 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
                 ]    
 
 
-            makeCopy t fieldAddress from size
+            makeCopy fieldAddress from
         ) 
 
     return (Just currId)
@@ -530,11 +528,11 @@ genTacExpr AST.LiteralUnion{AST.unionName=name, AST.tag=_tag,AST.value=_value,AS
         TAC.Constant $ TAC.Int _offset
         ]
 
-    let tagType = ST.getVarType st _tag (scope+1)
+    let tagType = ST.getVarType st _tag (scope + 1)
         size    = ST.getTypeSize st tagType
 
     -- base [offset] := _value
-    makeCopy tagType union_address from size
+    makeCopy union_address from
 
     return (Just union_address)
 
@@ -618,7 +616,7 @@ genTacExpr AST.Assign{AST.variable=name, AST.value=val, AST.declScope_=scope, AS
             -- ti := var_address
             var_address <- getVarAddressId name scope
             -- ti [0] := valId # copy by value
-            makeCopy _expType var_address valId varTypeSize
+            makeCopy var_address valId
             return (Just var_address)
 
 
@@ -639,8 +637,14 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = d
                     case (maybeStructId, maybeValId) of
                         (Just structId, Just valId) -> do
                             -- structId[offset tag] = valId
+                            tagId <- getNextTemp
                             let offset_ = (ST.offset . ST.symType) tagSymb
-                            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id structId) [ TAC.Constant (TAC.Int offset_), TAC.Id valId]
+                            --writeTac $ TAC.newTAC TAC.LDeref (TAC.Id structId) [ TAC.Constant (TAC.Int offset_), TAC.Id valId]
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id tagId) [
+                                TAC.Id structId,
+                                TAC.Constant (TAC.Int offset_)
+                                ]
+                            makeCopy tagId valId
                             return (Just structId)
 
                         -- if there is no id' with the struct or value, error
@@ -672,7 +676,11 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
                             -- t0 := structId[offset tag]
                             currId <- getNextTemp
                             let offset_ = (ST.offset . ST.symType) tagSymb
-                            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [ TAC.Id structId, TAC.Constant (TAC.Int offset_)]
+                            --writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [ TAC.Id structId, TAC.Constant (TAC.Int offset_)]
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id currId) [ 
+                                TAC.Id structId, 
+                                TAC.Constant (TAC.Int offset_)
+                                ]
                             return (Just currId)
 
 
@@ -1048,18 +1056,20 @@ genTacExpr AST.Op2{AST.op2=op, AST.opr1=l, AST.opr2=r} = do
     return (Just currId)
 
 genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
-    -- generate code for expr
-    Just opId <- genTacExpr l
+    
     -- if op is Unit, return nothing
     -- else assing to a temp variable and return it
     case op of
         AST.UnitOperator -> return Nothing
         _                -> do
+            -- generate code for expr
+            Just opId <- genTacExpr l
             currId <- getNextTemp
             writeTac (TAC.TACCode (mapOp1 op) (Just (TAC.Id currId)) (Just (TAC.Id opId)) Nothing)
             return (Just currId)
 
 genTacExpr AST.Array{} = undefined
+
 genTacExpr AST.UnionTrying {AST.union=_union, AST.tag=_tag, AST.expType = _expType} = do
     {-
         Union try template
@@ -1170,7 +1180,7 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
     -- @label union_success
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
 
-    makeCopy _expType t3 unionReturnId unionVariantSize
+    makeCopy t3 unionReturnId
 
     return $ Just t3
 
@@ -1207,6 +1217,14 @@ genTacExpr AST.Delete {AST.ptrExpr=_ptrExpr} = do
     return Nothing
 
 
+genTacExpr AST.DerefAssign {AST.ptrExpr=_ptrExpr, AST.value=_value, AST.expType=_expType } = do
+    
+    Just valId <- genTacExpr _value
+    Just ptrId <- genTacExpr _ptrExpr
+    makeCopy ptrId valId
+
+    return (Just ptrId)
+
 genTacExpr AST.ArrayIndexing{} = undefined
 
 
@@ -1240,6 +1258,7 @@ mapOp2 AST.Or    = TAC.Or
 mapOp1 :: AST.Opr1 -> TAC.Operation
 mapOp1 AST.Negation       = TAC.Neg
 mapOp1 AST.Negative       = TAC.Minus
+mapOp1 AST.DerefOperator  = TAC.Deref
 mapOp1 AST.UnitOperator   = error "The unit operator has no tac representation. you shouldn't be asking for it"
 
 --------------------------------------------------------

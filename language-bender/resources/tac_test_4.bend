@@ -2,25 +2,15 @@
 
 -- bender A is 45.
 
--- book XD of air:
--- .-
--- 	bender B is .-
 
--- 		bender R is reincarnation of A.
--- 		R
--- 	-.
--- 	B
--- -.
-
-
-
-
-
---element lava is compound by super_fire skill of air, bedrock skill of earth.
-energy mi_union allows tag_1 technique of fire bending, tag_2 technique of air bending.
-
-travel main:
+travel f:
 .-
-    bender x of mi_union.
-    using x's tag_2 technique~
+    bender x of air art is born as air member.
+    artwork of x really is 4.
+    bender y is artwork of x.
+    x is an apprentice.
+    x is equal to an apprentice.
+    artwork of x is not equal to 4.
+    x has died
+    ~
 -.

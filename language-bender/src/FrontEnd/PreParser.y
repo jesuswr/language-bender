@@ -23,7 +23,7 @@ import Data.Functor((<&>))
 %tokentype { TK.Token }
 %error { parseError }
 %monad { P.ParserState }
-%expect 128
+%expect 145
 
 %token
     bender              { TK.Token _ TK.TKbender }
@@ -77,6 +77,8 @@ import Data.Functor((<&>))
     and                 { TK.Token _ TK.TKand }
     or                  { TK.Token _ TK.TKor }
     not                 { TK.Token _ TK.TKnot }
+    deref               { TK.Token _ TK.TKDeref }
+    is_                 { TK.Token _ TK.TKDerefAssign }
     if                  { TK.Token _ TK.TKif }
     otherwise           { TK.Token _ TK.TKotherwise }
     dotOtherwise        { TK.Token _ TK.TKdotOtherwise }
@@ -122,6 +124,7 @@ import Data.Functor((<&>))
 %left died
 
 %right is 
+%right deref
 %left and or
 
 %nonassoc '<' '<=' '>' '>=' 
@@ -129,7 +132,7 @@ import Data.Functor((<&>))
 %left '+' '-'
 %left '*' '/' '%'
 
-%right not NEG
+%right not NEG DEREF 
 %right techniqueFrom
 
 
@@ -242,6 +245,8 @@ Expr
 
     | born Type member                                                                   {}
     | Expr died                                                                          {}
+    | deref Expr is_ Expr                                                                {}
+
     | disciple Expr of Expr                                                              {}
     | masterOf ExprList rightNow                                                         {} 
 
@@ -274,6 +279,7 @@ Expr
     | not Expr                                                                           {}
     | '-' Expr %prec NEG                                                                 {}
     | Expr unit                                                                          {}
+    | deref Expr %prec DEREF                                                             {}
 
     -- >> Control Flow -----------------------------------------------------------------------------------
     | toBeContinued Expr                                                                 {}

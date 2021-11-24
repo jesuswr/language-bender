@@ -51,6 +51,7 @@ data Opr2 = Sum
 data Opr1 = Negation
           | Negative
           | UnitOperator
+          | DerefOperator
           deriving(Eq)
 
 -- | Possible expressions. Remember, everything its an expression
@@ -84,6 +85,7 @@ data Expr   = ConstChar       { cVal :: String, expType :: Type }
             | UnionUsing      { union :: Expr, tag :: U.Name, expType :: Type }
             | New             { typeName :: Type, expType :: Type }
             | Delete          { ptrExpr :: Expr, expType :: Type }
+            | DerefAssign     { ptrExpr :: Expr, value :: Expr, expType :: Type }
             | ArrayIndexing   { index :: Expr, expr :: Expr, expType :: Type }
             deriving(Eq)
 
@@ -127,6 +129,9 @@ identShowOpr1 ident Negative =
 
 identShowOpr1 ident UnitOperator =
   replicate ident ' ' ++ "Unit Operator\n"
+
+identShowOpr1 ident DerefOperator =
+  replicate ident ' ' ++ "Dereference Operator\n"
 
 identShowOpr2 :: Int -> Opr2 -> String
 
@@ -359,6 +364,12 @@ identShowExpr ident (New t _) = "\n" ++
 identShowExpr ident (Delete pt _) = "\n" ++
   replicate ident ' ' ++ "Delete:\n"
   ++ identShowExpr (ident + 2) pt
+
+identShowExpr ident (DerefAssign{ptrExpr=pt,value=val}) = "\n" ++
+  replicate ident ' ' ++ "Assign to deref pointer:\n"
+  ++ identShowExpr (ident + 2) pt
+  ++ "\n" ++ replicate ident ' ' ++"the value:\n"
+  ++ identShowExpr (ident + 2) val
 
 identShowExpr ident (ArrayIndexing exp_ arrNm _) = "\n" ++
   replicate ident ' ' ++ "Access Array: "

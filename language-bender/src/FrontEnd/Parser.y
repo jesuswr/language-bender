@@ -22,7 +22,7 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 %tokentype { TK.Token }
 %error { parseError }
 %monad { P.ParserState }
-%expect 128
+%expect 145
 
 %token
     bender              { TK.Token _ TK.TKbender }
@@ -76,6 +76,8 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
     and                 { TK.Token _ TK.TKand }
     or                  { TK.Token _ TK.TKor }
     not                 { TK.Token _ TK.TKnot }
+    deref               { TK.Token _ TK.TKDeref }
+    is_                 { TK.Token _ TK.TKDerefAssign }
     if                  { TK.Token _ TK.TKif }
     otherwise           { TK.Token _ TK.TKotherwise }
     dotOtherwise        { TK.Token _ TK.TKdotOtherwise }
@@ -121,6 +123,7 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 %left died
 
 %right is 
+%right deref
 %left and or
 
 %nonassoc '<' '<=' '>' '>=' 
@@ -128,7 +131,7 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 %left '+' '-'
 %left '*' '/' '%'
 
-%right not NEG
+%right not NEG DEREF
 %right techniqueFrom
 
 
@@ -261,6 +264,8 @@ Expr            :: { AST.Expr }
 
     | born Type member                                  {% P.checkExpr $ AST.New $2 AST.TypeError }
     | Expr died                                         {% P.checkExpr $ AST.Delete $1 AST.TUnit }
+    | deref Expr is_ Expr                               {% P.checkExpr $ AST.DerefAssign $2 $4 AST.TypeError }
+
     | disciple Expr of Expr                             {% P.checkExpr $ AST.ArrayIndexing $2 $4 AST.TypeError }
     | masterOf ExprList rightNow                        {% P.checkExpr $ AST.Array (reverse $2) AST.TypeError 0 }
 
@@ -293,6 +298,7 @@ Expr            :: { AST.Expr }
     | not Expr                                          {% P.checkExpr $ AST.Op1 AST.Negation $2 AST.TypeError }
     | '-' Expr %prec NEG                                {% P.checkExpr $ AST.Op1 AST.Negative $2 AST.TypeError }
     | Expr unit                                         {% P.checkExpr $ AST.Op1 AST.UnitOperator $1 AST.TypeError }
+    | deref Expr %prec DEREF                            {% P.checkExpr $ AST.Op1 AST.DerefOperator $2 AST.TypeError } 
 
     -- >> Control Flow -----------------------------------------------------------------------------------
     | toBeContinued Expr                                {% P.checkExpr $ AST.Continue $2 (AST.expType $2) }

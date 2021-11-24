@@ -662,7 +662,10 @@ checkExpr o@AST.Op2 {AST.op2 =_operator, AST.opr1=_opr1, AST.opr2=_opr2} = do
           | isMod _operator = AST.TInt
           | otherwise = AST.TBool
 
-    if typeMatch (AST.expType _opr1) (AST.expType _opr2) && ok1 && ok2
+    -- Check both operators match its types
+    ok3 <- _checkTypeMatch [AST.expType _opr1] _opr2
+
+    if ok3 && ok1 && ok2
     -- Set the expression type
         then return o{AST.expType = opType}
         else return o{AST.expType = AST.TypeError}
@@ -682,9 +685,15 @@ checkExpr o@AST.Op1 {AST.op1=_operator, AST.opr=_opr} = do
     -- get expression type and check _opr type
     opType <- case _operator of
 
-        AST.UnitOperator -> return AST.TUnit
+        AST.UnitOperator  -> return AST.TUnit
 
-        _                -> do
+        AST.DerefOperator -> do
+
+            ok <- _checkTypeMatch [AST.TPtr AST.TVoid] _opr
+            if ok then return (AST.ptrType $ AST.expType _opr)
+                else return AST.TypeError 
+
+        _                 -> do
 
             let expectedTypes = getOPTypes _operator
             ok <- _checkTypeMatch expectedTypes _opr
@@ -693,8 +702,8 @@ checkExpr o@AST.Op1 {AST.op1=_operator, AST.opr=_opr} = do
 
     return o{AST.expType = opType}
   where
-    getOPTypes AST.Negation = [AST.TBool]
-    getOPTypes AST.Negative = [AST.TFloat, AST.TInt]
+    getOPTypes AST.Negation      = [AST.TBool]
+    getOPTypes AST.Negative      = [AST.TFloat, AST.TInt]
     getOPTypes x = error $ "Un suported Opr1 variation in getOPTypes: " ++ show x
 
 --  Check Array Literal Expression
@@ -834,12 +843,35 @@ checkExpr d@AST.Delete {AST.ptrExpr=_ptrExpr} = do
     --check that _ptrExpr is a pointer
     case AST.expType _ptrExpr of
         AST.TPtr t -> case t of
-            AST.TypeError ->
-                addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] t
+            AST.TypeError -> do
+                addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] (AST.TPtr t)
             _             -> return ()
         t -> addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] t
 
-    return d
+    return d {AST.expType = AST.TUnit}
+
+-- Check Deref and assign to pointed 
+checkExpr p@AST.DerefAssign { AST.ptrExpr=_ptrExpr, AST.value=_value} = do
+    -- check that _ptrExpr is a pointer of the same type of value
+    newType <- case AST.expType _ptrExpr of
+        
+        AST.TPtr t -> case t of
+
+            AST.TypeError -> do
+                
+                addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] (AST.TPtr t)
+                return AST.TypeError
+            t             -> do
+                ok <- _checkTypeMatch [t] _value
+                if ok then return t
+                    else return AST.TypeError
+
+        t -> do
+ 
+            addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] t
+            return AST.TypeError
+
+    return p {AST.expType = newType}
 
 --  Check array index access
 checkExpr a@AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = do
@@ -1186,8 +1218,8 @@ getOperationTypes AST.Lt = [AST.TFloat, AST.TInt, AST.TBool]
 getOperationTypes AST.LtEq = [AST.TFloat, AST.TInt, AST.TBool]
 getOperationTypes AST.Gt = [AST.TFloat, AST.TInt, AST.TBool]
 getOperationTypes AST.GtEq = [AST.TFloat, AST.TInt, AST.TBool]
-getOperationTypes AST.Eq = [AST.TFloat, AST.TInt, AST.TBool]
-getOperationTypes AST.NotEq = [AST.TFloat, AST.TInt, AST.TBool]
+getOperationTypes AST.Eq = [AST.TFloat, AST.TInt, AST.TBool, AST.TChar, AST.TPtr AST.TVoid]
+getOperationTypes AST.NotEq = [AST.TFloat, AST.TInt, AST.TBool, AST.TChar, AST.TPtr AST.TVoid]
 getOperationTypes AST.And = [AST.TBool]
 getOperationTypes AST.Or = [AST.TBool]
 
@@ -1195,6 +1227,7 @@ getOperationTypes AST.Or = [AST.TBool]
 
 -- Check if two types match
 typeMatch :: AST.Type -> AST.Type -> Bool
+typeMatch (AST.TPtr t1) (AST.TPtr t2) = typeMatch t1 t2
 typeMatch t1 t2 = t2 `elem` getCastClass t1
 
 -- return the list of cast-able types with each other
@@ -1216,9 +1249,16 @@ _checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType
 
 -- | Check if a given type matches some of the expected ones. Report error if not 
 _checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
+
+_checkTypeMatch' [] (AST.TPtr t)                         = return False
+_checkTypeMatch' ((AST.TPtr t1):ts) (AST.TPtr AST.TVoid) = return True
+_checkTypeMatch' ((AST.TPtr t1):ts) (AST.TPtr t2)        = _checkTypeMatch' [t1] t2
+_checkTypeMatch' (tt:ts) (AST.TPtr t)                    = _checkTypeMatch' ts (AST.TPtr t)
+
 _checkTypeMatch' expected exprType
     | exprType == AST.TypeError = return False -- nothing matches TypeError
-    | AST.TVoid `elem` expected = return True  -- void typematches enything 
+    | AST.TVoid `elem` expected = return True  -- void typematches enything
+    | exprType == (AST.TPtr AST.TVoid) = return (hasTPtr expected)
     | otherwise =
     case exprType of
         AST.TypeError -> return False
@@ -1229,6 +1269,9 @@ _checkTypeMatch' expected exprType
                                 return False
     where
         expected' = concatMap getCastClass expected
+        hasTPtr [] = False
+        hasTPtr ((AST.TPtr{}):ts) = True
+        hasTPtr (t:ts) = True
 
 _checkTypeMatch'' :: AST.Type -> AST.Expr -> ParserState Bool
 _checkTypeMatch'' t e = _checkTypeMatch [t] e

@@ -65,6 +65,8 @@ data TokenType =
     TKand                                |
     TKor                                 |
     TKnot                                |
+    TKDeref                              |
+    TKDerefAssign                        |
     TKif                                 |
     TKotherwise                          |
     TKdotOtherwise                       |
