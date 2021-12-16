@@ -26,8 +26,8 @@ data FuncArg = FuncArg{ argName :: U.Name, argType :: Type, defaultVal :: Maybe 
 -- | Declaration of new things
 data Declaration    = Variable  { decName :: U.Name, varType :: Type, initVal :: Maybe Expr, isConst :: Bool, declScope :: Int }
                     | Reference { decName :: U.Name, refName :: U.Name, declScope :: Int }
-                    | Union     { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int, declScope :: Int }
-                    | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int, declScope :: Int }
+                    | Union     { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int, declScope :: Int, fieldScope :: Int }
+                    | Struct    { decName :: U.Name, fields :: [(U.Name, Type)] , width :: Int, align :: Int, declScope :: Int, fieldScope :: Int }
                     | Func      { decName :: U.Name, args :: [FuncArg], retType :: Type , body :: Expr, declScope :: Int, baseStackSize :: Int}
                     deriving(Eq)
 
@@ -399,12 +399,12 @@ identShowDeclaration ident (Reference name refNm _) = "\n" ++
   replicate ident ' ' ++ "Declaration of Reference with name '" 
   ++ name ++ "', referring '" ++ refNm ++ "'\n" 
 
-identShowDeclaration ident (Union name fs _ _ _) = "\n" ++
+identShowDeclaration ident (Union name fs _ _ _ _) = "\n" ++
   replicate ident ' ' ++ "Declaration of Union '" ++ name ++ "'\n"
   ++ "\n" ++ replicate ident ' ' ++ "with fields: \n"
   ++ concatMap (identShowField (ident + 2)) fs
 
-identShowDeclaration ident (Struct name fs _ _ _) = 
+identShowDeclaration ident (Struct name fs _ _ _ _) = 
   replicate ident ' ' ++ "Declaration of Struct '" ++ name ++ "'\n"
   ++ "\n" ++ replicate ident ' ' ++ "with fields: \n"
   ++ concatMap (identShowField (ident + 2)) fs

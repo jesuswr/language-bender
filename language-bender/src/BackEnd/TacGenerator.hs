@@ -233,7 +233,7 @@ generateTac' program = do
     hasMain <- findMain
     M.when hasMain $ writeTac (TAC.newTAC TAC.Goto (TAC.Label $ getTacId "main" 0) [])
     genTacDecls $ AST.decls program
-    genTacStd
+    --genTacStd
 
 findMain :: GeneratorMonad Bool
 findMain = do
@@ -482,6 +482,7 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
     let AST.CustomType _ scope = _expType
         Just symStruct = ST.findSymbolInScope' name scope st
         fields_names = map fst $ (ST.fields . ST.symType) symStruct
+        field_scope  = (ST.fieldScope . ST.symType) symStruct
     currId <- getNextTemp
 
 
@@ -494,7 +495,7 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
     -- iterar por fields asignando los valores a las posiciones de memoria correspondientes. TODO
     M.forM_ (zip _list fields_names) (\ (field_expr, field_name) -> do
              
-            let Just tagSymb = ST.findSymbolInScope' field_name (scope + 1) st
+            let Just tagSymb = ST.findSymbolInScope' field_name field_scope st
                 fieldOffset = (ST.offset . ST.symType) tagSymb
 
             Just from <- genTacExpr field_expr
@@ -520,6 +521,8 @@ genTacExpr AST.LiteralUnion{AST.unionName=name, AST.tag=_tag,AST.value=_value,AS
     Just from <- genTacExpr _value
 
     let AST.CustomType _ scope = t
+        Just symUnion = ST.findSymbolInScope' name scope st
+        field_scope  = (ST.fieldScope . ST.symType) symUnion
 
     union_address <- getNextTemp
 
@@ -528,7 +531,7 @@ genTacExpr AST.LiteralUnion{AST.unionName=name, AST.tag=_tag,AST.value=_value,AS
         TAC.Constant $ TAC.Int _offset
         ]
 
-    let tagType = ST.getVarType st _tag (scope + 1)
+    let tagType = ST.getVarType st _tag field_scope
         size    = ST.getTypeSize st tagType
 
     -- base [offset] := _value
@@ -624,9 +627,13 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = d
     State{symT=st} <- RWS.get
     case AST.expType struct of
         AST.CustomType name scope -> do
+
+            let Just symStruct= ST.findSymbolInScope' name scope st
+                field_scope  = (ST.fieldScope . ST.symType) symStruct
+
             -- get symbols for struct and tag, maybe struct not needed?
             let maybeStruct = ST.findSymbolInScope' name scope st
-                maybeTag    = ST.findSymbolInScope' tag (scope + 1) st
+                maybeTag    = ST.findSymbolInScope' tag field_scope st
 
             case (maybeStruct, maybeTag) of
                 (Just _, Just tagSymb) -> do
@@ -662,9 +669,13 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
     State{symT=st} <- RWS.get
     case AST.expType struct of
         AST.CustomType name scope -> do
+
+            let Just symStruct= ST.findSymbolInScope' name scope st
+                field_scope  = (ST.fieldScope . ST.symType) symStruct
+
             -- get symbols for struct and tag, maybe struct not needed?
             let maybeStruct = ST.findSymbolInScope' name scope st
-                maybeTag    = ST.findSymbolInScope' tag (scope + 1) st
+                maybeTag    = ST.findSymbolInScope' tag field_scope st
 
             case (maybeStruct, maybeTag) of
                 (Just _, Just tagSymb) -> do

@@ -149,14 +149,14 @@ Declarations    :: { [AST.Declaration] }
 
 Declaration     :: { AST.Declaration }
     : VarDecl                                                 { $1 }
-    | element id compoundBy PushScope PushOffset StructIdDecls StructOffset PopOffset PopScope  {% do
-                                                                                                    currSt@P.State{P.symTable = st} <- RWS.get
-                                                                                                    P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $6) $7 (((ST.getTypeAlign st) . snd . last) $6) 0
-                                                                                                }
-    | energy id allows PushScope PushOffset UnionIdDecls PopOffset PopScope         {% do
-                                                                                        currSt@P.State{P.symTable = st} <- RWS.get
-                                                                                        P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2 ) (reverse $6) (ST.getMaxSize st $6)  (foldl lcm 1 (map ((ST.getTypeAlign st) . snd) $6) ) 0
-                                                                                    }
+    | element id compoundBy PushScope PushOffset StructIdDecls StructOffset CurrentScope PopOffset PopScope     {% do
+                                                                                                                    currSt@P.State{P.symTable = st} <- RWS.get
+                                                                                                                    P.checkDecls $ AST.Struct ((TK.name . TK.tktype) $2) (reverse $6) $7 (((ST.getTypeAlign st) . snd . last) $6) 0 $8
+                                                                                                                }
+    | energy id allows PushScope PushOffset UnionIdDecls CurrentScope PopOffset PopScope    {% do
+                                                                                                currSt@P.State{P.symTable = st} <- RWS.get
+                                                                                                P.checkDecls $ AST.Union  ((TK.name . TK.tktype) $2 ) (reverse $6) (ST.getMaxSize st $6)  (foldl lcm 1 (map ((ST.getTypeAlign st) . snd) $6) ) 0 $7
+                                                                                            }
     | FuncDecl                                                { $1 }
     | ProcDecl                                                { $1 }
 
@@ -390,6 +390,9 @@ PushOffset
 
 PopOffset
     : {- empty -}                                       {% P.popOffset }
+
+CurrentScope
+    : {- empty -}                                       {% P.topScope }
 
 {
 

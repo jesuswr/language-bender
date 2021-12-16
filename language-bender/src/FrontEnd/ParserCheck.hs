@@ -317,26 +317,26 @@ checkDecls r@AST.Reference{ AST.decName=sid, AST.refName = refId } = do
     return r{ AST.declScope = currScope}
 
 -- Check union definition 
-checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields, AST.width=_w, AST.align=_a} = do
+checkDecls u@AST.Union {AST.decName=_decName, AST.fields=_fields, AST.width=_w, AST.align=_a, AST.fieldScope=_fieldScope} = do
 
     --  Create symbol type
     let symbol = declToSym u
 
     -- check if add symbol is possible 
-    updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w+4, ST.align=_a}}
+    updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w+4, ST.align=_a, ST.fieldScope=_fieldScope}}
 
     currScope <- getScope
 
     return u{ AST.declScope = currScope, AST.width = _w+4 }
 
 -- Check Struct definition 
-checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields, AST.width=_w, AST.align=_a} = do
+checkDecls s@AST.Struct {AST.decName=_decName, AST.fields=_fields, AST.width=_w, AST.align=_a, AST.fieldScope=_fieldScope} = do
 
     --  Create symbol 
     let symbol = declToSym s
 
     -- check if add symbol is possible 
-    updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w, ST.align=_a}}
+    updateSymbol symbol{ST.symType=(ST.symType symbol){ST.width=_w, ST.align=_a, ST.fieldScope=_fieldScope}}
 
     currScope <- getScope
 
@@ -1126,9 +1126,9 @@ declToSym decl = ST.Symbol {
             }
 
 
-        declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields, ST.width = 0, ST.align = 0} --arreglar despues
+        declToSymType AST.Union {AST.fields=_fields} = ST.UnionType {ST.fields=_fields, ST.width = 0, ST.align = 0, ST.fieldScope=0}
 
-        declToSymType AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields, ST.width = 0, ST.align = 0} --arreglar despues
+        declToSymType AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields, ST.width = 0, ST.align = 0, ST.fieldScope=0}
 
         declToSymType AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body} =
             ST.Function {

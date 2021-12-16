@@ -34,8 +34,8 @@ type Dictionary = M.Map Identifier [Symbol]
 data SymType   
     = Variable      { varType :: AST.Type, initVal :: Maybe AST.Expr, isConst :: Bool, offset :: Int, staticLabel :: Maybe String }
     | Type          { unType :: AST.Type , width :: Int, align :: Int }
-    | StructType    { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int }
-    | UnionType     { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int }
+    | StructType    { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int, fieldScope :: Int }
+    | UnionType     { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int, fieldScope :: Int }
     | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
     | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
     | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int, offset :: Int, staticLabel :: Maybe String}
@@ -112,10 +112,10 @@ getTypeSize st AST.CustomType{AST.tName = n, AST.scope = s} =
         Nothing  -> 0
         Just sym -> 
             case symType sym of 
-                Type _ w _       -> w
-                StructType _ w _ -> w
-                UnionType _ w _  -> w
-                _                -> 0
+                Type _ w _         -> w
+                StructType _ w _ _ -> w
+                UnionType _ w _ _  -> w
+                _                  -> 0
 getTypeSize st t = 
     case findSymbolInScope (AST.getTypeId t) 0 st of
         Nothing  -> 0
@@ -131,10 +131,10 @@ getTypeAlign st AST.CustomType{AST.tName = n, AST.scope = s} =
         Nothing  -> 1
         Just sym -> 
             case symType sym of 
-                Type _ _ a       -> a
-                StructType _ _ a -> a
-                UnionType _ _ a  -> a
-                _                -> 1
+                Type _ _ a         -> a
+                StructType _ _ a _ -> a
+                UnionType _ _ a _  -> a
+                _                  -> 1
 getTypeAlign st t = 
     case findSymbolInScope (AST.getTypeId t) 0 st of
         Nothing  -> 1
