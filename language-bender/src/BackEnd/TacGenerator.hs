@@ -1071,7 +1071,9 @@ genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
     -- if op is Unit, return nothing
     -- else assing to a temp variable and return it
     case op of
-        AST.UnitOperator -> return Nothing
+        AST.UnitOperator -> do
+            Just opId <- genTacExpr l
+            return Nothing
         _                -> do
             -- generate code for expr
             Just opId <- genTacExpr l
