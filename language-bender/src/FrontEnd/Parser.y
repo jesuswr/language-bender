@@ -22,7 +22,7 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 %tokentype { TK.Token }
 %error { parseError }
 %monad { P.ParserState }
-%expect 145
+%expect 162
 
 %token
     bender              { TK.Token _ TK.TKbender }
@@ -267,7 +267,8 @@ Expr            :: { AST.Expr }
     | Expr died                                         {% P.checkExpr $ AST.Delete $1 AST.TUnit }
     | deref Expr is_ Expr                               {% P.checkExpr $ AST.DerefAssign $2 $4 AST.TypeError }
 
-    | disciple Expr of Expr                             {% P.checkExpr $ AST.ArrayIndexing $2 $4 AST.TypeError }
+    | ArrayIndex is_ Expr                               {% P.checkExpr $ AST.ArrayAssign (fst $1) (snd $1) $3 AST.TypeError }
+    | ArrayIndex                                        {% P.checkExpr $ AST.ArrayIndexing (fst $1) (snd $1) AST.TypeError }
     | masterOf ExprList rightNow                        {% P.checkExpr $ AST.Array (reverse $2) AST.TypeError 0 }
 
     -- >> Const Values --------------------------------------------------------------------------------
@@ -309,6 +310,11 @@ Expr            :: { AST.Expr }
     | burstUnit                                         {% P.checkExpr $ AST.Break (AST.ConstUnit AST.TUnit) AST.TUnit }
     | returnUnit                                        {% P.checkExpr $ AST.Return  (AST.ConstUnit AST.TUnit) AST.TUnit }
     
+
+    -- >> Array indexing 
+
+ArrayIndex :: { (AST.Expr, AST.Expr) }
+    : disciple Expr of Expr                             { ($2, $4) }
 
     -- >> For description 
 

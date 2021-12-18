@@ -23,7 +23,7 @@ import Data.Functor((<&>))
 %tokentype { TK.Token }
 %error { parseError }
 %monad { P.ParserState }
-%expect 145
+%expect 162
 
 %token
     bender              { TK.Token _ TK.TKbender }
@@ -248,7 +248,8 @@ Expr
     | Expr died                                                                          {}
     | deref Expr is_ Expr                                                                {}
 
-    | disciple Expr of Expr                                                              {}
+    | ArrayIndex is_ Expr                                                                {}
+    | ArrayIndex                                                                         {}
     | masterOf ExprList rightNow                                                         {} 
 
     -- >> Const Values --------------------------------------------------------------------------------
@@ -289,7 +290,12 @@ Expr
     | toBeContinuedUnit                                                                  {}
     | burstUnit                                                                          {}
     | returnUnit                                                                         {}
-    
+   
+    -- >> Array indexing 
+
+ArrayIndex
+    : disciple Expr of Expr                                                              {}
+
     -- >> Evaluable and none evaluable expressions > -----------------------------------------------------
 Exprs         
     : Expr                                                                               {}

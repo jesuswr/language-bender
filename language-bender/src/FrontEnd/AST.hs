@@ -87,6 +87,7 @@ data Expr   = ConstChar       { cVal :: String, expType :: Type }
             | Delete          { ptrExpr :: Expr, expType :: Type }
             | DerefAssign     { ptrExpr :: Expr, value :: Expr, expType :: Type }
             | ArrayIndexing   { index :: Expr, expr :: Expr, expType :: Type }
+            | ArrayAssign     { index :: Expr, arrayExpr :: Expr, value :: Expr, expType :: Type }
             deriving(Eq)
 
 -- | Program data type     
@@ -374,8 +375,16 @@ identShowExpr ident (DerefAssign{ptrExpr=pt,value=val}) = "\n" ++
 identShowExpr ident (ArrayIndexing exp_ arrNm _) = "\n" ++
   replicate ident ' ' ++ "Access Array: "
   ++ identShowExpr (ident + 2) arrNm ++ "\n"
-  ++ "\n" ++ replicate ident ' ' ++"At position:\n"
+  ++ replicate ident ' ' ++"At position:\n"
   ++ identShowExpr (ident + 2) exp_
+
+identShowExpr ident (ArrayAssign exp_ arrNm val _) = "\n" ++
+  replicate ident ' ' ++ "Assign Array: "
+  ++ identShowExpr (ident + 2) arrNm ++ "\n"
+  ++ replicate ident ' ' ++"At position:\n"
+  ++ identShowExpr (ident + 2) exp_
+  ++ replicate ident ' ' ++ "the value:\n"
+  ++ identShowExpr (ident + 2) val
 
 identShowField :: Int -> (U.Name, Type) -> String
 identShowField ident (name, t) = "\n" ++

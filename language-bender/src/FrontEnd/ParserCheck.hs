@@ -889,6 +889,27 @@ checkExpr a@AST.ArrayIndexing {AST.index=_index, AST.expr=_expr} = do
     -- Set expression type
     return a{AST.expType = aType}
 
+
+checkExpr a@AST.ArrayAssign {AST.index=_index, AST.arrayExpr=_arrayExpr, AST.value=_value} = do
+    -- check index is integer type
+    _ <- _checkTypeMatch'' AST.TInt _index
+
+    let arrExprType = AST.expType _arrayExpr
+    -- check _expr is array type
+    aType <- case arrExprType of
+        AST.TArray {AST.arrType=_arrType} -> return _arrType
+        _ -> do
+            addStaticError $ SE.NonArrayExpr arrExprType
+            return AST.TypeError
+
+    -- check value match type of array
+    match <- _checkTypeMatch'' aType _value
+
+    if match
+        then return a{ AST.expType = aType }
+        else return a{ AST.expType = AST.TypeError }
+
+
 -- Check Struct Literal
 checkExpr c@AST.LiteralStruct {AST.structName=_structName, AST.list=_list} = do
 
@@ -1265,8 +1286,9 @@ _checkTypeMatch' ((AST.TArray t1 _):ts) (AST.TArray t2 _) = _checkTypeMatch' [t1
 _checkTypeMatch' (tt:ts) (AST.TArray t sz)                = _checkTypeMatch' ts (AST.TArray t sz)
 
 _checkTypeMatch' expected exprType
-    | exprType == AST.TypeError = return False -- nothing matches TypeError
-    | AST.TVoid `elem` expected = return True  -- void typematches enything
+    | exprType == AST.TypeError        = return False -- nothing matches TypeError
+    | AST.TypeError `elem` expected    = return False -- nothing matches TypeError
+    | AST.TVoid `elem` expected        = return True  -- void typematches enything
     | exprType == (AST.TPtr AST.TVoid) = return (hasTPtr expected)
     | otherwise =
     case exprType of
