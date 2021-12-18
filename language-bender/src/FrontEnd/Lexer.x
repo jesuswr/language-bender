@@ -83,7 +83,8 @@ tokens :-
 <0>     purity                                           { pushTK TKpurity }
 
                 -- array 
-<0>     nation @w since                                  { pushTK TKnation }
+<0>     nation @w since                                  { pushTK TKnationSince }
+<0>     nation                                           { pushTK TKnation}
 <0>     years                                            { pushTK TKyear }
 <0>     master @w of                                     { pushTK TKmasterOf }
 <0>     right @w now                                     { pushTK TKRightNow }

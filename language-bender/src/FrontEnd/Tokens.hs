@@ -33,6 +33,7 @@ data TokenType =
     TKearth                              |
     TKmetal                              |
     TKnation                             |
+    TKnationSince                        |
     TKyear                               |
     TKpurity                             |
     TKmasterOf                           |

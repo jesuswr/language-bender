@@ -199,7 +199,7 @@ checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal _) = do
 
     let sym = ST.Symbol {
             ST.identifier=_argName,
-            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False, ST.offset = 0,ST.staticLabel=Nothing} , --arreglar despues
+            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False, ST.offset = 0,ST.staticLabel=Nothing} ,
             ST.scope=0,
             ST.enrtyType=Nothing
         }
@@ -1083,11 +1083,13 @@ checkType arrType@(AST.TArray _ sz) = do
     -- checkType t
 
     -- check that size of array is int
-    let sizeType = AST.expType sz
+    isInt <- _checkTypeMatch'' AST.TInt sz
 
-    case sizeType of
-        AST.TInt -> return arrType
-        _ -> return AST.TypeError
+    if isInt
+        then return arrType
+        else do
+            addStaticError $ SE.UnmatchingTypes{SE.expectedTypes=[AST.TInt], SE.actualType=(AST.expType sz)}
+            return AST.TypeError
 
 checkType ptr@(AST.TPtr _) =
     return ptr
@@ -1223,11 +1225,15 @@ getOperationTypes AST.NotEq = [AST.TFloat, AST.TInt, AST.TBool, AST.TChar, AST.T
 getOperationTypes AST.And = [AST.TBool]
 getOperationTypes AST.Or = [AST.TBool]
 
+
+-----------------------------------------------------------------------------------------------------
 -- < Utility functions to check matching types > ---------------------------------------------------- 
+
 
 -- Check if two types match
 typeMatch :: AST.Type -> AST.Type -> Bool
 typeMatch (AST.TPtr t1) (AST.TPtr t2) = typeMatch t1 t2
+typeMatch (AST.TArray t1 sz1) (AST.TArray t2 sz2) = typeMatch t1 t2
 typeMatch t1 t2 = t2 `elem` getCastClass t1
 
 -- return the list of cast-able types with each other
@@ -1250,10 +1256,13 @@ _checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType
 -- | Check if a given type matches some of the expected ones. Report error if not 
 _checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
 
-_checkTypeMatch' [] (AST.TPtr t)                         = return False
+_checkTypeMatch' [] _                                    = return False
 _checkTypeMatch' ((AST.TPtr t1):ts) (AST.TPtr AST.TVoid) = return True
 _checkTypeMatch' ((AST.TPtr t1):ts) (AST.TPtr t2)        = _checkTypeMatch' [t1] t2
 _checkTypeMatch' (tt:ts) (AST.TPtr t)                    = _checkTypeMatch' ts (AST.TPtr t)
+
+_checkTypeMatch' ((AST.TArray t1 _):ts) (AST.TArray t2 _) = _checkTypeMatch' [t1] t2
+_checkTypeMatch' (tt:ts) (AST.TArray t sz)                = _checkTypeMatch' ts (AST.TArray t sz)
 
 _checkTypeMatch' expected exprType
     | exprType == AST.TypeError = return False -- nothing matches TypeError

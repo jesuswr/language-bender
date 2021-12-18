@@ -44,6 +44,7 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
     earth               { TK.Token _ TK.TKearth }
     metal               { TK.Token _ TK.TKmetal }
     nation              { TK.Token _ TK.TKnation }
+    nationSince         { TK.Token _ TK.TKnationSince }
     year                { TK.Token _ TK.TKyear }
     masterOf            { TK.Token _ TK.TKmasterOf }
     rightNow            { TK.Token _ TK.TKRightNow }
@@ -370,10 +371,12 @@ Type            :: { AST.Type }
     : water                                             { AST.TFloat }
     | air                                               { AST.TInt }
     | earth                                             { AST.TChar }
-    | metal Expr purity                                 { % P.checkType $ AST.TArray AST.TChar $2 }  -- arreglar docs  
+    | metal Expr purity                                 {% P.checkType $ AST.TArray AST.TChar $2 }  -- arreglar docs
+    | metal                                             {% P.checkType $ AST.TArray AST.TChar (AST.ConstInt 0 AST.TInt) } 
     | fire                                              { AST.TBool }
     | id                                                {% P.getCustomType ((TK.name . TK.tktype) $1) }
-    | Type nation Expr year                             {% P.checkType $ AST.TArray $1 $3}
+    | Type nationSince Expr year                        {% P.checkType $ AST.TArray $1 $3}
+    | Type nation                                       {% P.checkType $ AST.TArray $1 (AST.ConstInt 0 AST.TInt) }
     | Type art                                          { AST.TPtr $1 }
 
 
