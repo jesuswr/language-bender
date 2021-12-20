@@ -197,9 +197,15 @@ preCheckFunArg arg@(AST.FuncArg _argName _argType _defaultVal _) = do
 checkFunArg :: AST.FuncArg -> ParserState AST.FuncArg
 checkFunArg arg@(AST.FuncArg _argName _argType _defaultVal _) = do
 
+    State{symTable = st} <- RWS.get
+
+    let width = ST.getTypeSize st _argType
+        align = ST.getTypeAlign st _argType
+    o <- updateOffset align width
+
     let sym = ST.Symbol {
             ST.identifier=_argName,
-            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False, ST.offset = 0,ST.staticLabel=Nothing} ,
+            ST.symType= ST.Variable{ST.varType= _argType, ST.initVal=_defaultVal, ST.isConst = False, ST.offset = o,ST.staticLabel=Nothing} ,
             ST.scope=0,
             ST.enrtyType=Nothing
         }
@@ -401,14 +407,19 @@ checkExpr a@AST.Assign {AST.variable=_variable, AST.value=_value} = do
         AST.TUnit -> return True
         _         -> return False
 
+    
+    let idScope = case ST.findSymbol _variable st of
+            Just ST.Symbol{ST.scope = scope_ } -> scope_
+            Nothing -> -1
+
+    M.when (ST.getVarIsConst st _variable idScope) $ do
+        addStaticError (SE.AssignToConst _variable)
+
     -- get return type
     let assgType = if match && not assignUnit
         then var_type
         else AST.TypeError
 
-    let idScope = case ST.findSymbol _variable st of
-            Just ST.Symbol{ST.scope = scope_ } -> scope_
-            Nothing -> -1
 
     return a{AST.expType = assgType, AST.declScope_ = idScope}
 
@@ -861,7 +872,7 @@ checkExpr p@AST.DerefAssign { AST.ptrExpr=_ptrExpr, AST.value=_value} = do
                 
                 addStaticError $ SE.UnmatchingTypes [AST.TPtr AST.TVoid] (AST.TPtr t)
                 return AST.TypeError
-            t             -> do
+            _             -> do
                 ok <- _checkTypeMatch [t] _value
                 if ok then return t
                     else return AST.TypeError
@@ -1254,7 +1265,7 @@ getOperationTypes AST.Or = [AST.TBool]
 -- Check if two types match
 typeMatch :: AST.Type -> AST.Type -> Bool
 typeMatch (AST.TPtr t1) (AST.TPtr t2) = typeMatch t1 t2
-typeMatch (AST.TArray t1 sz1) (AST.TArray t2 sz2) = typeMatch t1 t2
+typeMatch (AST.TArray t1 _) (AST.TArray t2 _) = typeMatch t1 t2
 typeMatch t1 t2 = t2 `elem` getCastClass t1
 
 -- return the list of cast-able types with each other
@@ -1278,12 +1289,12 @@ _checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType
 _checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
 
 _checkTypeMatch' [] _                                    = return False
-_checkTypeMatch' ((AST.TPtr t1):ts) (AST.TPtr AST.TVoid) = return True
-_checkTypeMatch' ((AST.TPtr t1):ts) (AST.TPtr t2)        = _checkTypeMatch' [t1] t2
-_checkTypeMatch' (tt:ts) (AST.TPtr t)                    = _checkTypeMatch' ts (AST.TPtr t)
+_checkTypeMatch' ((AST.TPtr _):_) (AST.TPtr AST.TVoid) = return True
+_checkTypeMatch' ((AST.TPtr t1):_) (AST.TPtr t2)        = _checkTypeMatch' [t1] t2
+_checkTypeMatch' (_:ts) (AST.TPtr t)                    = _checkTypeMatch' ts (AST.TPtr t)
 
-_checkTypeMatch' ((AST.TArray t1 _):ts) (AST.TArray t2 _) = _checkTypeMatch' [t1] t2
-_checkTypeMatch' (tt:ts) (AST.TArray t sz)                = _checkTypeMatch' ts (AST.TArray t sz)
+_checkTypeMatch' ((AST.TArray t1 _):_) (AST.TArray t2 _) = _checkTypeMatch' [t1] t2
+_checkTypeMatch' (_:ts) (AST.TArray t sz)                = _checkTypeMatch' ts (AST.TArray t sz)
 
 _checkTypeMatch' expected exprType
     | exprType == AST.TypeError        = return False -- nothing matches TypeError
@@ -1301,8 +1312,8 @@ _checkTypeMatch' expected exprType
     where
         expected' = concatMap getCastClass expected
         hasTPtr [] = False
-        hasTPtr ((AST.TPtr{}):ts) = True
-        hasTPtr (t:ts) = True
+        hasTPtr ((AST.TPtr{}):_) = True
+        hasTPtr (_:_) = True
 
 _checkTypeMatch'' :: AST.Type -> AST.Expr -> ParserState Bool
 _checkTypeMatch'' t e = _checkTypeMatch [t] e
