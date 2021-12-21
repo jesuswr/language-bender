@@ -48,8 +48,9 @@ type FuncDataStack = [FuncData]
 
 -- | Stateful information required by the conversion process
 data GeneratorState = State
-                    { nextTemporal :: Int              -- ^ Available id' for the next temporal symbol name
-                    , nextLabelTemporal :: Int         -- ^ Available id' for the next temporal label 
+                    { nextTemporal :: Int              -- ^ Available id' for the next temporal symbol name (Int)
+                    , nextLabelTemporal :: Int         -- ^ Available id' for the next temporal label
+                    , nextFloatTemporal :: Int         -- ^ Available id' for the next temporal float
                     , currentIterData :: IterDataStack    -- ^ Stack of data for the currently running iterator
                     , currentFuncData :: FuncDataStack    -- ^ Stack of data for the currently running iterator
                     , symT :: ST.SymTable              -- ^ The symbol table
@@ -65,12 +66,18 @@ type GeneratorMonad = RWS.RWST () ([TAC.TACCode], [TAC.TACCode]) GeneratorState 
 initialGenState :: ST.SymTable -> GeneratorState
 initialGenState st = State{ nextTemporal = 0
                           , nextLabelTemporal = 0
+                          , nextFloatTemporal = 0
                           , currentIterData = []
                           , currentFuncData = []
                           , symT = st
                           }
 
 -- Generate ID's and Labels
+
+-- separator
+separator :: String
+separator = "__"
+-- separator = "@"
 
 -- | get next temporal variable
 getNextTemp :: GeneratorMonad Id
@@ -82,7 +89,7 @@ getNextTemp = do
 getNextTemp' :: String -> GeneratorMonad Id
 getNextTemp' prefix = do
     t <- getNextTemp
-    return $ prefix ++ "@" ++ t
+    return $ prefix ++ separator ++ t
 
 -- | get next label temporal variable
 getNextLabelTemp :: GeneratorMonad Label
@@ -95,8 +102,34 @@ getNextLabelTemp = do
 getNextLabelTemp' :: String -> GeneratorMonad Label
 getNextLabelTemp' prefix = do
     l <- getNextLabelTemp
+    return $ prefix ++ separator ++ l
 
-    return $ prefix ++ "@" ++ l
+-- | get next temporal float variable
+getNextFloatTemp :: GeneratorMonad Id
+getNextFloatTemp = do
+    s@State{nextFloatTemporal = n} <- RWS.get
+    RWS.put s{nextFloatTemporal = n+1}
+    return $ "F" ++ show n
+
+getNextFloatTemp' :: String -> GeneratorMonad Id
+getNextFloatTemp' prefix = do
+    f <- getNextFloatTemp
+    return $ prefix ++ separator ++ f
+
+-- get the correspondent kind of temporal variable
+-- acording to the given type. 
+getNextTypedTemp :: AST.Type -> GeneratorMonad Id
+getNextTypedTemp t = do
+    case t of
+        AST.TFloat -> getNextFloatTemp
+        _          -> getNextTemp
+
+getNextTypedTemp' :: String -> AST.Type -> GeneratorMonad Id
+getNextTypedTemp' s t = do
+    case t of
+        AST.TFloat -> getNextFloatTemp' s
+        _          -> getNextTemp' s
+
 
 -- | Get the static label of an static variable
 -- | Set it if the variable does not have one already
@@ -120,10 +153,11 @@ getVarStaticLabel id' scope = do
 -- | Get static variable address in an TAC Id
 getVarStaticAddressId :: Id -> Scope -> GeneratorMonad Id
 getVarStaticAddressId id' scope = do
-    let varId = getTacId id' scope
+    s@State{symT=st} <- RWS.get
+    let var_type = ST.getVarType st id' scope
     label <- getVarStaticLabel id' scope
-    var_address <- getNextTemp' varId
-    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String (var_address++" := "++label++" # address of variable "++varId)) []
+    var_address <- getNextTypedTemp' id' var_type
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String (var_address++" := "++label++" # address of variable "++id')) []
     writeTac $ TAC.newTAC TAC.Assign (TAC.Id var_address) [
         TAC.Label label
         ]
@@ -134,7 +168,8 @@ getVarStackAddressId :: Id -> Scope -> GeneratorMonad Id
 getVarStackAddressId id' scope = do
     State{symT=st} <- RWS.get
     let offset = ST.getVarOffset st id' scope
-    var_address <- getNextTemp' id'
+        var_type = ST.getVarType st id' scope
+    var_address <- getNextTypedTemp' id' var_type
     writeTac $ TAC.newTAC TAC.Add (TAC.Id var_address) [
         TAC.Id base,
         TAC.Constant $ TAC.Int offset
@@ -209,7 +244,7 @@ base = TAC.base
 
 -- | generate an unique tac id' from a language bender id'
 getTacId :: Id -> Scope -> Id
-getTacId id' scope = id' ++ "@" ++ show scope
+getTacId id' scope = id' ++ separator ++ show scope
 
 -- | Copy data from one address to another
 makeCopy :: Id -> Id -> GeneratorMonad ()
@@ -231,7 +266,9 @@ generateTac symbolTable program = do
 generateTac' :: AST.Program  -> GeneratorMonad ()
 generateTac' program = do
     hasMain <- findMain
-    M.when hasMain $ writeTac (TAC.newTAC TAC.Goto (TAC.Label $ getTacId "main" 0) [])
+    if hasMain 
+        then writeTac (TAC.newTAC TAC.Goto (TAC.Label $ getTacId "main" 0) [])
+        else writeTac $ TAC.newTAC TAC.Goto (TAC.Label $ "endProgram") []
     genTacDecls $ AST.decls program
     --genTacStd
 
@@ -247,7 +284,7 @@ findMain = do
 
 -- | iterate over declarations in program
 genTacDecls :: [AST.Declaration] -> GeneratorMonad ()
-genTacDecls []     = return ()
+genTacDecls []     = writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "endProgram") []
 genTacDecls (d:ds) = do
     genTacDecl d
     genTacDecls ds
@@ -262,6 +299,9 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
     let varId' = getTacId varId scope
     State{symT=st} <- RWS.get
 
+    -- If the type of the declared variable is an union type
+    -- then add 4 bytes of memory to keep track of 
+    -- the current active field in this variable.
     case _varType of
         AST.CustomType tname tscope -> do
 
@@ -400,7 +440,7 @@ genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope, AST.ba
     let funcData = FuncData {startLabel=startFuncLabel, endLabel=endFuncLabel}
 
     -- generate function label
-    writeTac (TAC.newTAC TAC.MetaLabel (TAC.Label startFuncLabel) [])
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label startFuncLabel) []
 
     -- Write tack for beginFunc
     writeTac $ TAC.newTAC TAC.MetaBeginFunc  stackSize' []
@@ -459,7 +499,7 @@ genTacExpr AST.ConstInt{AST.iVal=val} = do
 
 genTacExpr AST.ConstFloat{AST.fVal=val} = do
     -- get next temporal id' and save the const float in it
-    currId <- getNextTemp
+    currId <- getNextFloatTemp
     writeTac $ TAC.newTAC TAC.Assign (TAC.Id currId) [TAC.Constant (TAC.Float val)]
     return (Just currId)
 
@@ -565,7 +605,7 @@ genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = d
             
             case _expType of
 
-                AST.CustomType typeName typeScope -> do
+                AST.CustomType _ _ -> do
                     -- get var address
                     var_address <- getVarAddressId name scope
                     return (Just var_address)
@@ -575,11 +615,11 @@ genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = d
                     var_address <- getVarAddressId name scope
                     return (Just var_address)
 
-                _ -> do 
+                t -> do 
                     -- var_address # address of variable
                     var_address <- getVarAddressId name scope
                     -- t1 := var_address [0]
-                    currId <- getNextTemp
+                    currId <- getNextTypedTemp t
 
                     writeTac $ case typeSize of
                         -- assign con b 
@@ -727,7 +767,7 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
     let returnIds = map fromJust mbReturnIds
 
     -- Generate return position for this function call if it does returns something
-    fcallRetPos  <- getNextTemp' "freturn"
+    fcallRetPos <- getNextTypedTemp' "freturn" _expType
 
     -- Stack parameters
     M.forM_ returnIds (\s -> writeTac $ TAC.newTAC TAC.Param (TAC.Id s) [])
@@ -764,7 +804,7 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
     forEndLabel   <- getNextLabelTemp' "for_end"
 
     -- Generate needed temporals
-    forResultId   <- getNextTemp' "for_result"
+    forResultId     <- getNextTypedTemp' "for_result" _expType
     mbStartResultId <- genTacExpr _start
     mbEndResultId   <- genTacExpr _end
     mbStepResultId  <- genTacExpr _step
@@ -861,7 +901,7 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
     -- Get needed labels to select where to go
     startLabel'    <- getNextLabelTemp' "while_start"
     outLabel      <- getNextLabelTemp' "while_out"
-    whileResultId <- getNextTemp
+    whileResultId <- getNextTypedTemp _expType
 
     -- Don't add a return addres if returns nothing
     let mbWhileResultId
@@ -911,7 +951,7 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     -- get needed labels to select where to go
     elseLabel <- getNextLabelTemp' "if_else"
     outLabel <- getNextLabelTemp'  "if_out"
-    resultId <- getNextTemp
+    resultId <- getNextTypedTemp expType
 
     -- get conditional and negate it, so we can choose to go to the else
     Just condId <- genTacExpr cond
@@ -1056,17 +1096,17 @@ genTacExpr AST.Declaration{AST.decl=d} = do
     genTacDecl d
     return Nothing
 
-genTacExpr AST.Op2{AST.op2=op, AST.opr1=l, AST.opr2=r} = do
+genTacExpr AST.Op2{AST.op2=op, AST.opr1=l, AST.opr2=r, AST.expType=_expType} = do
     -- generate code for left and right exprs
     Just leftId <- genTacExpr l
     Just rightId <- genTacExpr r
     -- get temp id'
-    currId <- getNextTemp
+    currId <- getNextTypedTemp _expType
     -- assing the op to the id' and return the id'
     writeTac (TAC.TACCode (mapOp2 op) (Just (TAC.Id currId)) (Just (TAC.Id leftId)) (Just (TAC.Id rightId)))
     return (Just currId)
 
-genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
+genTacExpr AST.Op1{AST.op1=op, AST.opr=l, AST.expType=_expType} = do
     
     -- if op is Unit, return nothing
     -- else assing to a temp variable and return it
@@ -1077,7 +1117,7 @@ genTacExpr AST.Op1{AST.op1=op, AST.opr=l} = do
         _                -> do
             -- generate code for expr
             Just opId <- genTacExpr l
-            currId <- getNextTemp
+            currId <- getNextTypedTemp _expType
             writeTac (TAC.TACCode (mapOp1 op) (Just (TAC.Id currId)) (Just (TAC.Id opId)) Nothing)
             return (Just currId)
 
@@ -1152,7 +1192,7 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
     
     -- Get tags and type
     State {symT=_symT} <- RWS.get 
-    RWS.liftIO . print $ "im right before creating a copy"
+    --RWS.liftIO . print $ "im right before creating a copy"
     let (tags, unionSize) = case AST.expType _union of 
                     AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
                         case ST.findSymbolInScope' _tName _scope _symT of 
@@ -1178,7 +1218,7 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
     -- Temporals
     t1 <- getNextTemp
     t2 <- getNextTemp
-    t3 <- getNextTemp
+    --t3 <- getNextTemp
 
     unionSuccessLabel <- getNextLabelTemp' "union_success"
 
@@ -1193,9 +1233,9 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
     -- @label union_success
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
 
-    makeCopy t3 unionReturnId
+    --makeCopy t3 unionReturnId
+    return $ Just unionReturnId
 
-    return $ Just t3
 
 genTacExpr AST.New {AST.typeName=_typeName} = do
     {-
