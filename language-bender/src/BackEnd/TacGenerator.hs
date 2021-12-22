@@ -622,13 +622,13 @@ genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = d
                     currId <- getNextTypedTemp t
 
                     writeTac $ case typeSize of
-                        -- assign con b 
-                        1 -> TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                        -- assign b 
+                        1 -> TAC.newTAC TAC.RDerefb (TAC.Id currId) [
                                 TAC.Id var_address,
                                 TAC.Constant $ TAC.Int 0
                             ]
 
-                        -- assign con w
+                        -- assign w
                         4 -> TAC.newTAC TAC.RDeref (TAC.Id currId) [
                                 TAC.Id var_address,
                                 TAC.Constant $ TAC.Int 0
@@ -725,14 +725,49 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
                     case maybeStructId of
                         Just structId -> do
                             -- t0 := structId[offset tag]
-                            currId <- getNextTemp
-                            let offset_ = (ST.offset . ST.symType) tagSymb
-                            --writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [ TAC.Id structId, TAC.Constant (TAC.Int offset_)]
-                            writeTac $ TAC.newTAC TAC.Add (TAC.Id currId) [ 
+                            tag_address <- getNextTemp
+                            let offset_  = (ST.offset . ST.symType) tagSymb
+                                tag_type = (ST.varType . ST.symType) tagSymb 
+
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [ 
                                 TAC.Id structId, 
                                 TAC.Constant (TAC.Int offset_)
                                 ]
-                            return (Just currId)
+
+                            case tag_type of
+                                AST.CustomType _ _ -> return (Just tag_address)
+
+                                AST.TArray _ _ -> return (Just tag_address)
+
+                                AST.TFloat -> do
+                                    -- fi := tag_address[ 0 ]
+                                    currId <- getNextFloatTemp
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant (TAC.Int 0)
+                                        ]
+                                    -- return fi
+                                    return (Just currId)
+
+                                AST.TInt -> do
+                                    -- Ti := tag_address[ 0 ]
+                                    currId <- getNextTemp
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant (TAC.Int 0)
+                                        ]
+                                    -- return Ti
+                                    return (Just currId)
+
+                                _ -> do -- char or bool, byte assignment
+                                    -- Ti :=b tag_address[ 0 ]
+                                    currId <- getNextTemp
+                                    writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id currId) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant (TAC.Int 0)
+                                        ]
+                                    -- return Ti
+                                    return (Just currId)
 
 
                         -- if there is no id' with the struct or value, error
