@@ -109,7 +109,7 @@ getNextFloatTemp :: GeneratorMonad Id
 getNextFloatTemp = do
     s@State{nextFloatTemporal = n} <- RWS.get
     RWS.put s{nextFloatTemporal = n+1}
-    return $ "F" ++ show n
+    return $ "f" ++ show n
 
 getNextFloatTemp' :: String -> GeneratorMonad Id
 getNextFloatTemp' prefix = do
@@ -153,10 +153,11 @@ getVarStaticLabel id' scope = do
 -- | Get static variable address in an TAC Id
 getVarStaticAddressId :: Id -> Scope -> GeneratorMonad Id
 getVarStaticAddressId id' scope = do
-    s@State{symT=st} <- RWS.get
-    let var_type = ST.getVarType st id' scope
+    --s@State{symT=st} <- RWS.get
+    --let var_type = ST.getVarType st id' scope
     label <- getVarStaticLabel id' scope
-    var_address <- getNextTypedTemp' id' var_type
+    --var_address <- getNextTypedTemp' id' var_type
+    var_address <- getNextTemp' id'
     writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String (var_address++" := "++label++" # address of variable "++id')) []
     writeTac $ TAC.newTAC TAC.Assign (TAC.Id var_address) [
         TAC.Label label
@@ -168,8 +169,9 @@ getVarStackAddressId :: Id -> Scope -> GeneratorMonad Id
 getVarStackAddressId id' scope = do
     State{symT=st} <- RWS.get
     let offset = ST.getVarOffset st id' scope
-        var_type = ST.getVarType st id' scope
-    var_address <- getNextTypedTemp' id' var_type
+        -- var_type = ST.getVarType st id' scope
+    --var_address <- getNextTypedTemp' id' var_type
+    var_address <- getNextTemp' id'
     writeTac $ TAC.newTAC TAC.Add (TAC.Id var_address) [
         TAC.Id base,
         TAC.Constant $ TAC.Int offset
@@ -475,7 +477,7 @@ genTacExpr :: AST.Expr -> GeneratorMonad (Maybe String)
 genTacExpr AST.ConstChar{AST.cVal=val} = do
     -- get next temporal id' and save the const char in it
     currId <- getNextTemp
-    writeTac  $ TAC.newTAC TAC.Assign (TAC.Id currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
+    writeTac  $ TAC.newTAC TAC.Assignb (TAC.Id currId)  [TAC.Constant (TAC.Char (head val))] -- revisar esto por (head val)
     return (Just currId)
 
 genTacExpr AST.LiteralString{AST.sVal=str, AST.offset=_offset} = do
@@ -506,13 +508,13 @@ genTacExpr AST.ConstFloat{AST.fVal=val} = do
 genTacExpr AST.ConstTrue{} = do
     -- get next temporal id' and save true in it
     currId <- getNextTemp
-    writeTac $ TAC.newTAC TAC.Assign (TAC.Id currId) [TAC.Constant (TAC.Bool True)]
+    writeTac $ TAC.newTAC TAC.Assignb (TAC.Id currId) [TAC.Constant (TAC.Bool True)]
     return (Just currId)
 
 genTacExpr AST.ConstFalse{} = do
     -- get next temporal id' and save false in it
     currId <- getNextTemp
-    writeTac $ TAC.newTAC TAC.Assign  (TAC.Id currId)  [TAC.Constant (TAC.Bool False)]
+    writeTac $ TAC.newTAC TAC.Assignb  (TAC.Id currId)  [TAC.Constant (TAC.Bool False)]
     return (Just currId)
 
 genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list=_list, AST.offset=_offset} = do
@@ -615,6 +617,10 @@ genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = d
                     var_address <- getVarAddressId name scope
                     return (Just var_address)
 
+                -- AST.TPtr _ -> do
+                --     var_address <- getVarAddressId name scope
+                --     return (Just var_address)
+
                 t -> do 
                     -- var_address # address of variable
                     var_address <- getVarAddressId name scope
@@ -684,14 +690,14 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = d
                     case (maybeStructId, maybeValId) of
                         (Just structId, Just valId) -> do
                             -- structId[offset tag] = valId
-                            tagId <- getNextTemp
+                            tag_address <- getNextTemp
                             let offset_ = (ST.offset . ST.symType) tagSymb
                             --writeTac $ TAC.newTAC TAC.LDeref (TAC.Id structId) [ TAC.Constant (TAC.Int offset_), TAC.Id valId]
-                            writeTac $ TAC.newTAC TAC.Add (TAC.Id tagId) [
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [
                                 TAC.Id structId,
                                 TAC.Constant (TAC.Int offset_)
                                 ]
-                            makeCopy tagId valId
+                            makeCopy tag_address valId
                             return (Just structId)
 
                         -- if there is no id' with the struct or value, error
@@ -898,7 +904,7 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label forStepLabel) []
 
     -- Put Step code
-    writeTac $ TAC.newTAC TAC.Add  (TAC.Id tempForIterValue) [TAC.Id tempForIterValue, TAC.Id stepResultId]
+    writeTac $ TAC.newTAC TAC.Add  (TAC.Id tempForIterValue) [TAC.Id tempForIterValue, TAC.Id stepResultId] -- in reverse for should be (-stepResultId)
     writeTac $ TAC.newTAC TAC.LDeref (TAC.Id TAC.base) [TAC.Constant . TAC.Int $ forIterOffset, TAC.Id tempForIterValue]
 
     -- Return consistency checking
@@ -909,8 +915,6 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
 
     -- Go back to start
     writeTac $ TAC.newTAC TAC.Goto (TAC.Label forStartLabel) []
-
-
 
     -- Put End Label
     writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.Label forEndLabel) []
@@ -934,14 +938,14 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
         @label while_out@l1:
     -}
     -- Get needed labels to select where to go
-    startLabel'    <- getNextLabelTemp' "while_start"
+    startLabel'   <- getNextLabelTemp' "while_start"
     outLabel      <- getNextLabelTemp' "while_out"
     whileResultId <- getNextTypedTemp _expType
 
     -- Don't add a return addres if returns nothing
     let mbWhileResultId
             | _expType /= AST.TUnit = Just whileResultId
-            | otherwise  = Nothing
+            | otherwise             = Nothing
 
     let whileData = IterData {breakLabel=outLabel, continueLabel=startLabel', iterReturnId = mbWhileResultId }
 
@@ -955,16 +959,20 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
     Just condId <- genTacExpr _cond -- may raise error when returns Nothing, this is intended
 
     -- Generate code to jump to the end when condition is not met
-    writeTac $ TAC.newTAC TAC.Neg  (TAC.Id condId)      [TAC.Id condId]
-    writeTac $ TAC.newTAC TAC.Goif (TAC.Label outLabel) [TAC.Id condId]
+    writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label outLabel) [TAC.Id condId]
 
     -- Generate code for body
     mbBodyResultId <- genTacExpr _cicBody
 
+    State {symT=st} <- RWS.get
+    let type_size = ST.getTypeSize st _expType
+
     -- Update result if while loop has return type
     M.when (_expType /= AST.TUnit) $
         case mbBodyResultId of
-            Just bodyResultId -> writeTac $ TAC.newTAC TAC.Assign (TAC.Id whileResultId) [TAC.Id bodyResultId]
+            Just bodyResultId -> case type_size of 
+                1 -> writeTac $ TAC.newTAC TAC.Assignb (TAC.Id whileResultId) [TAC.Id bodyResultId]
+                _ -> writeTac $ TAC.newTAC TAC.Assign (TAC.Id whileResultId) [TAC.Id bodyResultId]
             Nothing -> error $ "Inconsistent AST: Body of while returning nothing when type of while is not Unit. \n\t" ++ "Expected return type: " ++ show _expType
 
     -- Add code for going to the start
@@ -982,28 +990,30 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
         _         -> return . Just $ whileResultId
 
 
-genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST.expType=expType} = do
+genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST.expType=_expType} = do
     -- get needed labels to select where to go
     elseLabel <- getNextLabelTemp' "if_else"
     outLabel <- getNextLabelTemp'  "if_out"
-    resultId <- getNextTypedTemp expType
+    resultId <- getNextTypedTemp _expType
 
     -- get conditional and negate it, so we can choose to go to the else
     Just condId <- genTacExpr cond
-    condNegId <- getNextTemp
-    writeTac $ TAC.newTAC TAC.Neg (TAC.Id condNegId) [TAC.Id condId]
 
     -- if negated cond is true, jump to else code
-    writeTac (TAC.newTAC TAC.Goif (TAC.Label elseLabel) [TAC.Id condNegId])
+    writeTac (TAC.newTAC TAC.GoifNot (TAC.Label elseLabel) [TAC.Id condId])
 
     -- gen code for if 
     ifResultId <- genTacExpr accExpr
 
+    State {symT=st} <- RWS.get
+    let type_size = ST.getTypeSize st _expType
+
     -- if the type of the if-else its not unit, update the return type
-    M.when (expType /= AST.TUnit) $
+    M.when (_expType /= AST.TUnit) $
         case ifResultId of
-            Just _ifResultId ->
-                writeTac $ TAC.newTAC TAC.Assign (TAC.Id resultId) [TAC.Id _ifResultId]
+            Just _ifResultId -> case type_size of
+                1 -> writeTac $ TAC.newTAC TAC.Assignb (TAC.Id resultId) [TAC.Id _ifResultId]
+                _ -> writeTac $ TAC.newTAC TAC.Assign (TAC.Id resultId) [TAC.Id _ifResultId]
             Nothing ->
                 error "Inconsistent AST: no result for if when it does have a return type diferent from unit"
 
@@ -1015,10 +1025,11 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     -- gen code for else
     elseResultId <- genTacExpr failExpr
     -- if the type of the if-else its not unit, assign the return type
-    M.when (expType /= AST.TUnit) $
+    M.when (_expType /= AST.TUnit) $
         case elseResultId of
-            Just _elseResultId ->
-                writeTac (TAC.newTAC TAC.Assign (TAC.Id resultId) [TAC.Id _elseResultId])
+            Just _elseResultId -> case type_size of
+                1 -> writeTac (TAC.newTAC TAC.Assignb (TAC.Id resultId) [TAC.Id _elseResultId])
+                _ -> writeTac (TAC.newTAC TAC.Assign (TAC.Id resultId) [TAC.Id _elseResultId])
             Nothing ->
                 error "Inconsistent AST: no result for if when it does have a return type diferent from unit"
 
@@ -1026,17 +1037,17 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     writeTac (TAC.newTAC TAC.MetaLabel (TAC.Label outLabel) [])
 
     -- return result of if-else if its type its not unit
-    if expType /= AST.TUnit then
+    if _expType /= AST.TUnit then
         return (Just resultId)
     else
         return Nothing
 
 
-genTacExpr AST.ExprBlock{AST.exprs=exprs, AST.expType=expType} = do
+genTacExpr AST.ExprBlock{AST.exprs=exprs, AST.expType=_expType} = do
     -- generate code for exprs in block, if type is unit return nothing
     -- else return whatever the last expr in block returns
     maybeId <- genTacBlock exprs
-    if expType == AST.TUnit then
+    if _expType == AST.TUnit then
         return Nothing
     else
         return maybeId
@@ -1156,7 +1167,13 @@ genTacExpr AST.Op1{AST.op1=op, AST.opr=l, AST.expType=_expType} = do
             writeTac (TAC.TACCode (mapOp1 op) (Just (TAC.Id currId)) (Just (TAC.Id opId)) Nothing)
             return (Just currId)
 
-genTacExpr AST.Array{} = undefined
+-- literal array
+genTacExpr AST.Array {AST.list=_list, AST.expType=_expType, AST.offset=_offset} = do
+
+    -- array_address := stack
+    -- 
+
+    return Nothing
 
 genTacExpr AST.UnionTrying {AST.union=_union, AST.tag=_tag, AST.expType = _expType} = do
     {-
@@ -1253,7 +1270,7 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
     -- Temporals
     t1 <- getNextTemp
     t2 <- getNextTemp
-    --t3 <- getNextTemp
+    t3 <- getNextTypedTemp _expType
 
     unionSuccessLabel <- getNextLabelTemp' "union_success"
 
@@ -1268,7 +1285,31 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
     -- @label union_success
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
 
-    --makeCopy t3 unionReturnId
+    State {symT=st} <- RWS.get
+    let type_size = ST.getTypeSize st _expType
+
+    case _expType of
+        AST.CustomType _ _ -> return $ Just unionReturnId
+        AST.TArray _ _     -> return $ Just unionReturnId
+        _ -> case type_size of
+            4 -> do
+                -- t3 := unionReturnId [ 0 ]
+                writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t3) [
+                    TAC.Id unionReturnId,
+                    TAC.Constant (TAC.Int 0)
+                    ]
+                -- return t3
+                return (Just t3)
+            _           -> do
+                -- t3 := unionReturnId [ 0 ]
+                writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id t3) [
+                    TAC.Id unionReturnId,
+                    TAC.Constant (TAC.Int 0)
+                    ]
+                -- return t3
+                return (Just t3)
+
+    
     return $ Just unionReturnId
 
 
@@ -1277,7 +1318,7 @@ genTacExpr AST.New {AST.typeName=_typeName} = do
         New template:
         malloc t0 size_of_type
     -}
-    resultId <- getNextLabelTemp' "new_result"
+    resultId <- getNextTemp' "new_result"
 
     -- Get symbol table to get size for given type
     State {symT=_symT} <- RWS.get
