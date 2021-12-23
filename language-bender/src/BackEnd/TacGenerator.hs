@@ -244,6 +244,10 @@ popNextFuncData = do
 base :: Id
 base = TAC.base
 
+-- | Get the current STACK value
+stack :: Id
+stack = TAC.stack
+
 -- | generate an unique tac id' from a language bender id'
 getTacId :: Id -> Scope -> Id
 getTacId id' scope = id' ++ separator ++ show scope
@@ -482,16 +486,12 @@ genTacExpr AST.ConstChar{AST.cVal=val} = do
 
 genTacExpr AST.LiteralString{AST.sVal=str, AST.offset=_offset} = do
 
-    -- store the string (array of chars, dope vector)
-    -- TODO
-    
-    -- get next temporal  id' and return the string address there
-    currId <- getNextTemp
-    writeTac  $ TAC.newTAC TAC.Add (TAC.Id currId)  [
-        TAC.Id base,
-        TAC.Constant $ TAC.Int _offset
-        ]
-    return (Just currId)
+    let _list    = [(AST.ConstChar [s_i] AST.TChar) | s_i <- str]
+        sz       = length str
+        _expType = AST.TArray AST.TChar (AST.ConstInt sz AST.TInt)
+
+    genTacExpr AST.Array {AST.list=_list, AST.expType=_expType, AST.offset=_offset}
+
 
 genTacExpr AST.ConstInt{AST.iVal=val} = do
     -- get next temporal id' and save the const int in it
@@ -534,7 +534,7 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
         TAC.Constant $ TAC.Int _offset
         ]
     
-    -- iterar por fields asignando los valores a las posiciones de memoria correspondientes. TODO
+    -- iterar por fields asignando los valores a las posiciones de memoria correspondientes.
     M.forM_ (zip _list fields_names) (\ (field_expr, field_name) -> do
              
             let Just tagSymb = ST.findSymbolInScope' field_name field_scope st
@@ -1164,16 +1164,60 @@ genTacExpr AST.Op1{AST.op1=op, AST.opr=l, AST.expType=_expType} = do
             -- generate code for expr
             Just opId <- genTacExpr l
             currId <- getNextTypedTemp _expType
-            writeTac (TAC.TACCode (mapOp1 op) (Just (TAC.Id currId)) (Just (TAC.Id opId)) Nothing)
+            -- writeTac (TAC.TACCode (mapOp1 op) (Just (TAC.Id currId)) (Just (TAC.Id opId)) Nothing)
+            writeTac $ TAC.newTAC (mapOp1 op) (TAC.Id currId) [TAC.Id opId]
             return (Just currId)
 
 -- literal array
 genTacExpr AST.Array {AST.list=_list, AST.expType=_expType, AST.offset=_offset} = do
 
-    -- array_address := stack
-    -- 
+    State {symT=st} <- RWS.get
+    array_address   <- getNextTemp
+    dope_vector     <- getNextTemp
+    let array_size      = length _list
+        array_type_size = ST.getTypeSize st (AST.arrType _expType)
 
-    return Nothing
+    -- array_address := stack
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_address) [TAC.Id stack]
+    -- stack := stack + array_size_bytes
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id stack) [
+        TAC.Id stack,
+        TAC.Constant (TAC.Int (array_size * array_type_size))
+        ]
+
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id dope_vector) [
+        TAC.Id base,
+        TAC.Constant (TAC.Int _offset)
+        ]
+    -- dope_vector[ 0 ] := array_address
+    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id dope_vector) [
+        TAC.Constant (TAC.Int 0),
+        TAC.Id array_address
+        ]
+    -- dope_vector[ 4 ] := array_size_n
+    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id dope_vector) [
+        TAC.Constant (TAC.Int 4),
+        TAC.Constant (TAC.Int array_size)
+        ]
+
+    let positions = [0, array_type_size..]
+    -- for (val, position_in_array) in zip list positions
+    M.forM_ (zip _list positions) (\ (val, position) -> do
+             
+            Just valId        <- genTacExpr val
+            position_in_array <- getNextTemp
+
+            writeTac $ TAC.newTAC TAC.Add (TAC.Id position_in_array) [
+                TAC.Id array_address,
+                TAC.Constant (TAC.Int position)
+                ]
+            
+            makeCopy position_in_array valId        
+        ) 
+    
+    -- return dope_vector # address of dope vector
+    return (Just dope_vector)
+
 
 genTacExpr AST.UnionTrying {AST.union=_union, AST.tag=_tag, AST.expType = _expType} = do
     {-
