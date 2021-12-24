@@ -253,10 +253,10 @@ getTacId :: Id -> Scope -> Id
 getTacId id' scope = id' ++ separator ++ show scope
 
 -- | Copy data from one address to another
-makeCopy :: Id -> Id -> GeneratorMonad ()
-makeCopy dest source = do
-    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Copy from "++ show source ++" to " ++ show dest)) []
-    writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest) [TAC.Id source]
+makeCopy :: Id -> Id -> AST.Type -> GeneratorMonad ()
+makeCopy dest_address source_value value_type = do
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Copy from "++ show source_value ++" to " ++ show dest_address)) []
+    writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value]
 
 
 -- >> Main Function ---------------------------------------------
@@ -361,7 +361,7 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
                     -- ti := var_address
                     var_address <- getVarAddressId varId scope
                     -- ti [0] := valId # copy by value
-                    makeCopy var_address valId
+                    makeCopy var_address valId _varType
                     return ()
 
 
@@ -539,6 +539,7 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
              
             let Just tagSymb = ST.findSymbolInScope' field_name field_scope st
                 fieldOffset = (ST.offset . ST.symType) tagSymb
+                fieldType = (ST.varType . ST.symType) tagSymb
 
             Just from <- genTacExpr field_expr
             
@@ -551,7 +552,7 @@ genTacExpr AST.LiteralStruct{AST.structName=name, AST.expType=_expType, AST.list
                 ]    
 
 
-            makeCopy fieldAddress from
+            makeCopy fieldAddress from fieldType
         ) 
 
     return (Just currId)
@@ -574,10 +575,9 @@ genTacExpr AST.LiteralUnion{AST.unionName=name, AST.tag=_tag,AST.value=_value,AS
         ]
 
     let tagType = ST.getVarType st _tag field_scope
-        size    = ST.getTypeSize st tagType
 
     -- base [offset] := _value
-    makeCopy union_address from
+    makeCopy union_address from tagType
 
     return (Just union_address)
 
@@ -640,7 +640,11 @@ genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = d
                                 TAC.Constant $ TAC.Int 0
                             ]
 
-                    return (Just currId)                            
+                        _ -> error "Should not happen: Error in size of types"
+
+                    return (Just currId) 
+
+        _ -> error "Inconsistent AST: Expected Variable or Reference to a Variable"                           
     
 
 
@@ -660,16 +664,16 @@ genTacExpr AST.Assign{AST.variable=name, AST.value=val, AST.declScope_=scope, AS
             -- generate tac code for the expr
             Just valId <- genTacExpr val
 
-            let varTypeSize = ST.getTypeSize st _expType
-
             -- ti := var_address
             var_address <- getVarAddressId name scope
             -- ti [0] := valId # copy by value
-            makeCopy var_address valId
+            makeCopy var_address valId _expType
             return (Just var_address)
 
+        _ -> error "Inconsistent AST: Expected Variable or Reference to a Variable"
 
-genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = do
+
+genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value, AST.expType=_expType} = do
     State{symT=st} <- RWS.get
     case AST.expType struct of
         AST.CustomType name scope -> do
@@ -697,7 +701,7 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value} = d
                                 TAC.Id structId,
                                 TAC.Constant (TAC.Int offset_)
                                 ]
-                            makeCopy tag_address valId
+                            makeCopy tag_address valId _expType
                             return (Just structId)
 
                         -- if there is no id' with the struct or value, error
@@ -1158,7 +1162,7 @@ genTacExpr AST.Op1{AST.op1=op, AST.opr=l, AST.expType=_expType} = do
     -- else assing to a temp variable and return it
     case op of
         AST.UnitOperator -> do
-            Just opId <- genTacExpr l
+            Just _ <- genTacExpr l
             return Nothing
         _                -> do
             -- generate code for expr
@@ -1175,7 +1179,8 @@ genTacExpr AST.Array {AST.list=_list, AST.expType=_expType, AST.offset=_offset} 
     array_address   <- getNextTemp
     dope_vector     <- getNextTemp
     let array_size      = length _list
-        array_type_size = ST.getTypeSize st (AST.arrType _expType)
+        array_type      = AST.arrType _expType
+        array_type_size = ST.getTypeSize st array_type
 
     -- array_address := stack
     writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_address) [TAC.Id stack]
@@ -1212,7 +1217,7 @@ genTacExpr AST.Array {AST.list=_list, AST.expType=_expType, AST.offset=_offset} 
                 TAC.Constant (TAC.Int position)
                 ]
             
-            makeCopy position_in_array valId        
+            makeCopy position_in_array valId array_type     
         ) 
     
     -- return dope_vector # address of dope vector
@@ -1301,7 +1306,7 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
                     _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
         -- get union requested variant number
         unionVariantNum = _getTagNum _tag (map fst tags)
-        unionVariantSize = ST.getTypeSize _symT (snd $ tags!!unionVariantNum)
+        unionVariantTypeSize = ST.getTypeSize _symT _expType
 
     -- Generate code for the union expression
     mbUnionReturnId <- genTacExpr _union
@@ -1329,13 +1334,10 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
     -- @label union_success
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
 
-    State {symT=st} <- RWS.get
-    let type_size = ST.getTypeSize st _expType
-
     case _expType of
         AST.CustomType _ _ -> return $ Just unionReturnId
         AST.TArray _ _     -> return $ Just unionReturnId
-        _ -> case type_size of
+        _ -> case unionVariantTypeSize of
             4 -> do
                 -- t3 := unionReturnId [ 0 ]
                 writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t3) [
@@ -1353,8 +1355,6 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
                 -- return t3
                 return (Just t3)
 
-    
-    return $ Just unionReturnId
 
 
 genTacExpr AST.New {AST.typeName=_typeName} = do
@@ -1394,7 +1394,7 @@ genTacExpr AST.DerefAssign {AST.ptrExpr=_ptrExpr, AST.value=_value, AST.expType=
     
     Just valId <- genTacExpr _value
     Just ptrId <- genTacExpr _ptrExpr
-    makeCopy ptrId valId
+    makeCopy ptrId valId _expType
 
     return (Just ptrId)
 
@@ -1405,8 +1405,8 @@ genTacExpr AST.ArrayIndexing{AST.index=_index, AST.expr = array_expr, AST.expTyp
 
     State {symT=st} <- RWS.get
     let array_type_size = ST.getTypeSize st (AST.arrType _expType)
-    dope_vector        <- genTacExpr array_expr
-    array_index        <- genTacExpr _index
+    Just dope_vector   <- genTacExpr array_expr
+    Just array_index   <- genTacExpr _index
     array_address      <- getNextTemp
     array_size         <- getNextTemp
     array_position     <- getNextTemp
@@ -1462,6 +1462,78 @@ genTacExpr AST.ArrayIndexing{AST.index=_index, AST.expr = array_expr, AST.expTyp
                     TAC.Constant (TAC.Int 0)
                     ]
                 return (Just currId)
+            _ -> error "Should not happen: size of type error"
+
+
+
+genTacExpr AST.ArrayAssign {AST.index=_index, AST.arrayExpr=array_expr, AST.value=_value, AST.expType=_expType} = do
+
+    -- array assign: a [ i ] := value
+
+    State {symT=st} <- RWS.get
+    let array_type_size = ST.getTypeSize st (AST.arrType _expType)
+    Just dope_vector   <- genTacExpr array_expr
+    Just array_index   <- genTacExpr _index
+    Just valId         <- genTacExpr _value
+    array_address      <- getNextTemp
+    array_size         <- getNextTemp
+    array_position     <- getNextTemp
+    isNegative         <- getNextTemp
+    isOverSize         <- getNextTemp
+    isOutOfBounds      <- getNextTemp
+    array_index_succes <- getNextLabelTemp
+
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_address) [
+        TAC.Id dope_vector,
+        TAC.Constant (TAC.Int 0)
+        ]
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_size) [
+        TAC.Id dope_vector,
+        TAC.Constant (TAC.Int 4)
+        ]
+
+    -- check index is whitin the limits of the array
+    writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
+    writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
+    writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
+    writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
+    writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
+
+    -- i * array_type_size
+    writeTac $ TAC.newTAC TAC.Mult (TAC.Id array_position) [
+        TAC.Id array_index,
+        TAC.Constant (TAC.Int array_type_size)
+        ]
+    -- (a + i * array_type_size)
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id array_position) [
+        TAC.Id array_position,
+        TAC.Id array_address
+        ]
+
+    makeCopy array_position valId _expType
+
+    -- return value at that position
+    case _expType of
+        AST.TArray{} -> return (Just array_position)
+        AST.CustomType{} -> return (Just array_position)
+        _ -> return (Just valId)
+            -- case array_type_size of
+            -- 4 -> do
+            --     currId <- getNextTemp
+            --     writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [
+            --         TAC.Id array_position,
+            --         TAC.Constant (TAC.Int 0)
+            --         ]
+            --     return (Just currId)
+            -- 1 -> do
+            --     currId <- getNextTemp
+            --     writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id currId) [
+            --         TAC.Id array_position,
+            --         TAC.Constant (TAC.Int 0)
+            --         ]
+            --     return (Just currId)
+
 
 -- gen code for a block, return the last id' (or Nothing), because
 -- the value of a block is the value of the last expr in it
