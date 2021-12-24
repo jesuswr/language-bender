@@ -1398,8 +1398,70 @@ genTacExpr AST.DerefAssign {AST.ptrExpr=_ptrExpr, AST.value=_value, AST.expType=
 
     return (Just ptrId)
 
-genTacExpr AST.ArrayIndexing{} = undefined
+genTacExpr AST.ArrayIndexing{AST.index=_index, AST.expr = array_expr, AST.expType=_expType} = do
 
+    -- array indexing : a [ i ]
+    -- find (a + i * array_type_size) position
+
+    State {symT=st} <- RWS.get
+    let array_type_size = ST.getTypeSize st (AST.arrType _expType)
+    dope_vector        <- genTacExpr array_expr
+    array_index        <- genTacExpr _index
+    array_address      <- getNextTemp
+    array_size         <- getNextTemp
+    array_position     <- getNextTemp
+    isNegative         <- getNextTemp
+    isOverSize         <- getNextTemp
+    isOutOfBounds      <- getNextTemp
+    array_index_succes <- getNextLabelTemp
+
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_address) [
+        TAC.Id dope_vector,
+        TAC.Constant (TAC.Int 0)
+        ]
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_size) [
+        TAC.Id dope_vector,
+        TAC.Constant (TAC.Int 4)
+        ]
+
+    -- check index is whitin the limits of the array
+    writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
+    writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
+    writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
+    writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
+    writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
+
+    -- i * array_type_size
+    writeTac $ TAC.newTAC TAC.Mult (TAC.Id array_position) [
+        TAC.Id array_index,
+        TAC.Constant (TAC.Int array_type_size)
+        ]
+    -- (a + i * array_type_size)
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id array_position) [
+        TAC.Id array_position,
+        TAC.Id array_address
+        ]
+
+    -- return value at that position
+    case _expType of
+        AST.TArray{} -> return (Just array_position)
+        AST.CustomType{} -> return (Just array_position)
+        _ -> case array_type_size of
+            4 -> do
+                currId <- getNextTemp
+                writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                    TAC.Id array_position,
+                    TAC.Constant (TAC.Int 0)
+                    ]
+                return (Just currId)
+            1 -> do
+                currId <- getNextTemp
+                writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id currId) [
+                    TAC.Id array_position,
+                    TAC.Constant (TAC.Int 0)
+                    ]
+                return (Just currId)
 
 -- gen code for a block, return the last id' (or Nothing), because
 -- the value of a block is the value of the last expr in it
