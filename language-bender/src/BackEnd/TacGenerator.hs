@@ -14,7 +14,6 @@ import qualified FrontEnd.Utils    as U
 -- <Utility Data types> -----------------------------------------
 import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
-import qualified BackEnd.StdLib    as STD
 import Data.Maybe(fromJust)
 import Data.Functor((<&>))
 import Data.List(elemIndex)
@@ -255,9 +254,28 @@ getTacId id' scope = id' ++ separator ++ show scope
 -- | Copy data from one address to another
 makeCopy :: Id -> Id -> AST.Type -> GeneratorMonad ()
 makeCopy dest_address source_value value_type = do
+    State{symT=st} <- RWS.get
     writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Copy from "++ show source_value ++" to " ++ show dest_address)) []
-    writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value]
-
+    case value_type of 
+        AST.TInt            ->
+            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 4]
+        AST.TFloat          ->
+            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 4]
+        AST.TChar           ->
+            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 1]
+        AST.TBool           ->
+            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 1]
+        AST.TPtr _          ->
+            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 4]
+        AST.TReference _    ->
+            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 4] -- no estoy seguro aqui
+        AST.TArray _ _      ->
+            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 8] -- la opcion menos mala
+        AST.CustomType name scope -> do
+            let Just symb = ST.findSymbolInScope' name scope st
+            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int $ ST.width (ST.symType symb)]
+        _                   ->
+            return()
 
 -- >> Main Function ---------------------------------------------
 
@@ -791,18 +809,14 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
             error "Aqui deberia haber un struct"
 
 genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expType=_expType, AST.declScope_=_declScope_} = do
-    {-
-        Function template
-        # Compute every value corresponding to a function argument
-
-        # Stack parameters
-        param arg_0_return_id
-        . . .
-        param arg_n_return_id
-
-        # call the function 
-        ret := call function@label n
-    -}
+    State {symT=st} <- RWS.get
+    let Just _func = ST.findSymbolInScope' _fname 0 st
+        func       = ST.symType _func
+        args       = ST.args func
+        argsIdsScp = map (\f -> (AST.argName f, AST._declScope f)) args
+        getOffsets c (a, b) = ST.offset $ ST.symType $ fromJust $ ST.findSymbolInScope' a b c
+        argsOffs   = map (getOffsets st) argsIdsScp 
+        argsTypes  = map AST.argType args
 
     -- Compute each argument expressions and retrieve its return labels
     mbReturnIds <- M.mapM genTacExpr _actualArgs
@@ -814,14 +828,19 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
     -- Generate return position for this function call if it does returns something
     fcallRetPos <- getNextTypedTemp' "freturn" _expType
 
-    -- Stack parameters
-    M.forM_ returnIds (\s -> writeTac $ TAC.newTAC TAC.Param (TAC.Id s) [])
+    M.forM_ (zip3 returnIds argsOffs argsTypes) (\(retId, offset, typ) -> do 
+        varAddress <- getNextTemp
+        writeTac $ TAC.newTAC TAC.Param (TAC.Id varAddress) [TAC.Constant $ TAC.Int offset]
+        makeCopy varAddress retId typ)
 
     -- Call function 
-    -- @TODO que hago cuando no retorna nada?
-    writeTac $ TAC.newTAC TAC.Call (TAC.Id fcallRetPos) [TAC.Label $ getTacId _fname _declScope_, TAC.Constant . TAC.Int . length $ _actualArgs]
+    writeTac $ TAC.newTAC TAC.Call (TAC.Id fcallRetPos) [TAC.Label $ getTacId _fname 0]
 
-    return $ Just fcallRetPos
+    case _expType of
+        AST.TUnit -> return Nothing
+        _         -> return $ Just fcallRetPos
+
+
 
 genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_start, AST.end=_end, AST.cicBody=_cicBody, AST.expType=_expType} = do
     {-

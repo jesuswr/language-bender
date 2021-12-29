@@ -1164,11 +1164,12 @@ declToSym decl = ST.Symbol {
 
         declToSymType AST.Struct {AST.fields=_fields} = ST.StructType {ST.fields=_fields, ST.width = 0, ST.align = 0, ST.fieldScope=0}
 
-        declToSymType AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body} =
+        declToSymType AST.Func {AST.args=_args, AST.retType=_retType, AST.body=_body, AST.baseStackSize=_fSz} =
             ST.Function {
                 ST.args=_args,
                 ST.retType=_retType,
-                ST.body=_body
+                ST.body=_body,
+                ST.funcSize=_fSz
             }
 
 -- | Try add symbol. If possible, add it, otherwise write proper errors

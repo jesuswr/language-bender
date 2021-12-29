@@ -36,8 +36,8 @@ data SymType
     | Type          { unType :: AST.Type , width :: Int, align :: Int }
     | StructType    { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int, fieldScope :: Int }
     | UnionType     { fields :: [(U.Name, AST.Type)] , width :: Int, align :: Int, fieldScope :: Int }
-    | Procedure     { args :: [AST.FuncArg], body :: AST.Expr }
-    | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr }
+    | Procedure     { args :: [AST.FuncArg], body :: AST.Expr, funcSize :: Int }
+    | Function      { args :: [AST.FuncArg], retType :: AST.Type , body :: AST.Expr, funcSize :: Int }
     | Reference     { refName :: U.Name, refType :: AST.Type, refScope :: Int, offset :: Int, staticLabel :: Maybe String}
     deriving (Eq)
 
@@ -75,16 +75,23 @@ initDic = M.fromList [("air", [Symbol "air" (Type AST.TInt 4 4) 0 Nothing])
                     , ("earth", [Symbol "earth" (Type AST.TChar 1 1) 0 Nothing])
                     , ("art", [Symbol "art" (Type (AST.TPtr AST.TVoid) 4 4) 0 Nothing])
                     , ("reincarnation", [Symbol "reincarnation" (Type (AST.TPtr AST.TVoid) 4 4) 0 Nothing])
-                    , ("readair",    [Symbol "readair" (Function [] AST.TInt (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("readwater",  [Symbol "readwater" (Function [] AST.TFloat (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("readfire",   [Symbol "readfire" (Function [] AST.TBool (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("readearth",  [Symbol "readearth" (Function [] AST.TChar (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("readmetal",  [Symbol "readmetal" (Procedure [AST.FuncArg "dest" (AST.TPtr AST.TChar) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("printair",   [Symbol "printair" (Procedure [AST.FuncArg "var_to_print" (AST.TInt) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("printwater", [Symbol "printwater" (Procedure [AST.FuncArg "var_to_print" (AST.TFloat) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("printfire",  [Symbol "printfire" (Procedure [AST.FuncArg "var_to_print" (AST.TBool) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing]) -- creo que hay que revisar los scopes de los arg
-                    , ("printearth", [Symbol "printearth" (Procedure [AST.FuncArg "var_to_print" (AST.TChar) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
-                    , ("printmetal", [Symbol "printmetal" (Procedure [AST.FuncArg "dest" (AST.TPtr AST.TChar) Nothing 0, AST.FuncArg "n_bytes" (AST.TInt) Nothing 0] (AST.ConstNull AST.TVoid)) 0 Nothing])
+                    , ("readair",    [Symbol "readair" (Function [] AST.TInt (AST.ConstNull AST.TVoid) 80) 0 Nothing])
+                    , ("readwater",  [Symbol "readwater" (Function [] AST.TFloat (AST.ConstNull AST.TVoid) 80) 0 Nothing])
+                    , ("readfire",   [Symbol "readfire" (Function [] AST.TBool (AST.ConstNull AST.TVoid) 80) 0 Nothing])
+                    , ("readearth",  [Symbol "readearth" (Function [] AST.TChar (AST.ConstNull AST.TVoid) 80) 0 Nothing])
+                    , ("readmetal",  [Symbol "readmetal" (Procedure     [AST.FuncArg "dest" (AST.TPtr AST.TChar) Nothing (-1)] (AST.ConstNull AST.TVoid) 80) 0 Nothing])
+                    , ("dest", [Symbol "dest" (Variable (AST.TPtr AST.TChar) Nothing False 0 Nothing) (-1) Nothing])
+                    , ("printair",   [Symbol "printair" (Procedure      [AST.FuncArg "var_to_print1" (AST.TInt) Nothing (-2)] (AST.ConstNull AST.TVoid) 80) 0 Nothing])
+                    , ("var_to_print1", [Symbol "var_to_print1" (Variable AST.TInt Nothing False 0 Nothing) (-2) Nothing])
+                    , ("printwater", [Symbol "printwater" (Procedure    [AST.FuncArg "var_to_print2" (AST.TFloat) Nothing (-3)] (AST.ConstNull AST.TVoid) 80) 0 Nothing])
+                    , ("var_to_print2", [Symbol "var_to_print2" (Variable AST.TFloat Nothing False 0 Nothing) (-3) Nothing])
+                    , ("printfire",  [Symbol "printfire" (Procedure     [AST.FuncArg "var_to_print3" (AST.TBool) Nothing (-4)] (AST.ConstNull AST.TVoid) 80) 0 Nothing]) 
+                    , ("var_to_print3", [Symbol "var_to_print3" (Variable AST.TBool Nothing False 0 Nothing) (-4) Nothing])
+                    , ("printearth", [Symbol "printearth" (Procedure    [AST.FuncArg "var_to_print4" (AST.TChar) Nothing (-5)] (AST.ConstNull AST.TVoid) 80) 0 Nothing])
+                    , ("var_to_print4", [Symbol "var_to_print4" (Variable AST.TChar Nothing False 0 Nothing) (-5) Nothing])
+                    , ("printmetal", [Symbol "printmetal" (Procedure    [AST.FuncArg "src" (AST.TPtr AST.TChar) Nothing (-6), AST.FuncArg "n_bytes" (AST.TInt) Nothing (-6)] (AST.ConstNull AST.TVoid) 80) 0 Nothing])
+                    , ("src", [Symbol "src" (Variable (AST.TPtr AST.TChar) Nothing False 0 Nothing) (-6) Nothing])
+                    , ("n_bytes", [Symbol "n_bytes" (Variable AST.TInt Nothing False 4 Nothing) (-6) Nothing])
                     ]
 
 pushOffset :: SymTable -> Int -> SymTable
