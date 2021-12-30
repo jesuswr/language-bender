@@ -16,7 +16,7 @@ import qualified Control.Monad.RWS as RWS
 import qualified Control.Monad     as M
 import Data.Maybe(fromJust)
 import Data.Functor((<&>))
-import Data.List(elemIndex)
+import Data.List(elemIndex, zip4)
 
 -- >> Data ------------------------------------------------------
 
@@ -818,6 +818,8 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
         argsOffs   = map (getOffsets st) argsIdsScp 
         argsTypes  = map AST.argType args
 
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Code to calculate parameters")) []
+
     -- Compute each argument expressions and retrieve its return labels
     mbReturnIds <- M.mapM genTacExpr _actualArgs
 
@@ -828,13 +830,31 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
     -- Generate return position for this function call if it does returns something
     fcallRetPos <- getNextTypedTemp' "freturn" _expType
 
-    M.forM_ (zip3 returnIds argsOffs argsTypes) (\(retId, offset, typ) -> do 
-        varAddress <- getNextTemp
+    -- Generate tmp vars to save the address given by param
+    varAddresses <- getNTemps $ length argsTypes
+
+
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Push parameters")) []
+
+    M.forM_ (zip4 returnIds argsOffs argsTypes varAddresses) (\(retId, offset, typ, varAddress) -> do 
         writeTac $ TAC.newTAC TAC.Param (TAC.Id varAddress) [TAC.Constant $ TAC.Int offset]
         makeCopy varAddress retId typ)
 
     -- Call function 
     writeTac $ TAC.newTAC TAC.Call (TAC.Id fcallRetPos) [TAC.Label $ getTacId _fname 0]
+
+
+    M.forM_ (zip3 varAddresses argsTypes _actualArgs) (\(varAddress, argT, arg) -> do
+        case argT of 
+            AST.TReference t -> do
+                case arg of 
+                    AST.Id name _ _ scope -> do
+                        writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Assign reference: " ++ name)) []
+                        argAd <- getVarAddressId name scope
+                        makeCopy argAd varAddress t
+                    _ ->
+                        error "Expected an id to reference but got something else"
+            _ -> return())
 
     case _expType of
         AST.TUnit -> return Nothing
@@ -1595,6 +1615,13 @@ _getTagNum :: String -> [String] -> Int
 _getTagNum s ss = case elemIndex s ss of 
                         Nothing -> error $ "Error, name '"++ s ++"' not in list of names"
                         Just x  -> x
+
+getNTemps :: Int -> GeneratorMonad ([Id])
+getNTemps 0 = return []
+getNTemps n = do
+    tmp <- getNextTemp
+    others <- getNTemps (n-1)
+    return $ tmp:others
 
 
 -- | function to generate std code
