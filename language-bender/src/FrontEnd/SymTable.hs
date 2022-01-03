@@ -124,7 +124,7 @@ getTypeSize st AST.CustomType{AST.tName = n, AST.scope = s} =
                 UnionType _ w _ _  -> w
                 _                  -> 0
 
-getTypeSize st (AST.TReference t) = max 4 (getTypeSize st t)
+getTypeSize st (AST.TReference t) = getTypeSize st t
 
 getTypeSize st t = 
     case findSymbolInScope (AST.getTypeId t) 0 st of
@@ -145,6 +145,9 @@ getTypeAlign st AST.CustomType{AST.tName = n, AST.scope = s} =
                 StructType _ _ a _ -> a
                 UnionType _ _ a _  -> a
                 _                  -> 1
+
+getTypeAlign st (AST.TReference t) = getTypeAlign st t
+
 getTypeAlign st t = 
     case findSymbolInScope (AST.getTypeId t) 0 st of
         Nothing  -> 1

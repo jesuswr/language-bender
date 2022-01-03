@@ -291,7 +291,7 @@ generateTac' :: AST.Program  -> GeneratorMonad ()
 generateTac' program = do
     hasMain <- findMain
     if hasMain 
-        then writeTac (TAC.newTAC TAC.Goto (TAC.Label $ getTacId "main" 0) [])
+        then writeTac $ TAC.newTAC TAC.Call (TAC.Id "___main") [TAC.Label $ getTacId "main" 0]
         else writeTac $ TAC.newTAC TAC.Goto (TAC.Label $ "endProgram") []
     genTacDecls $ AST.decls program
     --genTacStd
@@ -490,6 +490,10 @@ genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope, AST.ba
     writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.Label endFuncLabel) []
     writeTac $ TAC.newTAC TAC.MetaEndFunc stackSize' []
     -- falta un return? agarrar lo que devuelva el cuerpo de la func y retornar eso?
+    
+    -- if function is main, exit when its done
+    M.when (name == "main") $ writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 0) [] 
+
     return ()
 
 -------------------------------------------------------
