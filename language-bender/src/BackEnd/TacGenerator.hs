@@ -466,11 +466,8 @@ genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope, AST.ba
 
     let funcData = FuncData {startLabel=startFuncLabel, endLabel=endFuncLabel}
 
-    -- generate function label
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label startFuncLabel) []
-
     -- Write tack for beginFunc
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc  stackSize' []
+    writeTac $ TAC.newTAC TAC.MetaBeginFunc  (TAC.Id startFuncLabel) [stackSize']
 
     -- push this function as the current function in scope
     pushNextFuncData funcData
