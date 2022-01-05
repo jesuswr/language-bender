@@ -842,7 +842,7 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
         makeCopy varAddress retId typ)
 
     -- Call function 
-    writeTac $ TAC.newTAC TAC.Call (TAC.Id fcallRetPos) [TAC.Label $ getTacId _fname 0]
+    writeTac $ TAC.newTAC TAC.Call (TAC.Id fcallRetPos) [TAC.Label $ getTacId (mapIO _fname) 0]
 
 
     M.forM_ (zip3 varAddresses argsTypes _actualArgs) (\(varAddress, argT, arg) -> do
@@ -1625,111 +1625,15 @@ getNTemps n = do
     return $ tmp:others
 
 
--- | function to generate std code
-genTacStd :: GeneratorMonad ()
-genTacStd = do
-    genStdPrint
-    genStdRead
-
-
-
-genStdPrint :: GeneratorMonad ()
-genStdPrint = do
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "IMPLEMENTACION DE PRINTS") []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printAirBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int printAirSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    printAirEnd <- getNextLabelTemp' $ "printair" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printAirEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int printAirSz)) []
-    
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printWaterBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int printWaterSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    printWaterEnd <- getNextLabelTemp' $ "printwater" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printWaterEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int printWaterSz)) []
-    
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printFireBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int printFireSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    printFireEnd <- getNextLabelTemp' $ "printfire" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printFireEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int printFireSz)) []
-
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printEarthBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int printEarthSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    printEarthEnd <- getNextLabelTemp' $ "printearth" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printEarthEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int printEarthSz)) []
-
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printMetalBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int printMetalSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    printMetalEnd <- getNextLabelTemp' $ "printmetal" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label printMetalEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int printMetalSz)) []
-    
-    where
-        printAirBegin       = getTacId "printair" 0
-        printAirSz          = 4
-        printWaterBegin     = getTacId "printwater" 0
-        printWaterSz        = 4
-        printFireBegin      = getTacId "printfire" 0
-        printFireSz         = 4 -- 1 ? no se como quedo el tamano de los tipos
-        printEarthBegin     = getTacId "printearth" 0
-        printEarthSz        = 4 -- 1 ? no se como quedo el tamano de los tipos
-        printMetalBegin     = getTacId "printmetal" 0
-        printMetalSz        = 8 -- un apuntador y un entero? un dope vector y un entero?
-
-genStdRead:: GeneratorMonad ()
-genStdRead= do
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "IMPLEMENTACION DE READS") []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readAirBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int readAirSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    readAirEnd <- getNextLabelTemp' $ "readair" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readAirEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int readAirSz)) []
-    
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readWaterBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int readWaterSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    readWaterEnd <- getNextLabelTemp' $ "readwater" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readWaterEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int readWaterSz)) []
-    
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readFireBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int readFireSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    readFireEnd <- getNextLabelTemp' $ "readfire" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readFireEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int readFireSz)) []
-
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readEarthBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int readEarthSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    readEarthEnd <- getNextLabelTemp' $ "readearth" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readEarthEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int readEarthSz)) []
-
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readMetalBegin) []
-    writeTac $ TAC.newTAC TAC.MetaBeginFunc (TAC.Constant (TAC.Int readMetalSz)) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "TODO") []
-    readMetalEnd <- getNextLabelTemp' $ "readmetal" ++ "_end"
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label readMetalEnd) []
-    writeTac $ TAC.newTAC TAC.MetaEndFunc (TAC.Constant (TAC.Int readMetalSz)) []
-    
-    where
-        readAirBegin       = getTacId "readair" 0
-        readAirSz          = 0
-        readWaterBegin     = getTacId "readwater" 0
-        readWaterSz        = 0
-        readFireBegin      = getTacId "readfire" 0
-        readFireSz         = 0
-        readEarthBegin     = getTacId "readearth" 0
-        readEarthSz        = 0
-        readMetalBegin     = getTacId "readmetal" 0
-        readMetalSz        = 4 -- un apuntador? un dope vector?
-
+mapIO :: String -> String
+mapIO "readair" = "readi"
+mapIO "printair" = "printi"
+mapIO "readwater" = "readf"
+mapIO "printwater" = "printf"
+mapIO "readfire" = "readi"
+mapIO "printfire" = "printi"
+mapIO "readearth" = "readc"
+mapIO "printearth" = "printc"
+mapIO "readmetal" = "read"
+mapIO "printmetal" = "print"
+mapIO s = s
