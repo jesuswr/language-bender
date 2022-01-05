@@ -88,7 +88,7 @@ getNextTemp = do
 getNextTemp' :: String -> GeneratorMonad Id
 getNextTemp' prefix = do
     t <- getNextTemp
-    return $ prefix ++ separator ++ t
+    return $ "_" ++ prefix ++ separator ++ t
 
 -- | get next label temporal variable
 getNextLabelTemp :: GeneratorMonad Label
@@ -101,7 +101,7 @@ getNextLabelTemp = do
 getNextLabelTemp' :: String -> GeneratorMonad Label
 getNextLabelTemp' prefix = do
     l <- getNextLabelTemp
-    return $ prefix ++ separator ++ l
+    return $ "_" ++ prefix ++ separator ++ l
 
 -- | get next temporal float variable
 getNextFloatTemp :: GeneratorMonad Id
@@ -113,7 +113,7 @@ getNextFloatTemp = do
 getNextFloatTemp' :: String -> GeneratorMonad Id
 getNextFloatTemp' prefix = do
     f <- getNextFloatTemp
-    return $ prefix ++ separator ++ f
+    return $ "f_" ++ prefix ++ separator ++ f
 
 -- get the correspondent kind of temporal variable
 -- acording to the given type. 
