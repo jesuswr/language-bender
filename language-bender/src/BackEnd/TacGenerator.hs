@@ -258,15 +258,15 @@ makeCopy dest_address source_value value_type = do
     writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Copy from "++ show source_value ++" to " ++ show dest_address)) []
     case value_type of 
         AST.TInt            ->
-            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 4]
+            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id dest_address) [TAC.Constant $ TAC.Int 0, TAC.Id source_value]
         AST.TFloat          ->
-            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 4]
+            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id dest_address) [TAC.Constant $ TAC.Int 0, TAC.Id source_value]
         AST.TChar           ->
-            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 1]
+            writeTac $ TAC.newTAC TAC.LDerefb (TAC.Id dest_address) [TAC.Constant $ TAC.Int 0, TAC.Id source_value]
         AST.TBool           ->
-            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 1]
+            writeTac $ TAC.newTAC TAC.LDerefb (TAC.Id dest_address) [TAC.Constant $ TAC.Int 0, TAC.Id source_value]
         AST.TPtr _          ->
-            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 4]
+            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id dest_address) [TAC.Constant $ TAC.Int 0, TAC.Id source_value]
         AST.TReference _    ->
             writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 4] -- no estoy seguro aqui
         AST.TArray _ _      ->
