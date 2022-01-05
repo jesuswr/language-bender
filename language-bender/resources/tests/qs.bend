@@ -37,30 +37,30 @@ book partition of air about air bender low, air bender high:
 
 travel main:
 .-
-    while lightning master doing:
-    .-
-        -- PRINT("DE 0 PARA TERMINAR O CUALQUIER OTRO NRO PARA CONTINUAR")
-        bender finish of air.
-        -- READ(finish)
-        if (finish is equal to 0):
-            burst ~
-        otherwise
-        .-
-            -- PRINT("INTRODUZCA UN NUMERO MAYOR O IGUAL QUE 0")
-            bender n of air.
-            -- READ(n)
-            opening 1 of i chakras from 0 to n:
-            .-
-                -- READ(disciple i of data)
-                1 ~ -- quitar esta linea y dejar la de arriba
-            -.
+    --while lightning master doing:
+    --.-
+    --    -- PRINT("DE 0 PARA TERMINAR O CUALQUIER OTRO NRO PARA CONTINUAR")
+    --    bender finish of air.
+    --    -- READ(finish)
+    --    if (finish is equal to 0):
+    --        burst ~
+    --    otherwise
+    --   .-
+    --       -- PRINT("INTRODUZCA UN NUMERO MAYOR O IGUAL QUE 0")
+    --       bender n of air.
+    --       -- READ(n)
+    --        opening 1 of i chakras from 0 to n:
+    --        .-
+    --            -- READ(disciple i of data)
+    --            1 ~ -- quitar esta linea y dejar la de arriba
+    --        -.
 
-            quickSort travel with 0, n but 1 ....
-            opening 1 of i chakras from 0 to n:
-            .-
-                -- PRINT(disciple i of data)
-                1 ~ -- quitar esta linea y dejar la de arriba
-            -.
-        -.
-    -.
+    --        quickSort travel with 0, n but 1 ....
+    --        opening 1 of i chakras from 0 to n:
+    --        .-
+    --            -- PRINT(disciple i of data)
+    --            1 ~ -- quitar esta linea y dejar la de arriba
+    --        -.
+    --    -.
+    ---.
 -.

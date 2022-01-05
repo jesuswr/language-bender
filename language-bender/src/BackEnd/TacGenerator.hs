@@ -267,8 +267,8 @@ makeCopy dest_address source_value value_type = do
             writeTac $ TAC.newTAC TAC.LDerefb (TAC.Id dest_address) [TAC.Constant $ TAC.Int 0, TAC.Id source_value]
         AST.TPtr _          ->
             writeTac $ TAC.newTAC TAC.LDeref (TAC.Id dest_address) [TAC.Constant $ TAC.Int 0, TAC.Id source_value]
-        AST.TReference _    ->
-            writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 4] -- no estoy seguro aqui
+        AST.TReference t    ->
+            makeCopy dest_address source_value t
         AST.TArray _ _      ->
             writeTac $ TAC.newTAC TAC.MemCopy (TAC.Id dest_address) [TAC.Id source_value, TAC.Constant $ TAC.Int 8] -- la opcion menos mala
         AST.CustomType name scope -> do
@@ -367,6 +367,18 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
 
                 _ -> return ()
 
+        AST.TArray t exprSz -> do
+            let offset = ST.getVarOffset st varId scope
+            let size = ST.getTypeSize st t
+            -- base[offset] = stack
+            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id base) [TAC.Constant (TAC.Int offset), TAC.Id stack]
+            Just sz <- genTacExpr exprSz
+            -- base[offset + 4] = sz
+            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id base) [TAC.Constant (TAC.Int (offset+4)), TAC.Id sz]
+            -- stack = stack + 4*sz
+            writeTac $ TAC.newTAC TAC.Mult (TAC.Id sz) [TAC.Id sz, TAC.Constant (TAC.Int size)]
+            writeTac $ TAC.newTAC TAC.Add (TAC.Id stack) [TAC.Id stack, TAC.Id sz]
+        
         _ -> return ()
 
     case val of
@@ -852,7 +864,31 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
                         AST.Id name _ _ scope -> do
                             writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Assign reference: " ++ name)) []
                             argAd <- getVarAddressId name scope
-                            makeCopy argAd varAddress t
+                            case t of 
+                                AST.CustomType{} ->
+                                    makeCopy argAd varAddress t
+                                AST.TArray{} ->
+                                    makeCopy argAd varAddress t
+                                _ -> do
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
+                                    makeCopy argAd varAddress t
+
+                        AST.ArrayIndexing index array t2 -> do
+                            writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Assign reference of array access")) []
+                            Just arrayAd <- genTacExpr array
+                            Just ind <- genTacExpr index
+                            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id arrayAd) [TAC.Id arrayAd, TAC.Constant (TAC.Int 0)]
+                            let typeSz = ST.getTypeSize st t
+                            writeTac $ TAC.newTAC TAC.Mult (TAC.Id ind) [TAC.Id ind, TAC.Constant (TAC.Int typeSz)]
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id arrayAd) [TAC.Id arrayAd, TAC.Id ind]             
+                            case t2 of 
+                                AST.CustomType{} ->
+                                    makeCopy arrayAd varAddress t2
+                                AST.TArray{} ->
+                                    makeCopy arrayAd varAddress t2
+                                _ -> do
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
+                                    makeCopy arrayAd varAddress t2
                         _ ->
                             error "Expected an id to reference but got something else"
                 _ -> return())
@@ -1051,6 +1087,7 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
     -- if negated cond is true, jump to else code
     writeTac (TAC.newTAC TAC.GoifNot (TAC.Label elseLabel) [TAC.Id condId])
 
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("INICIO IF")) []
     -- gen code for if 
     ifResultId <- genTacExpr accExpr
 
@@ -1071,6 +1108,8 @@ genTacExpr AST.If{AST.cond=cond, AST.accExpr=accExpr, AST.failExpr=failExpr, AST
 
     -- create else label
     writeTac (TAC.newTAC TAC.MetaLabel (TAC.Label elseLabel) [])
+
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("INICIO ELSE")) []
     -- gen code for else
     elseResultId <- genTacExpr failExpr
     -- if the type of the if-else its not unit, assign the return type
@@ -1449,7 +1488,8 @@ genTacExpr AST.ArrayIndexing{AST.index=_index, AST.expr = array_expr, AST.expTyp
     -- find (a + i * array_type_size) position
 
     State {symT=st} <- RWS.get
-    let array_type_size = ST.getTypeSize st (AST.arrType _expType)
+    let array_type_size = ST.getTypeSize st _expType
+
     Just dope_vector   <- genTacExpr array_expr
     Just array_index   <- genTacExpr _index
     array_address      <- getNextTemp
@@ -1460,22 +1500,22 @@ genTacExpr AST.ArrayIndexing{AST.index=_index, AST.expr = array_expr, AST.expTyp
     isOutOfBounds      <- getNextTemp
     array_index_succes <- getNextLabelTemp
 
-    writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_address) [
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id array_address) [
         TAC.Id dope_vector,
         TAC.Constant (TAC.Int 0)
         ]
-    writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_size) [
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id array_size) [
         TAC.Id dope_vector,
         TAC.Constant (TAC.Int 4)
         ]
 
     -- check index is whitin the limits of the array
-    writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
-    writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
-    writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
-    writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
-    writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
+    -- writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
+    -- writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
+    -- writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
+    -- writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
+    -- writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
+    -- writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
 
     -- i * array_type_size
     writeTac $ TAC.newTAC TAC.Mult (TAC.Id array_position) [
@@ -1514,9 +1554,8 @@ genTacExpr AST.ArrayIndexing{AST.index=_index, AST.expr = array_expr, AST.expTyp
 genTacExpr AST.ArrayAssign {AST.index=_index, AST.arrayExpr=array_expr, AST.value=_value, AST.expType=_expType} = do
 
     -- array assign: a [ i ] := value
-
     State {symT=st} <- RWS.get
-    let array_type_size = ST.getTypeSize st (AST.arrType _expType)
+    let array_type_size = ST.getTypeSize st _expType
     Just dope_vector   <- genTacExpr array_expr
     Just array_index   <- genTacExpr _index
     Just valId         <- genTacExpr _value
@@ -1528,22 +1567,22 @@ genTacExpr AST.ArrayAssign {AST.index=_index, AST.arrayExpr=array_expr, AST.valu
     isOutOfBounds      <- getNextTemp
     array_index_succes <- getNextLabelTemp
 
-    writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_address) [
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id array_address) [
         TAC.Id dope_vector,
         TAC.Constant (TAC.Int 0)
         ]
-    writeTac $ TAC.newTAC TAC.Assign (TAC.Id array_size) [
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id array_size) [
         TAC.Id dope_vector,
         TAC.Constant (TAC.Int 4)
         ]
 
     -- check index is whitin the limits of the array
-    writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
-    writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
-    writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
-    writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
-    writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
-    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
+    --writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
+    --writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
+    --writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
+    --writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
+    --writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
+    --writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
 
     -- i * array_type_size
     writeTac $ TAC.newTAC TAC.Mult (TAC.Id array_position) [
@@ -1659,20 +1698,22 @@ genIO :: String -> [AST.Expr] -> GeneratorMonad(Maybe Id)
 genIO s@"printmetal" [arg] = do
     Just dopeVecA <- genTacExpr arg
     stringA <- getNextTemp
-    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id stringA) [TAC.Id dopeVecA, TAC.Constant $ TAC.Int 0]
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id dopeVecA, TAC.Constant $ TAC.Int 0]
     writeTac $ TAC.newTAC (mapIO s) (TAC.Id stringA) []
     return Nothing
 
 genIO s@('p':_) [arg] = do
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("INICIO PRINT")) []
     Just varId <- genTacExpr arg
     writeTac $ TAC.newTAC (mapIO s) (TAC.Id varId) []
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("FINAL PRINT")) []
     return Nothing
 
 genIO s@"readmetal" [AST.Id name _ _ scope] = do
     dopeVecA <- getVarAddressId name scope
     stringA <- getNextTemp
     -- direccion del arreglo = direccion del dope vector [0]
-    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id stringA) [TAC.Id dopeVecA, TAC.Constant $ TAC.Int 0]
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id dopeVecA, TAC.Constant $ TAC.Int 0]
     writeTac $ TAC.newTAC (mapIO s) (TAC.Id stringA) []
     return Nothing
 
@@ -1683,4 +1724,18 @@ genIO s [AST.Id name _ t scope] = do
     makeCopy varAddress tmp t
     return Nothing
 
-genIO _ _ = error "Error in genIO"
+genIO s [AST.ArrayIndexing index array t] = do
+    State {symT=st} <- RWS.get
+    tmp <- getNextTypedTemp t
+    writeTac $ TAC.newTAC (mapIO s) (TAC.Id tmp) []
+    Just arrayAd <- genTacExpr array
+    Just ind <- genTacExpr index
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id arrayAd) [TAC.Id arrayAd, TAC.Constant (TAC.Int 0)]
+    let typeSz = ST.getTypeSize st t
+    writeTac $ TAC.newTAC TAC.Mult (TAC.Id ind) [TAC.Id ind, TAC.Constant (TAC.Int typeSz)]
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id arrayAd) [TAC.Id arrayAd, TAC.Id ind]             
+    makeCopy arrayAd tmp t
+    return Nothing
+
+genIO _ _ = do
+    error "Error in genIO"
