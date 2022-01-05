@@ -687,7 +687,7 @@ genTacExpr AST.Assign{AST.variable=name, AST.value=val, AST.declScope_=scope, AS
             var_address <- getVarAddressId name scope
             -- ti [0] := valId # copy by value
             makeCopy var_address valId _expType
-            return (Just var_address)
+            return (Just valId)
 
         _ -> error "Inconsistent AST: Expected Variable or Reference to a Variable"
 
@@ -809,57 +809,57 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
         -- if the type of the struct is not a custom type, error
             error "Aqui deberia haber un struct"
 
-genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expType=_expType, AST.declScope_=_declScope_} = do
-    State {symT=st} <- RWS.get
-    let Just _func = ST.findSymbolInScope' _fname 0 st
-        func       = ST.symType _func
-        args       = ST.args func
-        argsIdsScp = map (\f -> (AST.argName f, AST._declScope f)) args
-        getOffsets c (a, b) = ST.offset $ ST.symType $ fromJust $ ST.findSymbolInScope' a b c
-        argsOffs   = map (getOffsets st) argsIdsScp 
-        argsTypes  = map AST.argType args
+genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expType=_expType, AST.declScope_=_declScope_}
+    | isIO _fname = genIO _fname _actualArgs
+    | otherwise   = do
+        State {symT=st} <- RWS.get
+        let Just _func = ST.findSymbolInScope' _fname 0 st
+            func       = ST.symType _func
+            args       = ST.args func
+            argsIdsScp = map (\f -> (AST.argName f, AST._declScope f)) args
+            getOffsets c (a, b) = ST.offset $ ST.symType $ fromJust $ ST.findSymbolInScope' a b c
+            argsOffs   = map (getOffsets st) argsIdsScp 
+            argsTypes  = map AST.argType args
 
-    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Code to calculate parameters")) []
+        writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Code to calculate parameters")) []
 
-    -- Compute each argument expressions and retrieve its return labels
-    mbReturnIds <- M.mapM genTacExpr _actualArgs
+        -- Compute each argument expressions and retrieve its return labels
+        mbReturnIds <- M.mapM genTacExpr _actualArgs
 
-    -- Might crash here if some expression has no return position, this is expected. 
-    -- Every expression should return something, otherwise we have an inconsistent AST
-    let returnIds = map fromJust mbReturnIds
+        -- Might crash here if some expression has no return position, this is expected. 
+        -- Every expression should return something, otherwise we have an inconsistent AST
+        let returnIds = map fromJust mbReturnIds
 
-    -- Generate return position for this function call if it does returns something
-    fcallRetPos <- getNextTypedTemp' "freturn" _expType
+        -- Generate return position for this function call if it does returns something
+        fcallRetPos <- getNextTypedTemp' "freturn" _expType
 
-    -- Generate tmp vars to save the address given by param
-    varAddresses <- getNTemps $ length argsTypes
+        -- Generate tmp vars to save the address given by param
+        varAddresses <- getNTemps $ length argsTypes
 
+        writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Push parameters")) []
 
-    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Push parameters")) []
+        M.forM_ (zip4 returnIds argsOffs argsTypes varAddresses) (\(retId, offset, typ, varAddress) -> do 
+            writeTac $ TAC.newTAC TAC.Param (TAC.Id varAddress) [TAC.Constant $ TAC.Int offset]
+            makeCopy varAddress retId typ)
 
-    M.forM_ (zip4 returnIds argsOffs argsTypes varAddresses) (\(retId, offset, typ, varAddress) -> do 
-        writeTac $ TAC.newTAC TAC.Param (TAC.Id varAddress) [TAC.Constant $ TAC.Int offset]
-        makeCopy varAddress retId typ)
+        -- Call function 
+        writeTac $ TAC.newTAC TAC.Call (TAC.Id fcallRetPos) [TAC.Label $ getTacId _fname 0]
 
-    -- Call function 
-    writeTac $ TAC.newTAC TAC.Call (TAC.Id fcallRetPos) [TAC.Label $ getTacId (mapIO _fname) 0]
+        M.forM_ (zip3 varAddresses argsTypes _actualArgs) (\(varAddress, argT, arg) -> do
+            case argT of 
+                AST.TReference t -> do
+                    case arg of 
+                        AST.Id name _ _ scope -> do
+                            writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Assign reference: " ++ name)) []
+                            argAd <- getVarAddressId name scope
+                            makeCopy argAd varAddress t
+                        _ ->
+                            error "Expected an id to reference but got something else"
+                _ -> return())
 
-
-    M.forM_ (zip3 varAddresses argsTypes _actualArgs) (\(varAddress, argT, arg) -> do
-        case argT of 
-            AST.TReference t -> do
-                case arg of 
-                    AST.Id name _ _ scope -> do
-                        writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("Assign reference: " ++ name)) []
-                        argAd <- getVarAddressId name scope
-                        makeCopy argAd varAddress t
-                    _ ->
-                        error "Expected an id to reference but got something else"
-            _ -> return())
-
-    case _expType of
-        AST.TUnit -> return Nothing
-        _         -> return $ Just fcallRetPos
+        case _expType of
+            AST.TUnit -> return Nothing
+            _         -> return $ Just fcallRetPos
 
 
 
@@ -922,6 +922,8 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
                             AST.TUnit -> Just forResultId
                             _         -> Nothing
                 }
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("FOR BEGIN")) []
+
     -- Move initial value to for iterator
     writeTac $ TAC.newTAC TAC.LDeref (TAC.Id TAC.base) [TAC.Constant . TAC.Int $ forIterOffset, TAC.Id startResultId]
 
@@ -938,8 +940,10 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
     -- Add this data as iterator data
     pushNextIterData forIterData
 
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("FOR BODY BEGIN")) []
     -- Put result value
     mbOutResultId <- genTacExpr _cicBody
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("FOR BODY END")) []
 
     -- Remove iter data
     _ <- popNextIterData
@@ -956,6 +960,7 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
         (Nothing, AST.TUnit)   -> return ()
         (Just outResultId, _)  -> writeTac $ TAC.newTAC TAC.Assign (TAC.Id forResultId) [TAC.Id outResultId]
         _                      -> error "Inconsistent TAC Generator: should provide a return id when body expression returns something different from Unit"
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("FOR END")) []
 
     -- Go back to start
     writeTac $ TAC.newTAC TAC.Goto (TAC.Label forStartLabel) []
@@ -1624,16 +1629,58 @@ getNTemps n = do
     others <- getNTemps (n-1)
     return $ tmp:others
 
+isIO :: String -> Bool
+isIO "readair" = True
+isIO "printair" = True
+isIO "readwater" = True
+isIO "printwater" = True
+isIO "readfire" = True
+isIO "printfire" = True
+isIO "readearth" = True
+isIO "printearth" = True
+isIO "readmetal" = True
+isIO "printmetal" = True
+isIO _ = False
 
-mapIO :: String -> String
-mapIO "readair" = "readi"
-mapIO "printair" = "printi"
-mapIO "readwater" = "readf"
-mapIO "printwater" = "printf"
-mapIO "readfire" = "readi"
-mapIO "printfire" = "printi"
-mapIO "readearth" = "readc"
-mapIO "printearth" = "printc"
-mapIO "readmetal" = "read"
-mapIO "printmetal" = "print"
-mapIO s = s
+mapIO :: String -> TAC.Operation
+mapIO "readair" = TAC.Readi
+mapIO "printair" = TAC.Printi
+mapIO "readwater" = TAC.Readf
+mapIO "printwater" = TAC.Printf
+mapIO "readfire" = TAC.Readi
+mapIO "printfire" = TAC.Printi
+mapIO "readearth" = TAC.Readc
+mapIO "printearth" = TAC.Printc
+mapIO "readmetal" = TAC.Read
+mapIO "printmetal" = TAC.Print
+mapIO _ = error $ "Error in mapIO"
+
+genIO :: String -> [AST.Expr] -> GeneratorMonad(Maybe Id)
+genIO s@"printmetal" [arg] = do
+    Just dopeVecA <- genTacExpr arg
+    stringA <- getNextTemp
+    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id stringA) [TAC.Id dopeVecA, TAC.Constant $ TAC.Int 0]
+    writeTac $ TAC.newTAC (mapIO s) (TAC.Id stringA) []
+    return Nothing
+
+genIO s@('p':_) [arg] = do
+    Just varId <- genTacExpr arg
+    writeTac $ TAC.newTAC (mapIO s) (TAC.Id varId) []
+    return Nothing
+
+genIO s@"readmetal" [AST.Id name _ _ scope] = do
+    dopeVecA <- getVarAddressId name scope
+    stringA <- getNextTemp
+    -- direccion del arreglo = direccion del dope vector [0]
+    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id stringA) [TAC.Id dopeVecA, TAC.Constant $ TAC.Int 0]
+    writeTac $ TAC.newTAC (mapIO s) (TAC.Id stringA) []
+    return Nothing
+
+genIO s [AST.Id name _ t scope] = do
+    tmp <- getNextTypedTemp t
+    writeTac $ TAC.newTAC (mapIO s) (TAC.Id tmp) []
+    varAddress <- getVarAddressId name scope
+    makeCopy varAddress tmp t
+    return Nothing
+
+genIO _ _ = error "Error in genIO"

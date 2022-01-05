@@ -114,9 +114,9 @@ langBender = do
                     else do
 
                         (_, tac') <- TG.generateTac symT ast
-                        C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
-                        putStrLn "~ TAC ~\n"
-                        C.setSGR [C.Reset]
+                        --C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
+                        --putStrLn "~ TAC ~\n"
+                        --C.setSGR [C.Reset]
                         print tac'
                         return ()
 
