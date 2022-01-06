@@ -117,7 +117,7 @@ langBender = do
                         --C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
                         --putStrLn "~ TAC ~\n"
                         --C.setSGR [C.Reset]
-                        print tac'
+                        putStr $ show tac'
                         return ()
 
 

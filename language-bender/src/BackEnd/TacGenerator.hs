@@ -1510,12 +1510,13 @@ genTacExpr AST.ArrayIndexing{AST.index=_index, AST.expr = array_expr, AST.expTyp
         ]
 
     -- check index is whitin the limits of the array
-    -- writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
-    -- writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
-    -- writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
-    -- writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
-    -- writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
-    -- writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
+    writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
+    writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
+    writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
+    writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("EXIT POR OUT OF BOUNDS")) []
+    writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
 
     -- i * array_type_size
     writeTac $ TAC.newTAC TAC.Mult (TAC.Id array_position) [
@@ -1577,12 +1578,13 @@ genTacExpr AST.ArrayAssign {AST.index=_index, AST.arrayExpr=array_expr, AST.valu
         ]
 
     -- check index is whitin the limits of the array
-    --writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
-    --writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
-    --writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
-    --writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
-    --writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
-    --writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
+    writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
+    writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
+    writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
+    writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("EXIT POR OUT OF BOUNDS")) []
+    writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
 
     -- i * array_type_size
     writeTac $ TAC.newTAC TAC.Mult (TAC.Id array_position) [
@@ -1724,17 +1726,50 @@ genIO s [AST.Id name _ t scope] = do
     makeCopy varAddress tmp t
     return Nothing
 
-genIO s [AST.ArrayIndexing index array t] = do
+genIO s [AST.ArrayIndexing _index array_expr _expType] = do
     State {symT=st} <- RWS.get
-    tmp <- getNextTypedTemp t
+    tmp <- getNextTypedTemp _expType
     writeTac $ TAC.newTAC (mapIO s) (TAC.Id tmp) []
-    Just arrayAd <- genTacExpr array
-    Just ind <- genTacExpr index
-    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id arrayAd) [TAC.Id arrayAd, TAC.Constant (TAC.Int 0)]
-    let typeSz = ST.getTypeSize st t
-    writeTac $ TAC.newTAC TAC.Mult (TAC.Id ind) [TAC.Id ind, TAC.Constant (TAC.Int typeSz)]
-    writeTac $ TAC.newTAC TAC.Add (TAC.Id arrayAd) [TAC.Id arrayAd, TAC.Id ind]             
-    makeCopy arrayAd tmp t
+    let array_type_size = ST.getTypeSize st _expType
+    Just dope_vector   <- genTacExpr array_expr
+    Just array_index   <- genTacExpr _index
+    array_address      <- getNextTemp
+    array_size         <- getNextTemp
+    array_position     <- getNextTemp
+    isNegative         <- getNextTemp
+    isOverSize         <- getNextTemp
+    isOutOfBounds      <- getNextTemp
+    array_index_succes <- getNextLabelTemp
+
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id array_address) [
+        TAC.Id dope_vector,
+        TAC.Constant (TAC.Int 0)
+        ]
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id array_size) [
+        TAC.Id dope_vector,
+        TAC.Constant (TAC.Int 4)
+        ]
+
+    -- check index is whitin the limits of the array
+    writeTac $ TAC.newTAC TAC.Lt (TAC.Id isNegative) [TAC.Id array_index, TAC.Constant (TAC.Int 0)]
+    writeTac $ TAC.newTAC TAC.Geq (TAC.Id isOverSize) [TAC.Id array_index, TAC.Id array_size]
+    writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
+    writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
+    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("EXIT POR OUT OF BOUNDS")) []
+    writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
+
+    -- i * array_type_size
+    writeTac $ TAC.newTAC TAC.Mult (TAC.Id array_position) [
+        TAC.Id array_index,
+        TAC.Constant (TAC.Int array_type_size)
+        ]
+    -- (a + i * array_type_size)
+    writeTac $ TAC.newTAC TAC.Add (TAC.Id array_position) [
+        TAC.Id array_position,
+        TAC.Id array_address
+        ]             
+    makeCopy array_position tmp _expType
     return Nothing
 
 genIO _ _ = do
