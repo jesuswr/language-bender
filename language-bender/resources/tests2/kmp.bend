@@ -38,7 +38,6 @@ travel kmp:
 
     -- use table to get matches
     bender last is 0.
-    bender i is 0.
     opening 1 of i chakras from 0 to m:
     .-
         bender j is last.
