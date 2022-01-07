@@ -53,7 +53,6 @@ travel kmp:
             curr is 0.
 
         last is curr.
-        i is i and then 1.
         if (curr is equal to n):
         .-
             in printmetal book with "HAY MATCH EN LA POSICION:"....
