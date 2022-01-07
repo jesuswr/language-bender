@@ -277,6 +277,10 @@ makeCopy dest_address source_value value_type = do
         _                   ->
             return()
 
+isVarDecl :: AST.Declaration -> Bool
+isVarDecl AST.Variable{} = True
+isVarDecl _              = False
+
 -- >> Main Function ---------------------------------------------
 
 -- | Generate a Tac program using the symbol table and the AST object, returning the 
@@ -289,6 +293,7 @@ generateTac symbolTable program = do
 -- | Utility function to generate the actual Tac Program.
 generateTac' :: AST.Program  -> GeneratorMonad ()
 generateTac' program = do
+    genTacDecls $  filter isVarDecl (AST.decls program)
     hasMain <- findMain
     if hasMain 
         then do
@@ -296,7 +301,8 @@ generateTac' program = do
             writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 0) [] 
         else 
             writeTac $ TAC.newTAC TAC.Goto (TAC.Label $ "endProgram") []
-    genTacDecls $ AST.decls program
+    genTacDecls $  filter (not .isVarDecl) (AST.decls program)
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "endProgram") []
     --genTacStd
 
 findMain :: GeneratorMonad Bool
@@ -311,7 +317,7 @@ findMain = do
 
 -- | iterate over declarations in program
 genTacDecls :: [AST.Declaration] -> GeneratorMonad ()
-genTacDecls []     = writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "endProgram") []
+genTacDecls []     = return ()
 genTacDecls (d:ds) = do
     genTacDecl d
     genTacDecls ds
