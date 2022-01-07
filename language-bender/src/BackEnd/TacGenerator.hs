@@ -374,13 +374,13 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
                 _ -> return ()
 
         AST.TArray t exprSz -> do
-            let offset = ST.getVarOffset st varId scope
+            dopeVecAddress <- getVarAddressId varId scope
             let size = ST.getTypeSize st t
-            -- base[offset] = stack
-            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id base) [TAC.Constant (TAC.Int offset), TAC.Id stack]
+            -- dopeVec[0] = stack
+            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id dopeVecAddress) [TAC.Constant (TAC.Int 0), TAC.Id stack]
             Just sz <- genTacExpr exprSz
-            -- base[offset + 4] = sz
-            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id base) [TAC.Constant (TAC.Int (offset+4)), TAC.Id sz]
+            -- dopeVec[4] = sz
+            writeTac $ TAC.newTAC TAC.LDeref (TAC.Id dopeVecAddress) [TAC.Constant (TAC.Int 4), TAC.Id sz]
             -- stack = stack + 4*sz
             writeTac $ TAC.newTAC TAC.Mult (TAC.Id sz) [TAC.Id sz, TAC.Constant (TAC.Int size)]
             writeTac $ TAC.newTAC TAC.Add (TAC.Id stack) [TAC.Id stack, TAC.Id sz]
