@@ -932,6 +932,8 @@ genTacExpr AST.For {AST.iteratorSym=_iteratorSym, AST.step=_step, AST.start=_sta
 
     -- Generate needed temporals
     forResultId     <- getNextTypedTemp' "for_result" _expType
+    genVoidVal forResultId _expType
+
     mbStartResultId <- genTacExpr _start
     mbEndResultId   <- genTacExpr _end
     mbStepResultId  <- genTacExpr _step
@@ -1032,6 +1034,7 @@ genTacExpr AST.While {AST.cond=_cond, AST.cicBody=_cicBody, AST.expType=_expType
     startLabel'   <- getNextLabelTemp' "while_start"
     outLabel      <- getNextLabelTemp' "while_out"
     whileResultId <- getNextTypedTemp _expType
+    genVoidVal whileResultId _expType
 
     -- Don't add a return addres if returns nothing
     let mbWhileResultId
@@ -1780,3 +1783,32 @@ genIO s [AST.ArrayIndexing _index array_expr _expType] = do
 
 genIO _ _ = do
     error "Error in genIO"
+
+
+genVoidVal :: Id -> AST.Type -> GeneratorMonad()
+genVoidVal resId expType =
+    case expType of 
+        AST.TFloat ->
+            writeTac $ TAC.newTAC TAC.Assign (TAC.Id resId) [TAC.Constant $ TAC.Float 0.0]
+        AST.TInt   ->
+            writeTac $ TAC.newTAC TAC.Assign (TAC.Id resId) [TAC.Constant $ TAC.Int 0]
+        AST.TChar   ->
+            writeTac $ TAC.newTAC TAC.Assignb (TAC.Id resId) [TAC.Constant $ TAC.Char '$']
+        AST.TBool   ->
+            writeTac $ TAC.newTAC TAC.Assignb (TAC.Id resId) [TAC.Constant $ TAC.Bool False]
+        AST.TArray _ _ -> do
+            writeTac $ TAC.newTAC TAC.Assign (TAC.Id resId) [TAC.Id stack]
+            writeTac $ TAC.newTAC TAC.Add (TAC.Id stack) [TAC.Id stack, TAC.Constant $ TAC.Int 8]
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id resId) [TAC.Constant $ TAC.Int 0, TAC.Id resId] -- ponerle una direccion dentro del stack para evitar errores (igual no se usara por el tamano 0)
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id resId) [TAC.Constant $ TAC.Int 4, TAC.Constant $ TAC.Int 0] -- ponerle tamano 0
+        AST.TPtr _ ->
+            writeTac $ TAC.newTAC TAC.Assign (TAC.Id resId) [TAC.Constant $ TAC.Int 0]
+        AST.TReference t ->
+            genVoidVal resId t
+        s@(AST.CustomType _ _) -> do
+            State {symT=st} <- RWS.get
+            let sz = ST.getTypeSize st s
+            writeTac $ TAC.newTAC TAC.Assign (TAC.Id resId) [TAC.Id stack]
+            writeTac $ TAC.newTAC TAC.Add (TAC.Id stack) [TAC.Id stack, TAC.Constant $ TAC.Int sz]
+        _ ->
+            return ()
