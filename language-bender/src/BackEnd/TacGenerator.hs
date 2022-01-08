@@ -1768,31 +1768,32 @@ genIO ('r':_) [AST.StructAccess struct tag _expType] = do
 
                             case tag_type of
                                 AST.TInt -> do
-                                    -- Ti := tag_address[ 0 ]
                                     _tmp <- getNextTypedTemp tag_type
                                     writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
                                     makeCopy tag_address _tmp tag_type
                                     return Nothing
                                 AST.TFloat -> do
-                                    -- Ti := tag_address[ 0 ]
                                     _tmp <- getNextTypedTemp tag_type
                                     writeTac $ TAC.newTAC TAC.Readf (TAC.Id _tmp) []
                                     makeCopy tag_address _tmp tag_type
                                     return Nothing
                                 AST.TBool -> do
-                                    -- Ti := tag_address[ 0 ]
                                     _tmp <- getNextTypedTemp tag_type
                                     writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
                                     makeCopy tag_address _tmp tag_type
                                     return Nothing
                                 AST.TChar -> do
-                                    -- Ti := tag_address[ 0 ]
                                     _tmp <- getNextTypedTemp tag_type
                                     writeTac $ TAC.newTAC TAC.Readc (TAC.Id _tmp) []
                                     makeCopy tag_address _tmp tag_type
                                     return Nothing
+                                AST.TArray AST.TChar _ -> do
+                                    stringA <- getNextTemp
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id tag_address, TAC.Constant $ TAC.Int 0]
+                                    writeTac $ TAC.newTAC TAC.Read (TAC.Id stringA) []
+                                    return Nothing
                                 _ ->
-                                    error $ "no deberia llegar aqui"
+                                    error "no deberia llegar aqui"
 
                         -- if there is no id' with the struct or value, error
                         _             ->
@@ -1804,6 +1805,82 @@ genIO ('r':_) [AST.StructAccess struct tag _expType] = do
         -- if the type of the struct is not a custom type, error
             error "Aqui deberia haber un struct"
 
+genIO ('p':_) [AST.StructAccess struct tag _expType] = do
+    State{symT=st} <- RWS.get
+    case AST.expType struct of
+        AST.CustomType name scope -> do
+
+            let Just symStruct= ST.findSymbolInScope' name scope st
+                field_scope  = (ST.fieldScope . ST.symType) symStruct
+
+            -- get symbols for struct and tag, maybe struct not needed?
+            let maybeStruct = ST.findSymbolInScope' name scope st
+                maybeTag    = ST.findSymbolInScope' tag field_scope st
+
+            case (maybeStruct, maybeTag) of
+                (Just _, Just tagSymb) -> do
+                    -- generate code for struct expr and value expr
+                    maybeStructId <- genTacExpr struct
+
+                    case maybeStructId of
+                        Just structId -> do
+                            -- t0 := structId[offset tag]
+                            tag_address <- getNextTemp
+                            let offset_  = (ST.offset . ST.symType) tagSymb
+                                tag_type = (ST.varType . ST.symType) tagSymb 
+
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [ 
+                                TAC.Id structId, 
+                                TAC.Constant (TAC.Int offset_)
+                                ]
+
+                            tmpToPrint <- getNextTypedTemp tag_type
+                            case tag_type of
+                                AST.TInt -> do
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id tmpToPrint) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant $ TAC.Int 0
+                                        ]
+                                    writeTac $ TAC.newTAC TAC.Printi (TAC.Id tmpToPrint) []
+                                    return Nothing
+                                AST.TFloat -> do
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id tmpToPrint) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant $ TAC.Int 0
+                                        ]
+                                    writeTac $ TAC.newTAC TAC.Printf (TAC.Id tmpToPrint) []
+                                    return Nothing
+                                AST.TBool -> do
+                                    writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id tmpToPrint) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant $ TAC.Int 0
+                                        ]
+                                    writeTac $ TAC.newTAC TAC.Printi (TAC.Id tmpToPrint) []
+                                    return Nothing
+                                AST.TChar -> do
+                                    writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id tmpToPrint) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant $ TAC.Int 0
+                                        ]
+                                    writeTac $ TAC.newTAC TAC.Printc (TAC.Id tmpToPrint) []
+                                    return Nothing
+                                AST.TArray AST.TChar _ -> do
+                                    stringA <- getNextTemp
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id tag_address, TAC.Constant $ TAC.Int 0]
+                                    writeTac $ TAC.newTAC TAC.Print (TAC.Id stringA) []
+                                    return Nothing
+                                _ ->
+                                    error "no deberia llegar aqui"
+
+                        -- if there is no id' with the struct or value, error
+                        _             ->
+                            error "Deberia darme el id' donde esta el struct"
+                -- if symbols for struct or tag dont exist, error
+                _ ->
+                    error "Deberia existir el struct"
+        _              ->
+        -- if the type of the struct is not a custom type, error
+            error "Aqui deberia haber un struct"
 
 genIO s@"printmetal" [arg] = do
     Just dopeVecA <- genTacExpr arg
