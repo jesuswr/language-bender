@@ -293,6 +293,7 @@ generateTac symbolTable program = do
 -- | Utility function to generate the actual Tac Program.
 generateTac' :: AST.Program  -> GeneratorMonad ()
 generateTac' program = do
+    genErrorStrings
     genTacDecls $  filter isVarDecl (AST.decls program)
     hasMain <- findMain
     if hasMain 
@@ -304,6 +305,12 @@ generateTac' program = do
     genTacDecls $  filter (not .isVarDecl) (AST.decls program)
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "endProgram") []
     --genTacStd
+
+genErrorStrings :: GeneratorMonad()
+genErrorStrings = do
+    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Id "___OUT_OF_BOUNDS") [TAC.Constant $ TAC.String $ "\"Avatar doesn't allow using non existing disciples" ++ "\\" ++ "n\""]
+    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Id "___DIVSION_BY_0") [TAC.Constant $ TAC.String $ "\"Avatar doesn't allow doing besides 0 " ++ "\\" ++ "n\""]
+    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Id "___DIVSION_BY_0") [TAC.Constant $ TAC.String $ "\"Avatar doesn't allow using an energy's non-active technique" ++ "\\" ++ "n\""]
 
 findMain :: GeneratorMonad Bool
 findMain = do
@@ -1524,6 +1531,9 @@ genTacExpr AST.ArrayIndexing{AST.index=_index, AST.expr = array_expr, AST.expTyp
     writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
     writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
     writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("EXIT POR OUT OF BOUNDS")) []
+    _tmp <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___OUT_OF_BOUNDS"]
+    writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
     writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
 
@@ -1592,6 +1602,9 @@ genTacExpr AST.ArrayAssign {AST.index=_index, AST.arrayExpr=array_expr, AST.valu
     writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
     writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
     writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("EXIT POR OUT OF BOUNDS")) []
+    _tmp <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___OUT_OF_BOUNDS"]
+    writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
     writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
 
@@ -1763,6 +1776,9 @@ genIO s [AST.ArrayIndexing _index array_expr _expType] = do
     writeTac $ TAC.newTAC TAC.Or (TAC.Id isOutOfBounds) [TAC.Id isNegative, TAC.Id isOverSize]
     writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label array_index_succes) [TAC.Id isOutOfBounds]
     writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("EXIT POR OUT OF BOUNDS")) []
+    _tmp <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___OUT_OF_BOUNDS"]
+    writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
     writeTac $ TAC.newTAC TAC.Exit (TAC.Constant . TAC.Int $ 1) []
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label array_index_succes) []
 
