@@ -38,7 +38,6 @@ travel kmp:
 
     -- use table to get matches
     bender last is 0.
-    bender i is 0.
     opening 1 of i chakras from 0 to m:
     .-
         bender j is last.
@@ -53,7 +52,6 @@ travel kmp:
             curr is 0.
 
         last is curr.
-        i is i and then 1.
         if (curr is equal to n):
         .-
             in printmetal book with "HAY MATCH EN LA POSICION:"....
