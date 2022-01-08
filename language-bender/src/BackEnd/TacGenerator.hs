@@ -623,6 +623,15 @@ genTacExpr AST.LiteralUnion{AST.unionName=name, AST.tag=_tag,AST.value=_value,AS
     -- base [offset] := _value
     makeCopy union_address from tagType
 
+    let (tags, unionSize) = case ST.findSymbolInScope' name 0 st of 
+                                Nothing -> error $ "Symbol " ++ name ++ " in scope 0 should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ name ++ "' in scope 0 should be of type union, but it isn't"
+        unionVariantNum = _getTagNum _tag (map fst tags)
+    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id union_address) [ TAC.Constant . TAC.Int $ unionSize - C.wordSize , TAC.Constant . TAC.Int $ unionVariantNum]
+
     return (Just union_address)
 
 genTacExpr AST.ConstUnit{} = return Nothing 
@@ -1701,7 +1710,7 @@ mapOp1 AST.UnitOperator   = error "The unit operator has no tac representation. 
 _getTagNum :: String -> [String] -> Int
 _getTagNum s ss = case elemIndex s ss of 
                         Nothing -> error $ "Error, name '"++ s ++"' not in list of names"
-                        Just x  -> x
+                        Just x  -> x + 1
 
 getNTemps :: Int -> GeneratorMonad ([Id])
 getNTemps 0 = return []
@@ -1737,6 +1746,161 @@ mapIO "printmetal" = TAC.Print
 mapIO _ = error $ "Error in mapIO"
 
 genIO :: String -> [AST.Expr] -> GeneratorMonad(Maybe Id)
+genIO ('r':_) [AST.UnionUsing _union _tag _expType] = do
+    State {symT=_symT} <- RWS.get 
+    --RWS.liftIO . print $ "im right before creating a copy"
+    let (tags, unionSize) = case AST.expType _union of 
+                    AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                
+                    _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
+        -- get union requested variant number
+        unionVariantNum = _getTagNum _tag (map fst tags)
+
+    -- Generate code for the union expression
+    mbUnionReturnId <- genTacExpr _union
+
+    -- get actual value and sanity check
+    let unionReturnId = case mbUnionReturnId of 
+                                Just id' -> id'
+                                _       -> error "Inconsistent TAC generation in union trying expression. Expression with type 'union' should return a value"
+
+    -- Temporals
+    t1 <- getNextTemp
+    t2 <- getNextTemp
+
+    unionSuccessLabel <- getNextLabelTemp' "union_success"
+
+    -- rdefer t1 unionResultId (union_size - word_size)
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t1) [TAC.Id unionReturnId, TAC.Constant . TAC.Int $ unionSize - C.wordSize]
+    -- eq t2 t1 unionVariantNum
+    writeTac $ TAC.newTAC TAC.Eq (TAC.Id t2) [TAC.Id t1, TAC.Constant . TAC.Int $ unionVariantNum]
+    -- goif union_success t2
+    writeTac $ TAC.newTAC TAC.Goif  (TAC.Label unionSuccessLabel) [TAC.Id t2]
+    -- exit 1 (status code error)
+    _tmp <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___UNACTIVE_UNION_FIELD"]
+    writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
+    writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 1) [] 
+    -- @label union_success
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
+
+    case _expType of
+        AST.TInt -> do
+            _tmp <- getNextTypedTemp _expType
+            writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
+            makeCopy unionReturnId _tmp _expType
+            return Nothing
+        AST.TFloat -> do
+            _tmp <- getNextTypedTemp _expType
+            writeTac $ TAC.newTAC TAC.Readf (TAC.Id _tmp) []
+            makeCopy unionReturnId _tmp _expType
+            return Nothing
+        AST.TBool -> do
+            _tmp <- getNextTypedTemp _expType
+            writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
+            makeCopy unionReturnId _tmp _expType
+            return Nothing
+        AST.TChar -> do
+            _tmp <- getNextTypedTemp _expType
+            writeTac $ TAC.newTAC TAC.Readc (TAC.Id _tmp) []
+            makeCopy unionReturnId _tmp _expType
+            return Nothing
+        AST.TArray AST.TChar _ -> do
+            stringA <- getNextTemp
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id unionReturnId, TAC.Constant $ TAC.Int 0]
+            writeTac $ TAC.newTAC TAC.Read (TAC.Id stringA) []
+            return Nothing
+        _ ->
+            error "no deberia llegar aqui"
+
+genIO ('p':_) [AST.UnionUsing _union _tag _expType] = do
+    State {symT=_symT} <- RWS.get 
+    --RWS.liftIO . print $ "im right before creating a copy"
+    let (tags, unionSize) = case AST.expType _union of 
+                    AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                
+                    _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
+        -- get union requested variant number
+        unionVariantNum = _getTagNum _tag (map fst tags)
+
+    -- Generate code for the union expression
+    mbUnionReturnId <- genTacExpr _union
+
+    -- get actual value and sanity check
+    let unionReturnId = case mbUnionReturnId of 
+                                Just id' -> id'
+                                _       -> error "Inconsistent TAC generation in union trying expression. Expression with type 'union' should return a value"
+
+    -- Temporals
+    t1 <- getNextTemp
+    t2 <- getNextTemp
+
+    unionSuccessLabel <- getNextLabelTemp' "union_success"
+
+    -- rdefer t1 unionResultId (union_size - word_size)
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t1) [TAC.Id unionReturnId, TAC.Constant . TAC.Int $ unionSize - C.wordSize]
+    -- eq t2 t1 unionVariantNum
+    writeTac $ TAC.newTAC TAC.Eq (TAC.Id t2) [TAC.Id t1, TAC.Constant . TAC.Int $ unionVariantNum]
+    -- goif union_success t2
+    writeTac $ TAC.newTAC TAC.Goif  (TAC.Label unionSuccessLabel) [TAC.Id t2]
+    -- exit 1 (status code error)
+    _tmp <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___UNACTIVE_UNION_FIELD"]
+    writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
+    writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 1) [] 
+    -- @label union_success
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
+    tmpToPrint <- getNextTypedTemp _expType
+
+    case _expType of
+        AST.TInt -> do
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id tmpToPrint) [
+                TAC.Id unionReturnId,
+                TAC.Constant $ TAC.Int 0
+                ]
+            writeTac $ TAC.newTAC TAC.Printi (TAC.Id tmpToPrint) []
+            return Nothing
+        AST.TFloat -> do
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id tmpToPrint) [
+                TAC.Id unionReturnId,
+                TAC.Constant $ TAC.Int 0
+                ]
+            writeTac $ TAC.newTAC TAC.Printf (TAC.Id tmpToPrint) []
+            return Nothing
+        AST.TBool -> do
+            writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id tmpToPrint) [
+                TAC.Id unionReturnId,
+                TAC.Constant $ TAC.Int 0
+                ]
+            writeTac $ TAC.newTAC TAC.Printi (TAC.Id tmpToPrint) []
+            return Nothing
+        AST.TChar -> do
+            writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id tmpToPrint) [
+                TAC.Id unionReturnId,
+                TAC.Constant $ TAC.Int 0
+                ]
+            writeTac $ TAC.newTAC TAC.Printc (TAC.Id tmpToPrint) []
+            return Nothing
+        AST.TArray AST.TChar _ -> do
+            stringA <- getNextTemp
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id unionReturnId, TAC.Constant $ TAC.Int 0]
+            writeTac $ TAC.newTAC TAC.Print (TAC.Id stringA) []
+            return Nothing
+        _ ->
+            error "no deberia llegar aqui"
+
 genIO ('r':_) [AST.StructAccess struct tag _expType] = do
     State{symT=st} <- RWS.get
     case AST.expType struct of
