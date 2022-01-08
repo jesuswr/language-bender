@@ -1,0 +1,9 @@
+
+travel main:
+.-
+    bender x of air.
+    bender y of air.
+    in readair book with x....
+    in readair book with y....
+    in printair book with x besides y...
+-.

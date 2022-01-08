@@ -309,8 +309,8 @@ generateTac' program = do
 genErrorStrings :: GeneratorMonad()
 genErrorStrings = do
     writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Id "___OUT_OF_BOUNDS") [TAC.Constant $ TAC.String $ "\"Avatar doesn't allow using non existing disciples" ++ "\\" ++ "n\""]
-    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Id "___DIVSION_BY_0") [TAC.Constant $ TAC.String $ "\"Avatar doesn't allow doing besides 0 " ++ "\\" ++ "n\""]
-    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Id "___DIVSION_BY_0") [TAC.Constant $ TAC.String $ "\"Avatar doesn't allow using an energy's non-active technique" ++ "\\" ++ "n\""]
+    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Id "___DIVSION_BY_0") [TAC.Constant $ TAC.String $ "\"Avatar doesn't allow doing besides 0" ++ "\\" ++ "n\""]
+    writeStatic $ TAC.newTAC TAC.MetaStaticStr (TAC.Id "___UNACTIVE_UNION_FIELD") [TAC.Constant $ TAC.String $ "\"Avatar doesn't allow using an energy's non-active technique" ++ "\\" ++ "n\""]
 
 findMain :: GeneratorMonad Bool
 findMain = do
@@ -1252,9 +1252,24 @@ genTacExpr AST.Op2{AST.op2=op, AST.opr1=l, AST.opr2=r, AST.expType=_expType} = d
     Just rightId <- genTacExpr r
     -- get temp id'
     currId <- getNextTypedTemp _expType
-    -- assing the op to the id' and return the id'
-    writeTac (TAC.TACCode (mapOp2 op) (Just (TAC.Id currId)) (Just (TAC.Id leftId)) (Just (TAC.Id rightId)))
-    return (Just currId)
+    case op of
+        AST.Div -> do
+            is0 <- getNextTemp
+            label <- getNextLabelTemp
+            writeTac $ TAC.newTAC TAC.Eq (TAC.Id is0) [TAC.Id rightId, TAC.Constant (TAC.Int 0)]
+            writeTac $ TAC.newTAC TAC.GoifNot (TAC.Label label) [TAC.Id is0]
+            _tmp <- getNextTemp
+            writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___DIVSION_BY_0"]
+            writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
+            writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 1) [] 
+            writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label label) []
+            -- assing the op to the id' and return the id'
+            writeTac (TAC.TACCode (mapOp2 op) (Just (TAC.Id currId)) (Just (TAC.Id leftId)) (Just (TAC.Id rightId)))
+            return (Just currId)
+        _ -> do 
+            -- assing the op to the id' and return the id'
+            writeTac (TAC.TACCode (mapOp2 op) (Just (TAC.Id currId)) (Just (TAC.Id leftId)) (Just (TAC.Id rightId)))
+            return (Just currId)
 
 genTacExpr AST.Op1{AST.op1=op, AST.opr=l, AST.expType=_expType} = do
     
@@ -1430,6 +1445,9 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
     -- goif union_success t2
     writeTac $ TAC.newTAC TAC.Goif  (TAC.Label unionSuccessLabel) [TAC.Id t2]
     -- exit 1 (status code error)
+    _tmp <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___UNACTIVE_UNION_FIELD"]
+    writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
     writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 1) [] 
     -- @label union_success
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
