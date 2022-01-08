@@ -436,7 +436,7 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
                     _ -> ("$", -1)
 
     -- Get type of the struct assignment
-    structType <- if strNm == "$"
+    structAssignType <- if strNm == "$"
         then
             do
                addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
@@ -469,7 +469,7 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
                                 addStaticError $ SE.UnmatchingTypes [tagType] valType
                                 return AST.TypeError
                             else
-                                return $ AST.CustomType strNm (scope)
+                                return $ tagType
 
                     Nothing -> do
                         addStaticError . SE.SymbolNotInScope $ strNm
@@ -479,8 +479,8 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
                         addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
                         return AST.TypeError
 
-    let structAsg' = structAsg{AST.expType = structType}
 
+    let structAsg' = structAsg{AST.expType = structAssignType}
     return structAsg'
 
 -- Check struct access
@@ -494,7 +494,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
                     _ -> ("$", -1)
 
     -- Get type of the struct access
-    structType <- if strNm == "$"
+    structAccesType <- if strNm == "$"
         then
             do
                addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
@@ -528,8 +528,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
                         addStaticError (SE.UnmatchingTypes [AST.CustomType "<struct_type>" (-1)] (AST.expType _struct))
                         return AST.TypeError
 
-    let structAcc' = structAcc{AST.expType = structType}
-
+    let structAcc' = structAcc{AST.expType = structAccesType}
     return structAcc'
 
 -- Check Function Call

@@ -1714,10 +1714,8 @@ genIO s@"printmetal" [arg] = do
     return Nothing
 
 genIO s@('p':_) [arg] = do
-    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("INICIO PRINT")) []
     Just varId <- genTacExpr arg
     writeTac $ TAC.newTAC (mapIO s) (TAC.Id varId) []
-    writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String ("FINAL PRINT")) []
     return Nothing
 
 genIO s@"readmetal" [AST.Id name _ _ scope] = do
