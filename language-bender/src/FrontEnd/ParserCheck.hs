@@ -1024,9 +1024,9 @@ checkExpr c@AST.LiteralUnion {AST.unionName=_unionName, AST.value=_value, AST.ta
     -- calculate offset
         width = ST.getTypeSize st cUnionType'
         align = ST.getTypeAlign st cUnionType'
-    _ <- updateOffset align width
+    newOffset <- updateOffset align width
 
-    let c' = c{AST.expType = cUnionType'}
+    let c' = c{AST.expType = cUnionType', AST.offset = newOffset}
 
     return c'
 

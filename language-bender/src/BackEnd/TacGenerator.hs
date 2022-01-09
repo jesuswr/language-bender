@@ -1059,7 +1059,6 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
                                         _ ->
                                             error "Deberia existir el struct"
                                 AST.TReference (AST.CustomType name scope) -> do
-
                                     let Just symStruct= ST.findSymbolInScope' name scope st
                                         field_scope  = (ST.fieldScope . ST.symType) symStruct
 
@@ -1083,7 +1082,14 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
                                                         TAC.Id structId, 
                                                         TAC.Constant (TAC.Int offset_)
                                                         ]
-                                                    makeCopy tag_address varAddress tag_type
+                                                    case tag_type of 
+                                                        AST.CustomType{} ->
+                                                            makeCopy tag_address varAddress tag_type
+                                                        AST.TArray{} ->
+                                                            makeCopy tag_address varAddress tag_type
+                                                        _ -> do
+                                                            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
+                                                            makeCopy tag_address varAddress tag_type
                                                     
                                                 -- if there is no id' with the struct or value, error
                                                 _             ->
@@ -1093,6 +1099,67 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
                                             error "Deberia existir el struct"
                                 _ ->
                                     error "Se esperaba un struct"
+
+                        AST.UnionUsing _union _tag _expType -> do
+                            State {symT=_symT} <- RWS.get 
+                            --RWS.liftIO . print $ "im right before creating a copy"
+                            let (tags, unionSize) = case AST.expType _union of 
+                                            AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
+                                                case ST.findSymbolInScope' _tName _scope _symT of 
+                                                        Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                                        Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                                        _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                            AST.TReference (AST.CustomType {AST.tName=_tName, AST.scope=_scope}) -> do
+                                                case ST.findSymbolInScope' _tName _scope _symT of 
+                                                        Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                                        Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                                        _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                                             
+                                            _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
+                                -- get union requested variant number
+                                unionVariantNum = _getTagNum _tag (map fst tags)
+
+                            -- Generate code for the union expression
+                            mbUnionReturnId <- genTacExpr _union
+
+                            -- get actual value and sanity check
+                            let unionReturnId = case mbUnionReturnId of 
+                                                        Just id' -> id'
+                                                        _       -> error "Inconsistent TAC generation in union trying expression. Expression with type 'union' should return a value"
+
+                            -- Temporals
+                            t1 <- getNextTemp
+                            t2 <- getNextTemp
+
+                            unionSuccessLabel <- getNextLabelTemp' "union_success"
+
+                            -- rdefer t1 unionResultId (union_size - word_size)
+                            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t1) [TAC.Id unionReturnId, TAC.Constant . TAC.Int $ unionSize - C.wordSize]
+                            -- eq t2 t1 unionVariantNum
+                            writeTac $ TAC.newTAC TAC.Eq (TAC.Id t2) [TAC.Id t1, TAC.Constant . TAC.Int $ unionVariantNum]
+                            -- goif union_success t2
+                            writeTac $ TAC.newTAC TAC.Goif  (TAC.Label unionSuccessLabel) [TAC.Id t2]
+                            -- exit 1 (status code error)
+                            _tmp <- getNextTemp
+                            writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___UNACTIVE_UNION_FIELD"]
+                            writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
+                            writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 1) [] 
+                            -- @label union_success
+                            writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
+
+                            case _expType of
+                                AST.CustomType{} ->
+                                    makeCopy unionReturnId varAddress _expType
+                                AST.TArray{} ->
+                                    makeCopy unionReturnId varAddress _expType
+                                _ -> do
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
+                                    makeCopy unionReturnId varAddress _expType
+                            
 
                         _ ->
                             error "Expected an id to reference but got something else"
