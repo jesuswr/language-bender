@@ -1,7 +1,5 @@
 book it_fib of air about air bender n:
 .-
-    if (n is equal to 0): 
-        this story comes to an end 0~.
     bender dp of air is 0.
     bender next_dp of air is 1.
     opening 1 of _ chakras from 0 to n:
