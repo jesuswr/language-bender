@@ -30,7 +30,6 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
     eternal             { TK.Token _ TK.TKeternal }
     '&'                 { TK.Token _ TK.TKReference }
     is                  { TK.Token _ TK.TKis }
-    reincarnationOf     { TK.Token _ TK.TKreincarnation }
     art                 { TK.Token _ TK.TKart }
     null                { TK.Token _ TK.TKapprentice }
     born                { TK.Token _ TK.TKborn }
@@ -180,18 +179,7 @@ FuncDescription :: { (U.Name, Maybe AST.Type) }
     : book id of Type                                                                       {% P.pushType $4 >> P.checkNestedFunctions ((TK.name . TK.tktype) $2) >> return ((TK.name . TK.tktype) $2, Just $4) }
 
 FuncArg         :: { [AST.FuncArg] }
-    : FuncDefArgDecl                                    { $1 }
-    | FuncArgDecl                                       { $1 }
-    | FuncArgDecl comma FuncDefArgDecl                  { $3 ++ $1 }
-
-FuncDefArgDecl :: { [AST.FuncArg] }
-    : SingleDefArgDecl                                  { [$1] }
-    | FuncDefArgDecl comma Type bender id Assign        {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 (Just $6) 0) >>= (return . (:$1)) }
-    | FuncDefArgDecl comma Type '&' bender id Assign    {% (P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) (Just $7) 0) >>= (return . (:$1)) }
-
-SingleDefArgDecl :: { AST.FuncArg }
-    : Type bender id Assign                             {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 (Just $4) 0 }
-    | Type '&' bender id Assign                         {% P.checkFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) (Just $5) 0 }
+    : FuncArgDecl                                       { $1 }
 
 FuncArgDecl     :: { [AST.FuncArg] }
     : SingleFuncArgDecl                                 { [$1] }
@@ -220,7 +208,6 @@ VarDecl         :: { AST.Declaration }
     | bender id Assign                                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) (AST.expType $3) (Just $3) False 0 }
     | eternal bender id of Type Assign                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) $5 (Just $6) True 0 }
     | eternal bender id Assign                          {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) (AST.expType $4) (Just $4) True 0 }
-    | bender id is reincarnationOf id                   {% P.checkDecls $ AST.Reference ((TK.name . TK.tktype) $2) ((TK.name . TK.tktype) $5) 0 }
     
 
     -- >> Expressions --------------------------------------------------------------------------
