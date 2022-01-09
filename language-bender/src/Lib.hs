@@ -146,20 +146,14 @@ langBender = do
 
                                 M.when (mipsOpt opts) $ do
                                     -- call mips optimizations
-                                    --Sys.callCommand "cd src/optimips-prime; ls"
-                                    --Sys.callCommand "ls"
                                     Sys.callCommand ("cd src/optimips-prime; stack exec -- optimips-prime-exe < "
                                         ++"../../"++compiledFile
                                         ++" > "
                                         ++"../../"++compiledFile)
-                                    
-                                    --Sys.callCommand "cd ../../"
-
 
                                 M.when (runLbend opts) $ do
                                     -- call MARS on compiled code file
                                     Sys.callCommand ("java -jar src/Mars4_5.jar "++compiledFile)
-                                    return ()
 
                                 return ()
 
