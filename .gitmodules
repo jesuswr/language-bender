@@ -1,3 +1,12 @@
 [submodule "language-bender/src/TACTypes"]
 	path = language-bender/src/TACTypes
 	url = https://github.com/LDiazN/TACTypes.git
+[submodule "language-bender/src/tac-interpreter"]
+	path = language-bender/src/tac-interpreter
+	url = https://github.com/LDiazN/tac-interpreter.git
+[submodule "language-bender/src/tac2mips"]
+	path = language-bender/src/tac2mips
+	url = https://github.com/KevinMena/tac2mips.git
+[submodule "language-bender/src/optimips-prime"]
+	path = language-bender/src/optimips-prime
+	url = https://github.com/CDPcode/optimips-prime.git

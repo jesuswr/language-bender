@@ -10,8 +10,12 @@ data Opts = Opts {
         justLex  :: Bool,
         justPar  :: Bool,
         tac      :: Bool,
+        justTac  :: Bool,
+        runTac   :: Bool,
         printLex :: Bool,
         printPar :: Bool,
+        mipsOpt  :: Bool,
+        runLbend :: Bool,
         objFile  :: String
     }
     deriving(Show)
@@ -37,7 +41,11 @@ processArgs args
                 tac      = False,
                 printLex = False,
                 printPar = False,
-                objFile  = ""
+                justTac  = False,
+                runTac   = False,
+                mipsOpt  = False,
+                runLbend = False,
+                objFile  = "a.out"
         }
 
         if "--help" `elem` args then
@@ -79,6 +87,14 @@ processFlags ("-jpar":xs) opts warnings =
     processFlags xs (opts{justPar = True}) warnings
 processFlags ("-tac":xs) opts warnings =
     processFlags xs (opts{tac = True}) warnings
+processFlags ("-jtac":xs) opts warnings =
+    processFlags xs (opts{justTac = True}) warnings
+processFlags ("-runtac":xs) opts warnings =
+    processFlags xs (opts{runTac = True}) warnings
+processFlags ("-O":xs) opts warnings =
+    processFlags xs (opts{mipsOpt = True}) warnings
+processFlags ("-run":xs) opts warnings =
+    processFlags xs (opts{runLbend = True}) warnings
 processFlags ("-o":xs) opts warnings
     | null xs =
         processFlags xs opts (noObjFileName:warnings)

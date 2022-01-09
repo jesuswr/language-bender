@@ -113,12 +113,39 @@ langBender = do
                     if justPar opts || exist_errors then return ()
                     else do
 
+                        let printTac = tac opts || justTac opts
+
                         (_, tac') <- TG.generateTac symT ast
-                        --C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
-                        --putStrLn "~ TAC ~\n"
-                        --C.setSGR [C.Reset]
-                        putStr $ show tac'
-                        return ()
+
+                        M.when printTac $ do
+
+                            C.setSGR [C.SetColor C.Foreground C.Vivid C.Blue]
+                            putStrLn "~ TAC ~\n"
+                            C.setSGR [C.Reset]
+                            putStr $ show tac'
+
+
+                        M.when (runTac opts) $ do
+
+                            -- call tac interpreter
+                            return ()
+
+                        if justTac opts || runTac opts then return ()
+                            else do
+
+                                -- call translator to MIPS
+
+                                M.when (mipsOpt opts) $ do
+                                    -- call mips optimizations
+                                    return ()
+
+                                -- write compiled code to output file
+
+                                M.when (runLbend opts) $ do
+                                    -- call MARS on compiled code file
+                                    return ()
+
+                                return ()
 
 
 
@@ -131,6 +158,11 @@ helpMsg = "~ lbend ~ The Last Language Bender Compiler.\n"
     ++ "-v             print lexer and parser info even when errors occur.\n"
     ++ "-lex           print lexer output.\n"
     ++ "-par           print parser output.\n"
-    ++ "-jlex          just use the Lexer in the input.\n"
-    ++ "-jpar          just use the Lexer and the Parser in the input.\n"
+    ++ "-tac           print generated tac to standard output.\n"
+    ++ "-jlex          just use the Lexer. Does not continue with compilation\n"
+    ++ "-jpar          just use the Lexer and the Parser. Does not continue with compilation\n"
+    ++ "-jtac          Does not continue compilation after tac is generated.\n"
+    ++ "-runtac        Run the generated tac in the tac interpreter. Does not continue with compilation\n"
+    ++ "-run           Run the compiled code in MARS.\n"
+    ++ "-O             Apply extra optimizations to the compiled code.\n"
     ++ "-o <file>      Place the output into <file>."
