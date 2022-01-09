@@ -1275,8 +1275,8 @@ typeMatch t1 t2 = t2 `elem` getCastClass t1
 -- return the list of cast-able types with each other
 -- that contains the given type
 getCastClass :: AST.Type -> [AST.Type] 
-getCastClass AST.TInt           = [AST.TInt, AST.TFloat, AST.TReference AST.TInt]
-getCastClass AST.TFloat         = [AST.TFloat, AST.TInt, AST.TReference AST.TFloat]
+getCastClass AST.TInt           = [AST.TInt, AST.TReference AST.TInt]
+getCastClass AST.TFloat         = [AST.TFloat, AST.TReference AST.TFloat]
 getCastClass (AST.TReference t) = (AST.TReference t):(getCastClass t)
 getCastClass t                  = [t, AST.TReference t]
 

@@ -31,7 +31,6 @@ import Data.Functor((<&>))
     eternal             { TK.Token _ TK.TKeternal }
     '&'                 { TK.Token _ TK.TKReference }
     is                  { TK.Token _ TK.TKis }
-    reincarnationOf     { TK.Token _ TK.TKreincarnation }
     art                 { TK.Token _ TK.TKart }
     null                { TK.Token _ TK.TKapprentice }
     born                { TK.Token _ TK.TKborn }
@@ -167,18 +166,7 @@ FuncDecl        :: { () }
     | book id PushScope colon PushScope Exprs PopScope PopScope                          {% P.preCheckDecls $ AST.Func ((TK.name . TK.tktype) $2) [] AST.TVoid (AST.ConstUnit AST.TUnit) 0 0 }
 
 FuncArg         :: { [AST.FuncArg] }
-    : FuncDefArgDecl                                                                     { $1 }
-    | FuncArgDecl                                                                        { $1 }
-    | FuncArgDecl comma FuncDefArgDecl                                                   { ($3 ++ $1) }
-
-FuncDefArgDecl :: { [AST.FuncArg] }
-    : SingleDefArgDecl                                                                   { [$1] }
-    | FuncDefArgDecl comma Type bender id Assign                                         {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $5) $3 Nothing 0) >>= (return . (:$1)) }
-    | FuncDefArgDecl comma Type '&' bender id Assign                                     {% (P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $6) (AST.TReference $3) Nothing 0) >>= (return . (:$1)) }
-
-SingleDefArgDecl :: { AST.FuncArg }
-    : Type bender id Assign                                                              {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $3) $1 Nothing 0 }
-    | Type '&' bender id Assign                                                          {% P.preCheckFunArg $ AST.FuncArg ((TK.name . TK.tktype) $4) (AST.TReference $1) Nothing 0 }
+    : FuncArgDecl                                                                        { $1 }
 
 FuncArgDecl     :: { [AST.FuncArg] }
     : SingleFuncArgDecl                                                                  { [$1] }
@@ -203,7 +191,6 @@ VarDecl
     | bender id Assign                                                                   {}
     | eternal bender id of Type Assign                                                   {} 
     | eternal bender id Assign                                                           {}
-    | bender id is reincarnationOf id                                                    {}
     
 
     -- >> Expressions --------------------------------------------------------------------------
