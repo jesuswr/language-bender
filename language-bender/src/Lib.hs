@@ -129,27 +129,36 @@ langBender = do
 
                         M.when (runTac opts) $ do
 
-                            writeFile "src/tac-interpreter/code.tac" (show tac')
+                            writeFile "src/code.tac" (show tac')
                             -- call tac interpreter
-                            Sys.callCommand "src/tac-interpreter/tac-runner src/tac-interpreter/code.tac"
-
-                            Dir.removeFile "src/tac-interpreter/code.tac"
-
-                            return ()
+                            Sys.callCommand "src/tac-interpreter/tac-runner src/code.tac"
+                            Dir.removeFile "src/code.tac"
 
                         if justTac opts || runTac opts then return ()
                             else do
 
+                                let compiledFile = objFile opts
+
+                                writeFile "src/code.tac" (show tac')
                                 -- call translator to MIPS
+                                Sys.callCommand ("src/tac2mips/bin/tac2mips src/code.tac > "++compiledFile)
+                                Dir.removeFile "src/code.tac"
 
                                 M.when (mipsOpt opts) $ do
                                     -- call mips optimizations
-                                    return ()
+                                    --Sys.callCommand "cd src/optimips-prime; ls"
+                                    --Sys.callCommand "ls"
+                                    Sys.callCommand ("cd src/optimips-prime; stack exec -- optimips-prime-exe < "
+                                        ++"../../"++compiledFile
+                                        ++" > "
+                                        ++"../../"++compiledFile)
+                                    
+                                    --Sys.callCommand "cd ../../"
 
-                                -- write compiled code to output file
 
                                 M.when (runLbend opts) $ do
                                     -- call MARS on compiled code file
+                                    Sys.callCommand ("java -jar src/Mars4_5.jar "++compiledFile)
                                     return ()
 
                                 return ()
