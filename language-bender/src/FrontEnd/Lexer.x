@@ -129,7 +129,7 @@ tokens :-
 
                 -- conditionals
 <0>     if                                               { pushTK TKif }
-<0>     \. @w otherwise                                  { pushTK TKdotOtherwise} 
+<0>     \-\. @w otherwise                                { pushTKlist [TKendBlock, TKotherwise] } 
 <0>     otherwise                                        { pushTK TKotherwise }
 
                 -- other syntax is WIP
@@ -144,6 +144,7 @@ tokens :-
 <0>     \:                                               { pushTK TKcolon }
 <0>     \.\-                                             { pushTK TKbeginBlock }
 <0>     \-\.                                             { pushTKlist [TKendBlock, TKdot] }
+<0>     \. @w otherwise                                  { pushTK TKdotOtherwise}
 <0>     \.                                               { pushTK TKdot }
 <0>     \~                                               { pushTK TKunit }
 <0>     \(                                               { pushTK TKopenParent }   
