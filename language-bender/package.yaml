@@ -1,6 +1,6 @@
 name:                language-bender
 version:             0.1.0.0
-github:              "jesuswr/Doe-Lang"
+github:              "jesuswr/language-bender"
 license:             BSD3
 author:              
   - "Jesús Wahrman"
@@ -33,6 +33,7 @@ dependencies:
 - mtl
 - text
 - ansi-terminal
+- process
 
 library:
   source-dirs: src

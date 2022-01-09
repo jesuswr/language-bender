@@ -16,6 +16,8 @@ import qualified    BackEnd.TacGenerator as TG
 
 -- Third party imports 
 import qualified System.Console.ANSI     as C -- colors
+import qualified System.Process          as Sys
+import qualified System.Directory        as Dir
 
 langBender :: IO ()
 langBender = do
@@ -127,7 +129,12 @@ langBender = do
 
                         M.when (runTac opts) $ do
 
+                            writeFile "src/tac-interpreter/code.tac" (show tac')
                             -- call tac interpreter
+                            Sys.callCommand "src/tac-interpreter/tac-runner src/tac-interpreter/code.tac"
+
+                            Dir.removeFile "src/tac-interpreter/code.tac"
+
                             return ()
 
                         if justTac opts || runTac opts then return ()

@@ -7,8 +7,8 @@ cabal-version: 1.12
 name:           language-bender
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/jesuswr/Doe-Lang>
-homepage:       https://github.com/jesuswr/Doe-Lang#readme
-bug-reports:    https://github.com/jesuswr/Doe-Lang/issues
+homepage:       https://github.com/jesuswr/language-bender#readme
+bug-reports:    https://github.com/jesuswr/language-bender/issues
 author:         Jesús Wahrman,
                 Neil Villamizar,
                 Luis Diaz
@@ -23,7 +23,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/jesuswr/Doe-Lang
+  location: https://github.com/jesuswr/language-bender
 
 library
   exposed-modules:
@@ -62,6 +62,7 @@ library
     , extra
     , hspec
     , mtl
+    , process
     , text
   default-language: Haskell2010
 
@@ -82,6 +83,7 @@ executable lbend
     , hspec
     , language-bender
     , mtl
+    , process
     , text
   default-language: Haskell2010
 
@@ -104,5 +106,6 @@ test-suite lang-bender-test
     , hspec
     , language-bender
     , mtl
+    , process
     , text
   default-language: Haskell2010
