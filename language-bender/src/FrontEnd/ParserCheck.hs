@@ -1292,13 +1292,25 @@ _checkTypeMatch expected  t = _checkTypeMatch' expected  (AST.expType t)
 -- | Check if a given type matches some of the expected ones. Report error if not 
 _checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
 
-_checkTypeMatch' [] _                                    = return False
-_checkTypeMatch' ((AST.TPtr _):_) (AST.TPtr AST.TVoid) = return True
+_checkTypeMatch' [] _                                   = return False
+_checkTypeMatch' ((AST.TPtr _):_) (AST.TPtr AST.TVoid)  = return True
 _checkTypeMatch' ((AST.TPtr t1):_) (AST.TPtr t2)        = _checkTypeMatch' [t1] t2
-_checkTypeMatch' (_:ts) (AST.TPtr t)                    = _checkTypeMatch' ts (AST.TPtr t)
+_checkTypeMatch' (tt:ts) (AST.TPtr t)                    = do
+    b <- _checkTypeMatch' ts (AST.TPtr t)
+    if b 
+        then return True
+        else do
+            addStaticError $ SE.UnmatchingTypes (tt:ts) (AST.TPtr t)
+            return False
 
 _checkTypeMatch' ((AST.TArray t1 _):_) (AST.TArray t2 _) = _checkTypeMatch' [t1] t2
-_checkTypeMatch' (_:ts) (AST.TArray t sz)                = _checkTypeMatch' ts (AST.TArray t sz)
+_checkTypeMatch' (tt:ts) (AST.TArray t sz)                = do
+    b <- _checkTypeMatch' ts (AST.TArray t sz)
+    if b
+        then return True
+        else do
+            addStaticError $ SE.UnmatchingTypes (tt:ts) (AST.TArray t sz)
+            return False
 
 _checkTypeMatch' expected exprType
     | exprType == AST.TypeError        = return False -- nothing matches TypeError
