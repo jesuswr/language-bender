@@ -1017,6 +1017,83 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
                                 _ -> do
                                     writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
                                     makeCopy arrayAd varAddress t2
+                        AST.StructAccess struct tag _ -> do
+                            case AST.expType struct of 
+                                AST.CustomType name scope -> do
+                                    let Just symStruct= ST.findSymbolInScope' name scope st
+                                        field_scope  = (ST.fieldScope . ST.symType) symStruct
+
+                                    -- get symbols for struct and tag, maybe struct not needed?
+                                    let maybeStruct = ST.findSymbolInScope' name scope st
+                                        maybeTag    = ST.findSymbolInScope' tag field_scope st
+
+                                    case (maybeStruct, maybeTag) of
+                                        (Just _, Just tagSymb) -> do
+                                            -- generate code for struct expr and value expr
+                                            maybeStructId <- genTacExpr struct
+
+                                            case maybeStructId of
+                                                Just structId -> do
+                                                    -- t0 := structId[offset tag]
+                                                    tag_address <- getNextTemp
+                                                    let offset_  = (ST.offset . ST.symType) tagSymb
+                                                        tag_type = (ST.varType . ST.symType) tagSymb 
+
+                                                    writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [ 
+                                                        TAC.Id structId, 
+                                                        TAC.Constant (TAC.Int offset_)
+                                                        ]
+                                                    case tag_type of 
+                                                        AST.CustomType{} ->
+                                                            makeCopy tag_address varAddress tag_type
+                                                        AST.TArray{} ->
+                                                            makeCopy tag_address varAddress tag_type
+                                                        _ -> do
+                                                            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
+                                                            makeCopy tag_address varAddress tag_type
+                                                    
+                                                -- if there is no id' with the struct or value, error
+                                                _             ->
+                                                    error "Deberia darme el id' donde esta el struct"
+                                        -- if symbols for struct or tag dont exist, error
+                                        _ ->
+                                            error "Deberia existir el struct"
+                                AST.TReference (AST.CustomType name scope) -> do
+
+                                    let Just symStruct= ST.findSymbolInScope' name scope st
+                                        field_scope  = (ST.fieldScope . ST.symType) symStruct
+
+                                    -- get symbols for struct and tag, maybe struct not needed?
+                                    let maybeStruct = ST.findSymbolInScope' name scope st
+                                        maybeTag    = ST.findSymbolInScope' tag field_scope st
+
+                                    case (maybeStruct, maybeTag) of
+                                        (Just _, Just tagSymb) -> do
+                                            -- generate code for struct expr and value expr
+                                            maybeStructId <- genTacExpr struct
+
+                                            case maybeStructId of
+                                                Just structId -> do
+                                                    -- t0 := structId[offset tag]
+                                                    tag_address <- getNextTemp
+                                                    let offset_  = (ST.offset . ST.symType) tagSymb
+                                                        tag_type = (ST.varType . ST.symType) tagSymb 
+
+                                                    writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [ 
+                                                        TAC.Id structId, 
+                                                        TAC.Constant (TAC.Int offset_)
+                                                        ]
+                                                    makeCopy tag_address varAddress tag_type
+                                                    
+                                                -- if there is no id' with the struct or value, error
+                                                _             ->
+                                                    error "Deberia darme el id' donde esta el struct"
+                                        -- if symbols for struct or tag dont exist, error
+                                        _ ->
+                                            error "Deberia existir el struct"
+                                _ ->
+                                    error "Se esperaba un struct"
+
                         _ ->
                             error "Expected an id to reference but got something else"
                 _ -> return())
