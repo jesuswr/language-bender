@@ -623,6 +623,15 @@ genTacExpr AST.LiteralUnion{AST.unionName=name, AST.tag=_tag,AST.value=_value,AS
     -- base [offset] := _value
     makeCopy union_address from tagType
 
+    let (tags, unionSize) = case ST.findSymbolInScope' name 0 st of 
+                                Nothing -> error $ "Symbol " ++ name ++ " in scope 0 should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ name ++ "' in scope 0 should be of type union, but it isn't"
+        unionVariantNum = _getTagNum _tag (map fst tags)
+    writeTac $ TAC.newTAC TAC.LDeref (TAC.Id union_address) [ TAC.Constant . TAC.Int $ unionSize - C.wordSize , TAC.Constant . TAC.Int $ unionVariantNum]
+
     return (Just union_address)
 
 genTacExpr AST.ConstUnit{} = return Nothing 
@@ -646,12 +655,16 @@ genTacExpr AST.Id{AST.name=name, AST.declScope_=scope, AST.expType=_expType} = d
             genTacExpr AST.Id{AST.name=_refName, AST.declScope_=_refScope, AST.expType=_refType, AST.position=(U.Position 0 0)}
 
         ST.Variable{} -> do
-
             let _isConst = ST.getVarIsConst st name scope
             
             case _expType of
 
                 AST.CustomType _ _ -> do
+                    -- get var address
+                    var_address <- getVarAddressId name scope
+                    return (Just var_address)
+
+                AST.TReference (AST.CustomType _ _) -> do
                     -- get var address
                     var_address <- getVarAddressId name scope
                     return (Just var_address)
@@ -754,6 +767,40 @@ genTacExpr AST.StructAssign{AST.struct=struct, AST.tag=tag, AST.value=value, AST
                 -- if symbols for struct or tag dont exist, error
                 _ ->
                     error "Deberia existir el struct"
+        AST.TReference (AST.CustomType name scope) -> do
+
+            let Just symStruct= ST.findSymbolInScope' name scope st
+                field_scope  = (ST.fieldScope . ST.symType) symStruct
+
+            -- get symbols for struct and tag, maybe struct not needed?
+            let maybeStruct = ST.findSymbolInScope' name scope st
+                maybeTag    = ST.findSymbolInScope' tag field_scope st
+
+            case (maybeStruct, maybeTag) of
+                (Just _, Just tagSymb) -> do
+                    -- generate code for struct expr and value expr
+                    maybeStructId <- genTacExpr struct
+                    maybeValId    <- genTacExpr value
+
+                    case (maybeStructId, maybeValId) of
+                        (Just structId, Just valId) -> do
+                            -- structId[offset tag] = valId
+                            tag_address <- getNextTemp
+                            let offset_ = (ST.offset . ST.symType) tagSymb
+                            --writeTac $ TAC.newTAC TAC.LDeref (TAC.Id structId) [ TAC.Constant (TAC.Int offset_), TAC.Id valId]
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [
+                                TAC.Id structId,
+                                TAC.Constant (TAC.Int offset_)
+                                ]
+                            makeCopy tag_address valId _expType
+                            return (Just structId)
+
+                        -- if there is no id' with the struct or value, error
+                        _             ->
+                            error "Deberia darme el id' donde esta el struct"
+                -- if symbols for struct or tag dont exist, error
+                _ ->
+                    error "Deberia existir el struct"
         _              ->
         -- if the type of the struct is not a custom type, error
             error "Aqui deberia haber un struct"
@@ -763,6 +810,74 @@ genTacExpr AST.StructAccess{AST.struct=struct, AST.tag=tag} = do
     State{symT=st} <- RWS.get
     case AST.expType struct of
         AST.CustomType name scope -> do
+
+            let Just symStruct= ST.findSymbolInScope' name scope st
+                field_scope  = (ST.fieldScope . ST.symType) symStruct
+
+            -- get symbols for struct and tag, maybe struct not needed?
+            let maybeStruct = ST.findSymbolInScope' name scope st
+                maybeTag    = ST.findSymbolInScope' tag field_scope st
+
+            case (maybeStruct, maybeTag) of
+                (Just _, Just tagSymb) -> do
+                    -- generate code for struct expr and value expr
+                    maybeStructId <- genTacExpr struct
+
+                    case maybeStructId of
+                        Just structId -> do
+                            -- t0 := structId[offset tag]
+                            tag_address <- getNextTemp
+                            let offset_  = (ST.offset . ST.symType) tagSymb
+                                tag_type = (ST.varType . ST.symType) tagSymb 
+
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [ 
+                                TAC.Id structId, 
+                                TAC.Constant (TAC.Int offset_)
+                                ]
+
+                            case tag_type of
+                                AST.CustomType _ _ -> return (Just tag_address)
+
+                                AST.TArray _ _ -> return (Just tag_address)
+
+                                AST.TFloat -> do
+                                    -- fi := tag_address[ 0 ]
+                                    currId <- getNextFloatTemp
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant (TAC.Int 0)
+                                        ]
+                                    -- return fi
+                                    return (Just currId)
+
+                                AST.TInt -> do
+                                    -- Ti := tag_address[ 0 ]
+                                    currId <- getNextTemp
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id currId) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant (TAC.Int 0)
+                                        ]
+                                    -- return Ti
+                                    return (Just currId)
+
+                                _ -> do -- char or bool, byte assignment
+                                    -- Ti :=b tag_address[ 0 ]
+                                    currId <- getNextTemp
+                                    writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id currId) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant (TAC.Int 0)
+                                        ]
+                                    -- return Ti
+                                    return (Just currId)
+
+
+                        -- if there is no id' with the struct or value, error
+                        _             ->
+                            error "Deberia darme el id' donde esta el struct"
+                -- if symbols for struct or tag dont exist, error
+                _ ->
+                    error "Deberia existir el struct"
+        AST.TReference (AST.CustomType name scope) -> do
 
             let Just symStruct= ST.findSymbolInScope' name scope st
                 field_scope  = (ST.fieldScope . ST.symType) symStruct
@@ -902,6 +1017,150 @@ genTacExpr AST.FunCall {AST.fname=_fname, AST.actualArgs=_actualArgs, AST.expTyp
                                 _ -> do
                                     writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
                                     makeCopy arrayAd varAddress t2
+                        AST.StructAccess struct tag _ -> do
+                            case AST.expType struct of 
+                                AST.CustomType name scope -> do
+                                    let Just symStruct= ST.findSymbolInScope' name scope st
+                                        field_scope  = (ST.fieldScope . ST.symType) symStruct
+
+                                    -- get symbols for struct and tag, maybe struct not needed?
+                                    let maybeStruct = ST.findSymbolInScope' name scope st
+                                        maybeTag    = ST.findSymbolInScope' tag field_scope st
+
+                                    case (maybeStruct, maybeTag) of
+                                        (Just _, Just tagSymb) -> do
+                                            -- generate code for struct expr and value expr
+                                            maybeStructId <- genTacExpr struct
+
+                                            case maybeStructId of
+                                                Just structId -> do
+                                                    -- t0 := structId[offset tag]
+                                                    tag_address <- getNextTemp
+                                                    let offset_  = (ST.offset . ST.symType) tagSymb
+                                                        tag_type = (ST.varType . ST.symType) tagSymb 
+
+                                                    writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [ 
+                                                        TAC.Id structId, 
+                                                        TAC.Constant (TAC.Int offset_)
+                                                        ]
+                                                    case tag_type of 
+                                                        AST.CustomType{} ->
+                                                            makeCopy tag_address varAddress tag_type
+                                                        AST.TArray{} ->
+                                                            makeCopy tag_address varAddress tag_type
+                                                        _ -> do
+                                                            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
+                                                            makeCopy tag_address varAddress tag_type
+                                                    
+                                                -- if there is no id' with the struct or value, error
+                                                _             ->
+                                                    error "Deberia darme el id' donde esta el struct"
+                                        -- if symbols for struct or tag dont exist, error
+                                        _ ->
+                                            error "Deberia existir el struct"
+                                AST.TReference (AST.CustomType name scope) -> do
+                                    let Just symStruct= ST.findSymbolInScope' name scope st
+                                        field_scope  = (ST.fieldScope . ST.symType) symStruct
+
+                                    -- get symbols for struct and tag, maybe struct not needed?
+                                    let maybeStruct = ST.findSymbolInScope' name scope st
+                                        maybeTag    = ST.findSymbolInScope' tag field_scope st
+
+                                    case (maybeStruct, maybeTag) of
+                                        (Just _, Just tagSymb) -> do
+                                            -- generate code for struct expr and value expr
+                                            maybeStructId <- genTacExpr struct
+
+                                            case maybeStructId of
+                                                Just structId -> do
+                                                    -- t0 := structId[offset tag]
+                                                    tag_address <- getNextTemp
+                                                    let offset_  = (ST.offset . ST.symType) tagSymb
+                                                        tag_type = (ST.varType . ST.symType) tagSymb 
+
+                                                    writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [ 
+                                                        TAC.Id structId, 
+                                                        TAC.Constant (TAC.Int offset_)
+                                                        ]
+                                                    case tag_type of 
+                                                        AST.CustomType{} ->
+                                                            makeCopy tag_address varAddress tag_type
+                                                        AST.TArray{} ->
+                                                            makeCopy tag_address varAddress tag_type
+                                                        _ -> do
+                                                            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
+                                                            makeCopy tag_address varAddress tag_type
+                                                    
+                                                -- if there is no id' with the struct or value, error
+                                                _             ->
+                                                    error "Deberia darme el id' donde esta el struct"
+                                        -- if symbols for struct or tag dont exist, error
+                                        _ ->
+                                            error "Deberia existir el struct"
+                                _ ->
+                                    error "Se esperaba un struct"
+
+                        AST.UnionUsing _union _tag _expType -> do
+                            State {symT=_symT} <- RWS.get 
+                            --RWS.liftIO . print $ "im right before creating a copy"
+                            let (tags, unionSize) = case AST.expType _union of 
+                                            AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
+                                                case ST.findSymbolInScope' _tName _scope _symT of 
+                                                        Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                                        Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                                        _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                            AST.TReference (AST.CustomType {AST.tName=_tName, AST.scope=_scope}) -> do
+                                                case ST.findSymbolInScope' _tName _scope _symT of 
+                                                        Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                                        Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                                        _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                                             
+                                            _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
+                                -- get union requested variant number
+                                unionVariantNum = _getTagNum _tag (map fst tags)
+
+                            -- Generate code for the union expression
+                            mbUnionReturnId <- genTacExpr _union
+
+                            -- get actual value and sanity check
+                            let unionReturnId = case mbUnionReturnId of 
+                                                        Just id' -> id'
+                                                        _       -> error "Inconsistent TAC generation in union trying expression. Expression with type 'union' should return a value"
+
+                            -- Temporals
+                            t1 <- getNextTemp
+                            t2 <- getNextTemp
+
+                            unionSuccessLabel <- getNextLabelTemp' "union_success"
+
+                            -- rdefer t1 unionResultId (union_size - word_size)
+                            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t1) [TAC.Id unionReturnId, TAC.Constant . TAC.Int $ unionSize - C.wordSize]
+                            -- eq t2 t1 unionVariantNum
+                            writeTac $ TAC.newTAC TAC.Eq (TAC.Id t2) [TAC.Id t1, TAC.Constant . TAC.Int $ unionVariantNum]
+                            -- goif union_success t2
+                            writeTac $ TAC.newTAC TAC.Goif  (TAC.Label unionSuccessLabel) [TAC.Id t2]
+                            -- exit 1 (status code error)
+                            _tmp <- getNextTemp
+                            writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___UNACTIVE_UNION_FIELD"]
+                            writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
+                            writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 1) [] 
+                            -- @label union_success
+                            writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
+
+                            case _expType of
+                                AST.CustomType{} ->
+                                    makeCopy unionReturnId varAddress _expType
+                                AST.TArray{} ->
+                                    makeCopy unionReturnId varAddress _expType
+                                _ -> do
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id varAddress) [TAC.Id varAddress, TAC.Constant (TAC.Int 0)]
+                                    makeCopy unionReturnId varAddress _expType
+                            
+
                         _ ->
                             error "Expected an id to reference but got something else"
                 _ -> return())
@@ -1365,7 +1624,14 @@ genTacExpr AST.UnionTrying {AST.union=_union, AST.tag=_tag, AST.expType = _expTy
                                 Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
 
                                 _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
-                                
+                    AST.TReference (AST.CustomType {AST.tName=_tName, AST.scope=_scope}) -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                       
                     _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
         
     -- get union requested variant number
@@ -1417,7 +1683,14 @@ genTacExpr AST.UnionUsing {AST.union=_union, AST.tag=_tag, AST.expType = _expTyp
                                 Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
 
                                 _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
-                                
+                    AST.TReference (AST.CustomType {AST.tName=_tName, AST.scope=_scope}) -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                     
                     _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
         -- get union requested variant number
         unionVariantNum = _getTagNum _tag (map fst tags)
@@ -1701,7 +1974,7 @@ mapOp1 AST.UnitOperator   = error "The unit operator has no tac representation. 
 _getTagNum :: String -> [String] -> Int
 _getTagNum s ss = case elemIndex s ss of 
                         Nothing -> error $ "Error, name '"++ s ++"' not in list of names"
-                        Just x  -> x
+                        Just x  -> x + 1
 
 getNTemps :: Int -> GeneratorMonad ([Id])
 getNTemps 0 = return []
@@ -1737,6 +2010,176 @@ mapIO "printmetal" = TAC.Print
 mapIO _ = error $ "Error in mapIO"
 
 genIO :: String -> [AST.Expr] -> GeneratorMonad(Maybe Id)
+genIO ('r':_) [AST.UnionUsing _union _tag _expType] = do
+    State {symT=_symT} <- RWS.get 
+    --RWS.liftIO . print $ "im right before creating a copy"
+    let (tags, unionSize) = case AST.expType _union of 
+                    AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                    AST.TReference  (AST.CustomType {AST.tName=_tName, AST.scope=_scope} ) -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                
+                    _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
+        -- get union requested variant number
+        unionVariantNum = _getTagNum _tag (map fst tags)
+
+    -- Generate code for the union expression
+    mbUnionReturnId <- genTacExpr _union
+
+    -- get actual value and sanity check
+    let unionReturnId = case mbUnionReturnId of 
+                                Just id' -> id'
+                                _       -> error "Inconsistent TAC generation in union trying expression. Expression with type 'union' should return a value"
+
+    -- Temporals
+    t1 <- getNextTemp
+    t2 <- getNextTemp
+
+    unionSuccessLabel <- getNextLabelTemp' "union_success"
+
+    -- rdefer t1 unionResultId (union_size - word_size)
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t1) [TAC.Id unionReturnId, TAC.Constant . TAC.Int $ unionSize - C.wordSize]
+    -- eq t2 t1 unionVariantNum
+    writeTac $ TAC.newTAC TAC.Eq (TAC.Id t2) [TAC.Id t1, TAC.Constant . TAC.Int $ unionVariantNum]
+    -- goif union_success t2
+    writeTac $ TAC.newTAC TAC.Goif  (TAC.Label unionSuccessLabel) [TAC.Id t2]
+    -- exit 1 (status code error)
+    _tmp <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___UNACTIVE_UNION_FIELD"]
+    writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
+    writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 1) [] 
+    -- @label union_success
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
+
+    case _expType of
+        AST.TInt -> do
+            _tmp <- getNextTypedTemp _expType
+            writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
+            makeCopy unionReturnId _tmp _expType
+            return Nothing
+        AST.TFloat -> do
+            _tmp <- getNextTypedTemp _expType
+            writeTac $ TAC.newTAC TAC.Readf (TAC.Id _tmp) []
+            makeCopy unionReturnId _tmp _expType
+            return Nothing
+        AST.TBool -> do
+            _tmp <- getNextTypedTemp _expType
+            writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
+            makeCopy unionReturnId _tmp _expType
+            return Nothing
+        AST.TChar -> do
+            _tmp <- getNextTypedTemp _expType
+            writeTac $ TAC.newTAC TAC.Readc (TAC.Id _tmp) []
+            makeCopy unionReturnId _tmp _expType
+            return Nothing
+        AST.TArray AST.TChar _ -> do
+            stringA <- getNextTemp
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id unionReturnId, TAC.Constant $ TAC.Int 0]
+            writeTac $ TAC.newTAC TAC.Read (TAC.Id stringA) []
+            return Nothing
+        _ ->
+            error "no deberia llegar aqui"
+
+genIO ('p':_) [AST.UnionUsing _union _tag _expType] = do
+    State {symT=_symT} <- RWS.get 
+    --RWS.liftIO . print $ "im right before creating a copy"
+    let (tags, unionSize) = case AST.expType _union of 
+                    AST.CustomType {AST.tName=_tName, AST.scope=_scope} -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                    
+                    AST.TReference (AST.CustomType {AST.tName=_tName, AST.scope=_scope}) -> do
+                        case ST.findSymbolInScope' _tName _scope _symT of 
+                                Nothing -> error $ "Symbol " ++ _tName ++ " in scope " ++ show _scope ++ " should be available"
+
+                                Just ST.Symbol {ST.symType=ST.UnionType {ST.fields=_fields, ST.width=_width}} -> (_fields, _width)
+
+                                _ -> error $ "Symbol '" ++ _tName ++ "' in scope " ++ show _scope ++ " should be of type union, but it isn't"
+                                 
+                    _ -> error "Inconsistent AST: Expected type for union expression should be a custom type"
+        -- get union requested variant number
+        unionVariantNum = _getTagNum _tag (map fst tags)
+
+    -- Generate code for the union expression
+    mbUnionReturnId <- genTacExpr _union
+
+    -- get actual value and sanity check
+    let unionReturnId = case mbUnionReturnId of 
+                                Just id' -> id'
+                                _       -> error "Inconsistent TAC generation in union trying expression. Expression with type 'union' should return a value"
+
+    -- Temporals
+    t1 <- getNextTemp
+    t2 <- getNextTemp
+
+    unionSuccessLabel <- getNextLabelTemp' "union_success"
+
+    -- rdefer t1 unionResultId (union_size - word_size)
+    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id t1) [TAC.Id unionReturnId, TAC.Constant . TAC.Int $ unionSize - C.wordSize]
+    -- eq t2 t1 unionVariantNum
+    writeTac $ TAC.newTAC TAC.Eq (TAC.Id t2) [TAC.Id t1, TAC.Constant . TAC.Int $ unionVariantNum]
+    -- goif union_success t2
+    writeTac $ TAC.newTAC TAC.Goif  (TAC.Label unionSuccessLabel) [TAC.Id t2]
+    -- exit 1 (status code error)
+    _tmp <- getNextTemp
+    writeTac $ TAC.newTAC TAC.Assign (TAC.Id _tmp) [TAC.Label "___UNACTIVE_UNION_FIELD"]
+    writeTac $ TAC.newTAC TAC.Print (TAC.Id _tmp) []
+    writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 1) [] 
+    -- @label union_success
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label unionSuccessLabel) []
+    tmpToPrint <- getNextTypedTemp _expType
+
+    case _expType of
+        AST.TInt -> do
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id tmpToPrint) [
+                TAC.Id unionReturnId,
+                TAC.Constant $ TAC.Int 0
+                ]
+            writeTac $ TAC.newTAC TAC.Printi (TAC.Id tmpToPrint) []
+            return Nothing
+        AST.TFloat -> do
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id tmpToPrint) [
+                TAC.Id unionReturnId,
+                TAC.Constant $ TAC.Int 0
+                ]
+            writeTac $ TAC.newTAC TAC.Printf (TAC.Id tmpToPrint) []
+            return Nothing
+        AST.TBool -> do
+            writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id tmpToPrint) [
+                TAC.Id unionReturnId,
+                TAC.Constant $ TAC.Int 0
+                ]
+            writeTac $ TAC.newTAC TAC.Printi (TAC.Id tmpToPrint) []
+            return Nothing
+        AST.TChar -> do
+            writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id tmpToPrint) [
+                TAC.Id unionReturnId,
+                TAC.Constant $ TAC.Int 0
+                ]
+            writeTac $ TAC.newTAC TAC.Printc (TAC.Id tmpToPrint) []
+            return Nothing
+        AST.TArray AST.TChar _ -> do
+            stringA <- getNextTemp
+            writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id unionReturnId, TAC.Constant $ TAC.Int 0]
+            writeTac $ TAC.newTAC TAC.Print (TAC.Id stringA) []
+            return Nothing
+        _ ->
+            error "no deberia llegar aqui"
+
 genIO ('r':_) [AST.StructAccess struct tag _expType] = do
     State{symT=st} <- RWS.get
     case AST.expType struct of
@@ -1768,31 +2211,93 @@ genIO ('r':_) [AST.StructAccess struct tag _expType] = do
 
                             case tag_type of
                                 AST.TInt -> do
-                                    -- Ti := tag_address[ 0 ]
                                     _tmp <- getNextTypedTemp tag_type
                                     writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
                                     makeCopy tag_address _tmp tag_type
                                     return Nothing
                                 AST.TFloat -> do
-                                    -- Ti := tag_address[ 0 ]
                                     _tmp <- getNextTypedTemp tag_type
                                     writeTac $ TAC.newTAC TAC.Readf (TAC.Id _tmp) []
                                     makeCopy tag_address _tmp tag_type
                                     return Nothing
                                 AST.TBool -> do
-                                    -- Ti := tag_address[ 0 ]
                                     _tmp <- getNextTypedTemp tag_type
                                     writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
                                     makeCopy tag_address _tmp tag_type
                                     return Nothing
                                 AST.TChar -> do
-                                    -- Ti := tag_address[ 0 ]
                                     _tmp <- getNextTypedTemp tag_type
                                     writeTac $ TAC.newTAC TAC.Readc (TAC.Id _tmp) []
                                     makeCopy tag_address _tmp tag_type
                                     return Nothing
+                                AST.TArray AST.TChar _ -> do
+                                    stringA <- getNextTemp
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id tag_address, TAC.Constant $ TAC.Int 0]
+                                    writeTac $ TAC.newTAC TAC.Read (TAC.Id stringA) []
+                                    return Nothing
                                 _ ->
-                                    error $ "no deberia llegar aqui"
+                                    error "no deberia llegar aqui"
+
+                        -- if there is no id' with the struct or value, error
+                        _             ->
+                            error "Deberia darme el id' donde esta el struct"
+                -- if symbols for struct or tag dont exist, error
+                _ ->
+                    error "Deberia existir el struct"
+        AST.TReference (AST.CustomType name scope) -> do
+
+            let Just symStruct= ST.findSymbolInScope' name scope st
+                field_scope  = (ST.fieldScope . ST.symType) symStruct
+
+            -- get symbols for struct and tag, maybe struct not needed?
+            let maybeStruct = ST.findSymbolInScope' name scope st
+                maybeTag    = ST.findSymbolInScope' tag field_scope st
+
+            case (maybeStruct, maybeTag) of
+                (Just _, Just tagSymb) -> do
+                    -- generate code for struct expr and value expr
+                    maybeStructId <- genTacExpr struct
+
+                    case maybeStructId of
+                        Just structId -> do
+                            -- t0 := structId[offset tag]
+                            tag_address <- getNextTemp
+                            let offset_  = (ST.offset . ST.symType) tagSymb
+                                tag_type = (ST.varType . ST.symType) tagSymb 
+
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [ 
+                                TAC.Id structId, 
+                                TAC.Constant (TAC.Int offset_)
+                                ]
+
+                            case tag_type of
+                                AST.TInt -> do
+                                    _tmp <- getNextTypedTemp tag_type
+                                    writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
+                                    makeCopy tag_address _tmp tag_type
+                                    return Nothing
+                                AST.TFloat -> do
+                                    _tmp <- getNextTypedTemp tag_type
+                                    writeTac $ TAC.newTAC TAC.Readf (TAC.Id _tmp) []
+                                    makeCopy tag_address _tmp tag_type
+                                    return Nothing
+                                AST.TBool -> do
+                                    _tmp <- getNextTypedTemp tag_type
+                                    writeTac $ TAC.newTAC TAC.Readi (TAC.Id _tmp) []
+                                    makeCopy tag_address _tmp tag_type
+                                    return Nothing
+                                AST.TChar -> do
+                                    _tmp <- getNextTypedTemp tag_type
+                                    writeTac $ TAC.newTAC TAC.Readc (TAC.Id _tmp) []
+                                    makeCopy tag_address _tmp tag_type
+                                    return Nothing
+                                AST.TArray AST.TChar _ -> do
+                                    stringA <- getNextTemp
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id tag_address, TAC.Constant $ TAC.Int 0]
+                                    writeTac $ TAC.newTAC TAC.Read (TAC.Id stringA) []
+                                    return Nothing
+                                _ ->
+                                    error "no deberia llegar aqui"
 
                         -- if there is no id' with the struct or value, error
                         _             ->
@@ -1804,6 +2309,82 @@ genIO ('r':_) [AST.StructAccess struct tag _expType] = do
         -- if the type of the struct is not a custom type, error
             error "Aqui deberia haber un struct"
 
+genIO ('p':_) [AST.StructAccess struct tag _expType] = do
+    State{symT=st} <- RWS.get
+    case AST.expType struct of
+        AST.CustomType name scope -> do
+
+            let Just symStruct= ST.findSymbolInScope' name scope st
+                field_scope  = (ST.fieldScope . ST.symType) symStruct
+
+            -- get symbols for struct and tag, maybe struct not needed?
+            let maybeStruct = ST.findSymbolInScope' name scope st
+                maybeTag    = ST.findSymbolInScope' tag field_scope st
+
+            case (maybeStruct, maybeTag) of
+                (Just _, Just tagSymb) -> do
+                    -- generate code for struct expr and value expr
+                    maybeStructId <- genTacExpr struct
+
+                    case maybeStructId of
+                        Just structId -> do
+                            -- t0 := structId[offset tag]
+                            tag_address <- getNextTemp
+                            let offset_  = (ST.offset . ST.symType) tagSymb
+                                tag_type = (ST.varType . ST.symType) tagSymb 
+
+                            writeTac $ TAC.newTAC TAC.Add (TAC.Id tag_address) [ 
+                                TAC.Id structId, 
+                                TAC.Constant (TAC.Int offset_)
+                                ]
+
+                            tmpToPrint <- getNextTypedTemp tag_type
+                            case tag_type of
+                                AST.TInt -> do
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id tmpToPrint) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant $ TAC.Int 0
+                                        ]
+                                    writeTac $ TAC.newTAC TAC.Printi (TAC.Id tmpToPrint) []
+                                    return Nothing
+                                AST.TFloat -> do
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id tmpToPrint) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant $ TAC.Int 0
+                                        ]
+                                    writeTac $ TAC.newTAC TAC.Printf (TAC.Id tmpToPrint) []
+                                    return Nothing
+                                AST.TBool -> do
+                                    writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id tmpToPrint) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant $ TAC.Int 0
+                                        ]
+                                    writeTac $ TAC.newTAC TAC.Printi (TAC.Id tmpToPrint) []
+                                    return Nothing
+                                AST.TChar -> do
+                                    writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id tmpToPrint) [
+                                        TAC.Id tag_address,
+                                        TAC.Constant $ TAC.Int 0
+                                        ]
+                                    writeTac $ TAC.newTAC TAC.Printc (TAC.Id tmpToPrint) []
+                                    return Nothing
+                                AST.TArray AST.TChar _ -> do
+                                    stringA <- getNextTemp
+                                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id stringA) [TAC.Id tag_address, TAC.Constant $ TAC.Int 0]
+                                    writeTac $ TAC.newTAC TAC.Print (TAC.Id stringA) []
+                                    return Nothing
+                                _ ->
+                                    error "no deberia llegar aqui"
+
+                        -- if there is no id' with the struct or value, error
+                        _             ->
+                            error "Deberia darme el id' donde esta el struct"
+                -- if symbols for struct or tag dont exist, error
+                _ ->
+                    error "Deberia existir el struct"
+        _              ->
+        -- if the type of the struct is not a custom type, error
+            error "Aqui deberia haber un struct"
 
 genIO s@"printmetal" [arg] = do
     Just dopeVecA <- genTacExpr arg

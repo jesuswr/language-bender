@@ -433,6 +433,7 @@ checkExpr structAsg@AST.StructAssign {AST.struct =_struct, AST.value=_value,  AS
     -- Get struct name
     let (strNm, scope) = case AST.expType _struct of
                     (AST.CustomType s scope') -> (s,scope')
+                    (AST.TReference (AST.CustomType s scope')) -> (s, scope')
                     _ -> ("$", -1)
 
     -- Get type of the struct assignment
@@ -491,6 +492,7 @@ checkExpr structAcc@AST.StructAccess {AST.struct =_struct, AST.tag =_tag} = do
     -- Get struct name
     let (strNm, scope) = case AST.expType _struct of
                     (AST.CustomType s scope') -> (s, scope')
+                    (AST.TReference (AST.CustomType s scope')) -> (s, scope')
                     _ -> ("$", -1)
 
     -- Get type of the struct access
@@ -749,6 +751,7 @@ checkExpr unionTrying@AST.UnionTrying {AST.union=_union, AST.tag=_tag} = do
     -- Get union name
     let (unionNm, scope) = case AST.expType _union of
                     (AST.CustomType s scope') -> (s, scope')
+                    (AST.TReference (AST.CustomType s scope')) -> (s, scope')
                     _ -> ("$", -1)
 
     -- Get type of the union trying
@@ -799,6 +802,7 @@ checkExpr unionUsing@AST.UnionUsing {AST.union=_union, AST.tag=_tag} = do
     -- Get union name
     let (unionNm, scope) = case AST.expType _union of
                     AST.CustomType s scope' -> (s,scope')
+                    (AST.TReference (AST.CustomType s scope')) -> (s, scope')
                     _ -> ("$", -1)
 
     -- Get type of the union trying
@@ -1020,9 +1024,9 @@ checkExpr c@AST.LiteralUnion {AST.unionName=_unionName, AST.value=_value, AST.ta
     -- calculate offset
         width = ST.getTypeSize st cUnionType'
         align = ST.getTypeAlign st cUnionType'
-    _ <- updateOffset align width
+    newOffset <- updateOffset align width
 
-    let c' = c{AST.expType = cUnionType'}
+    let c' = c{AST.expType = cUnionType', AST.offset = newOffset}
 
     return c'
 
@@ -1283,7 +1287,7 @@ checkExprList ts = _checkTypeMatchesArgs (map getCastClass ts)
 
 -- | Check if a given expr typematchs an expected set of types, and report error if they don't
 _checkTypeMatch :: [AST.Type] -> AST.Expr -> ParserState Bool
-_checkTypeMatch expected  = _checkTypeMatch' expected . AST.expType
+_checkTypeMatch expected  t = _checkTypeMatch' expected  (AST.expType t)
 
 -- | Check if a given type matches some of the expected ones. Report error if not 
 _checkTypeMatch' :: [AST.Type] -> AST.Type -> ParserState Bool
