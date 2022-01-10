@@ -28,7 +28,6 @@ import Data.Functor((<&>))
 %token
     bender              { TK.Token _ TK.TKbender }
     of                  { TK.Token _ TK.TKof }
-    eternal             { TK.Token _ TK.TKeternal }
     '&'                 { TK.Token _ TK.TKReference }
     is                  { TK.Token _ TK.TKis }
     art                 { TK.Token _ TK.TKart }
@@ -189,8 +188,6 @@ VarDecl
     : bender id of Type                                                                  {}
     | bender id of Type Assign                                                           {} 
     | bender id Assign                                                                   {}
-    | eternal bender id of Type Assign                                                   {} 
-    | eternal bender id Assign                                                           {}
     
 
     -- >> Expressions --------------------------------------------------------------------------

@@ -1358,7 +1358,7 @@ _functionCheckerHelper fid _ args body stackSize = do
     -- Check if body type matches expected type 
     _ <- _checkTypeMatch' [inferedType] (AST.expType body)
 
-    checkDecls $ AST.Func fid (reverse args) inferedType' body 0 stackSize
+    checkDecls $ AST.Func fid (reverse args) inferedType' body 0 (getOffset stackSize 4)
 
 -- | utility function to perform some operations needed before checking a for loop
 _forCheckerHelper :: AST.Declaration  

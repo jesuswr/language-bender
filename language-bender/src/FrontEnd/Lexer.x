@@ -307,7 +307,7 @@ pushStr ( _ , _ , _ , _ ) _ = do
     str <- getLitStr
     setLitStr ""
     (Position l c) <- getAtr strPosition
-    addToken ( Token (Position l c) . TKstring $ str )
+    addToken ( Token (Position l c) . TKstring $ (str ++ ['\0']))
     alexMonadScan
 
 startStr :: AlexAction AlexUserState

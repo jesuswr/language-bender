@@ -27,7 +27,6 @@ import Data.Maybe(isNothing, maybe, fromMaybe, isJust, fromJust)
 %token
     bender              { TK.Token _ TK.TKbender }
     of                  { TK.Token _ TK.TKof }
-    eternal             { TK.Token _ TK.TKeternal }
     '&'                 { TK.Token _ TK.TKReference }
     is                  { TK.Token _ TK.TKis }
     art                 { TK.Token _ TK.TKart }
@@ -206,8 +205,6 @@ VarDecl         :: { AST.Declaration }
     : bender id of Type                                 {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) $4 Nothing False 0 }
     | bender id of Type Assign                          {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) $4 (Just $5) False 0 }
     | bender id Assign                                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $2) (AST.expType $3) (Just $3) False 0 }
-    | eternal bender id of Type Assign                  {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) $5 (Just $6) True 0 }
-    | eternal bender id Assign                          {% P.checkDecls $ AST.Variable ((TK.name . TK.tktype) $3) (AST.expType $4) (Just $4) True 0 }
     
 
     -- >> Expressions --------------------------------------------------------------------------

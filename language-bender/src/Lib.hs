@@ -141,15 +141,18 @@ langBender = do
 
                                 writeFile "src/code.tac" (show tac')
                                 -- call translator to MIPS
-                                Sys.callCommand ("src/tac2mips/bin/tac2mips src/code.tac > "++compiledFile)
+                                Sys.callCommand ("src/tac2mips/tac2mips src/code.tac > "++compiledFile)
                                 Dir.removeFile "src/code.tac"
 
                                 M.when (mipsOpt opts) $ do
                                     -- call mips optimizations
+                                    let tmpFile = "_" ++ compiledFile
+                                    Sys.callCommand ("cp " ++ compiledFile ++ " " ++ tmpFile)
                                     Sys.callCommand ("cd src/optimips-prime; stack exec -- optimips-prime-exe < "
-                                        ++"../../"++compiledFile
+                                        ++"../../"++tmpFile
                                         ++" > "
                                         ++"../../"++compiledFile)
+                                    Dir.removeFile tmpFile
 
                                 M.when (runLbend opts) $ do
                                     -- call MARS on compiled code file

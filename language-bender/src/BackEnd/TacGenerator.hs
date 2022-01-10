@@ -301,7 +301,7 @@ generateTac' program = do
             writeTac $ TAC.newTAC TAC.Call (TAC.Id "___main") [TAC.Label $ getTacId "main" 0]
             writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 0) [] 
         else 
-            writeTac $ TAC.newTAC TAC.Goto (TAC.Label $ "endProgram") []
+            writeTac $ TAC.newTAC TAC.Exit  (TAC.Constant . TAC.Int $ 0) [] 
     genTacDecls $  filter (not .isVarDecl) (AST.decls program)
     writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label "endProgram") []
     --genTacStd
@@ -390,6 +390,9 @@ genTacDecl AST.Variable{AST.decName=varId, AST.initVal=val, AST.declScope=scope,
             writeTac $ TAC.newTAC TAC.LDeref (TAC.Id dopeVecAddress) [TAC.Constant (TAC.Int 4), TAC.Id sz]
             -- stack = stack + 4*sz
             writeTac $ TAC.newTAC TAC.Mult (TAC.Id sz) [TAC.Id sz, TAC.Constant (TAC.Int size)]
+            writeTac $ TAC.newTAC TAC.Add (TAC.Id sz) [TAC.Id sz, TAC.Constant (TAC.Int 3)]
+            writeTac $ TAC.newTAC TAC.Div (TAC.Id sz) [TAC.Id sz, TAC.Constant (TAC.Int 4)]
+            writeTac $ TAC.newTAC TAC.Mult (TAC.Id sz) [TAC.Id sz, TAC.Constant (TAC.Int 4)]
             writeTac $ TAC.newTAC TAC.Add (TAC.Id stack) [TAC.Id stack, TAC.Id sz]
         
         _ -> return ()
@@ -494,6 +497,11 @@ genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope, AST.ba
     -- Write tack for beginFunc
     writeTac $ TAC.newTAC TAC.MetaBeginFunc  (TAC.Id startFuncLabel) [stackSize']
 
+    --writeTac $ TAC.newTAC TAC.MetaComment (TAC.Constant $ TAC.String "This because the translator fails without it") []
+    pqc <- getNextLabelTemp
+    writeTac $ TAC.newTAC TAC.Goto (TAC.Label pqc) []
+    writeTac $ TAC.newTAC TAC.MetaLabel (TAC.Label pqc) []
+
     -- push this function as the current function in scope
     pushNextFuncData funcData
 
@@ -510,8 +518,8 @@ genTacDecl AST.Func{AST.decName=name, AST.body=body, AST.declScope=scope, AST.ba
     -- Pop current function data
     _ <- popNextFuncData
 
+    
     -- generate tac label for function end
-
     writeTac $ TAC.newTAC TAC.MetaLabel  (TAC.Label endFuncLabel) []
     writeTac $ TAC.newTAC TAC.MetaEndFunc stackSize' []
     -- falta un return? agarrar lo que devuelva el cuerpo de la func y retornar eso?
@@ -1534,14 +1542,24 @@ genTacExpr AST.Op1{AST.op1=op, AST.opr=l, AST.expType=_expType} = do
     
     -- if op is Unit, return nothing
     -- else assing to a temp variable and return it
+    State {symT=st} <- RWS.get
     case op of
         AST.UnitOperator -> do
             Just _ <- genTacExpr l
             return Nothing
+        AST.DerefOperator -> do
+            Just ptrId <- genTacExpr l
+            ret <- getNextTypedTemp _expType
+            case ST.getTypeSize st _expType of 
+                1 ->
+                    writeTac $ TAC.newTAC TAC.RDerefb (TAC.Id ret) [TAC.Id ptrId, TAC.Constant $ TAC.Int 0]
+                _ ->
+                    writeTac $ TAC.newTAC TAC.RDeref (TAC.Id ret) [TAC.Id ptrId, TAC.Constant $ TAC.Int 0]
+            return $ Just ret
         _                -> do
             -- generate code for expr
             Just opId <- genTacExpr l
-            currId <- getNextTypedTemp _expType
+            currId <- getNextTypedTemp _expType 
             -- writeTac (TAC.TACCode (mapOp1 op) (Just (TAC.Id currId)) (Just (TAC.Id opId)) Nothing)
             writeTac $ TAC.newTAC (mapOp1 op) (TAC.Id currId) [TAC.Id opId]
             return (Just currId)
@@ -1561,7 +1579,7 @@ genTacExpr AST.Array {AST.list=_list, AST.expType=_expType, AST.offset=_offset} 
     -- stack := stack + array_size_bytes
     writeTac $ TAC.newTAC TAC.Add (TAC.Id stack) [
         TAC.Id stack,
-        TAC.Constant (TAC.Int (array_size * array_type_size))
+        TAC.Constant (TAC.Int ( (div (array_size * array_type_size + 3) 4) * 4 ))
         ]
 
     writeTac $ TAC.newTAC TAC.Add (TAC.Id dope_vector) [
@@ -2490,6 +2508,6 @@ genVoidVal resId expType =
             State {symT=st} <- RWS.get
             let sz = ST.getTypeSize st s
             writeTac $ TAC.newTAC TAC.Assign (TAC.Id resId) [TAC.Id stack]
-            writeTac $ TAC.newTAC TAC.Add (TAC.Id stack) [TAC.Id stack, TAC.Constant $ TAC.Int sz]
+            writeTac $ TAC.newTAC TAC.Add (TAC.Id stack) [TAC.Id stack, TAC.Constant $ TAC.Int ((div (sz + 3) 4) * 4)]
         _ ->
             return ()
