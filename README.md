@@ -17,3 +17,22 @@
 ## Especificación del Lenguaje:
 
 Puedes encontrar la especificación del lenguaje en español [aquí](docs/lang_specs.md).
+ 
+ 
+## Instalación
+ 
+Para instalar, usar el makefile mediante el comando:
+```
+make
+```
+Se debe tener ya instalado ```stack```, ```bison```, ```flex```, ```g++``` y ```java```.
+
+## Ejecución
+ 
+ Para ejecutar el compilador usar el siguiente comando:
+ ```
+ stack exec -- lbend <file> [flags]
+ ```
+ donde ```<file>``` es el archivo a compilar. Debe tener extensión ```.bend```.
+ La descripción de los flags disponibles se puede obtener al usar el flag ```--help```.
+ Se debe ejecutar en el subdirectorio ```/language-bender/language-bender```.
